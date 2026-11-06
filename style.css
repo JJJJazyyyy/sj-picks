@@ -458,3 +458,22 @@ body.resizing,body.resizing *{user-select:none !important;cursor:col-resize !imp
 .mtab td.zz{color:var(--sub)}
 .mtab tr.tot td{border-top:2px solid var(--line);font-size:13.5px}
 .mtab th .logo{margin-right:4px}
+
+/* ═════════ 활성 탭 등락률: 흰 알약 안에 (진한 바탕에서도 보이게) ═════════ */
+.jump a.on .up,.jump a.on .dn{background:#fff !important;border-radius:3px;padding:0 5px;font-weight:800}
+.jump a.on .up{color:#E5202B !important} .jump a.on .dn{color:#1A5BD6 !important}
+
+/* ═════════ 위아래 높이 조절 ═════════ */
+.hspl{position:absolute;left:0;right:0;bottom:0;height:10px;cursor:row-resize;z-index:36}
+.hspl::after{content:'';position:absolute;left:0;right:0;top:50%;height:2px;margin-top:-1px;background:transparent;transition:background .15s,height .15s}
+.hspl.near::after{background:color-mix(in srgb,var(--accent) 45%,transparent);height:3px}
+.hspl:hover::after,.hspl.on::after{background:var(--accent);height:4px;margin-top:-2px}
+body.resizing .hspl,body.resizing:has(.hspl.on) *{cursor:row-resize !important}
+.p-why,.pcol.a{position:relative}
+.chartwrap{height:var(--chH,560px)}
+.lay-tab .chartwrap{height:var(--chH,640px)}
+.lay-dash .chartwrap{height:var(--chH,400px)}
+.fx .chartwrap{height:var(--chH,auto) !important;aspect-ratio:var(--chAR,16/9)}
+.lay-f1 .p-why{flex:0 0 var(--whyH,auto);max-height:var(--whyMax,42%)}
+.lay-f3 .pcol.a{height:var(--infoH,auto) !important;overflow:hidden}
+.lay-f3 .p-why,.lay-f3 .p-lv{overflow:auto}

@@ -199,6 +199,16 @@ function frSplit(grid, vars) {
   if ('ResizeObserver' in window) new ResizeObserver(place).observe(grid);
   place();
 }
+function hSplit(el, vars, min = 160) {
+  if (!el) return;
+  const h = document.createElement('div'); h.className = 'hspl'; h.title = '끌어서 높이 조절 · 두 번 누르면 원래대로'; el.appendChild(h);
+  drag(h, (st, e) => {
+    if (!st) return { y0: e.clientY, h0: el.getBoundingClientRect().height };
+    const v = Math.max(min, Math.round(st.h0 + e.clientY - st.y0));
+    ROOT.style.setProperty(vars[0], v + 'px'); vars.slice(1).forEach(([k, val]) => ROOT.style.setProperty(k, val)); placeAll(); return st;
+  }, () => { SZ[vars[0]] = ROOT.style.getPropertyValue(vars[0]); vars.slice(1).forEach(([k]) => SZ[k] = ROOT.style.getPropertyValue(k)); saveSZ(); });
+  h.ondblclick = () => { [vars[0], ...vars.slice(1).map(x => x[0])].forEach(k => { ROOT.style.removeProperty(k); delete SZ[k]; }); saveSZ(); placeAll(); };
+}
 function mainHandles() {
   const m = document.querySelector('main'); if (m.querySelector('.mh')) return;
   ['l', 'r'].forEach(sd => {
@@ -211,7 +221,7 @@ function mainHandles() {
   });
 }
 function setupSplits() {
-  PLACERS = []; document.querySelectorAll('.spl').forEach(x => x.remove());
+  PLACERS = []; document.querySelectorAll('.spl, .hspl').forEach(x => x.remove());
   mainHandles();
   const cards = [...document.querySelectorAll('#stocks .card')];
   cards.forEach(c => {
@@ -221,6 +231,11 @@ function setupSplits() {
     if (LAY === 'f2') frSplit(c, ['--b1', '--b2', '--b3']);
     if (LAY === 'f3') frSplit(c.querySelector('.pcol.a'), ['--c1', '--c2']);
     if (['f1', 'f2', 'f3'].includes(LAY)) frSplit(c.querySelector('.pcol.b'), ['--m1', '--m2']);
+  });
+  cards.forEach(c => {
+    hSplit(c.querySelector('.chartwrap'), ['--chH', ['--chAR', 'auto']], 240);       // 차트 높이 (차트 집중형은 16:9 대신 정한 높이)
+    if (LAY === 'f1') hSplit(c.querySelector('.p-why'), ['--whyH', ['--whyMax', 'none']], 60);   // 오른쪽 열: 왜 주목 | 가격대 사이
+    if (LAY === 'f3') hSplit(c.querySelector('.pcol.a'), ['--infoH'], 120);          // 아래 정보 칸 높이
   });
   if (LAY === 'dash') frSplit($('#stocks'), ['--d1', '--d2', '--d3']);
 }
@@ -237,9 +252,14 @@ document.addEventListener('mousemove', e => {
       const near = Math.abs(e.clientX - cx) < 28 && e.clientY >= r.top - 8 && e.clientY <= r.bottom + 8;
       h.classList.toggle('near', near);
     });
+    document.querySelectorAll('.hspl').forEach(h => {
+      const r = h.getBoundingClientRect(); if (!r.width) return;
+      const cy = r.top + r.height / 2;
+      h.classList.toggle('near', Math.abs(e.clientY - cy) < 22 && e.clientX >= r.left - 8 && e.clientX <= r.right + 8);
+    });
   });
 }, { passive: true });
-document.addEventListener('mouseleave', () => document.querySelectorAll('.spl.near, .mh.near').forEach(h => h.classList.remove('near')));
+document.addEventListener('mouseleave', () => document.querySelectorAll('.spl.near, .mh.near, .hspl.near').forEach(h => h.classList.remove('near')));
 function goTo(i, scroll = true) {
   if (TABBED.includes(LAY)) {
     document.querySelectorAll('#stocks .card').forEach((c, k) => { c.classList.toggle('hide', k !== i); if (k === i && !c.classList.contains('in')) { c.classList.add('in'); c.querySelectorAll('.px[data-v]').forEach(countUp); } });
