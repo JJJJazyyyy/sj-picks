@@ -1,8 +1,34 @@
 'use strict';
-// 주식 한끼 BEST3 — 정적 사이트 (data/index.json, data/days/<날짜>.json 을 읽어 그림)
+// 주목 종목 BEST3 — 정적 사이트 (data/index.json, data/days/<날짜>.json 을 읽어 그림)
 const LW = window.LightweightCharts;
-const UP = '#E5202B', DN = '#1A5BD6', RSIC = '#8E44AD';
-const MAC = { 5: '#D62FD0', 20: '#F08A00', 60: '#13A35B', 120: '#7A8494' };
+// 디자인 고르기: 모드(색) × 레이아웃(배치). ?mode=..&lay=.. (고른 값은 이 브라우저에 기억)
+const MODES = { light: '라이트 (HTS)', dark: '다크 (HTS)', soft: '소프트 (토스풍)', navy: '네이비', terminal: '터미널 (블룸버그풍)' };
+const LAYS = { basic: '기본', card: '카드', tab: '탭 + 오른쪽 정보', dash: '대시보드 3열', report: '리포트 (읽기형)' };
+function pick(key, all, def) {
+  let v = new URLSearchParams(location.search).get(key);
+  try { if (v && all[v]) localStorage.setItem(key, v); else v = localStorage.getItem(key); } catch (e) { }
+  return all[v] ? v : def;
+}
+const MODE = pick('mode', MODES, 'light'), LAY = pick('lay', LAYS, 'basic');
+const DARK = ['dark', 'navy', 'terminal'].includes(MODE);
+document.body.classList.add('mode-' + MODE, 'lay-' + LAY);
+if (DARK) document.body.classList.add('dk');
+if (['tab', 'dash', 'report'].includes(LAY)) document.body.classList.add('tb');
+const THS = {
+  light: { bg: '#FFFFFF', txt: '#4B5563', grid: '#F0F1F4', border: '#C9CDD4', up: '#E5202B', dn: '#1A5BD6' },
+  dark: { bg: '#0F1318', txt: '#A8B0BD', grid: '#1B2129', border: '#2A313C', up: '#FF4040', dn: '#3D8BFF' },
+  soft: { bg: '#FFFFFF', txt: '#8B95A1', grid: '#F2F4F6', border: '#E5E8EB', up: '#F04452', dn: '#3182F6' },
+  navy: { bg: '#0F1F35', txt: '#8FA6C1', grid: '#16304D', border: '#1E3A5C', up: '#FF5A5F', dn: '#4DA3FF' },
+  terminal: { bg: '#000000', txt: '#A3A3A3', grid: '#141414', border: '#333333', up: '#FF3B30', dn: '#3B82F6' },
+};
+const TH = THS[MODE];
+const UP = TH.up, DN = TH.dn, RSIC = DARK ? (MODE === 'terminal' ? '#FFB000' : '#C084FC') : '#8E44AD';
+const MAC = DARK ? { 5: '#F472D0', 20: '#FBBF24', 60: '#34D399', 120: '#9CA3AF' } : { 5: '#D62FD0', 20: '#F08A00', 60: '#13A35B', 120: '#7A8494' };
+function fixC(c) {   // 다크에서 너무 어두운 작도 색은 밝게
+  if (!DARK || !c || c[0] !== '#') return c;
+  const h = c.slice(1), f = h.length === 3 ? h.split('').map(x => x + x).join('') : h, n = parseInt(f, 16);
+  return (0.299 * (n >> 16 & 255) + 0.587 * (n >> 8 & 255) + 0.114 * (n & 255)) / 255 < 0.35 ? '#D1D5DB' : c;
+}
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fmt = n => n == null || isNaN(n) ? '-' : Math.round(n).toLocaleString('ko-KR');
@@ -31,6 +57,9 @@ async function getJSON(u) { const r = await fetch(u, { cache: 'no-cache' }); if 
 let INDEX = null, CUR = null, CHARTS = [];
 
 async function init() {
+  const sel2 = (id, all, cur, key, pre) => { const el = $(id); el.innerHTML = Object.entries(all).map(([k, v]) => `<option value="${k}"${k === cur ? ' selected' : ''}>${pre} ${v}</option>`).join('');
+    el.onchange = () => { const q = new URLSearchParams(location.search); q.set(key, el.value); location.search = q.toString(); }; };
+  sel2('#modeSel', MODES, MODE, 'mode', '모드:'); sel2('#laySel', LAYS, LAY, 'lay', '레이아웃:');
   try { INDEX = await getJSON('data/index.json'); }
   catch (e) { $('#stocks').innerHTML = `<div class="empty">데이터를 불러오지 못했습니다 (${esc(e.message)})</div>`; return; }
   $('#updated').textContent = '갱신 ' + INDEX.updated;
@@ -58,13 +87,36 @@ async function renderDay(day, top = true) {
   const latest = day === INDEX.latest;
   $('#dayhead').innerHTML = `<h1>${dname(day)} 마감 기준 주목 종목 BEST3</h1><span class="meta">${latest ? '최신 · ' : '지난 날짜 · '}다음 거래일 장에서 볼 종목 · 생성 ${esc(D.made || '')}</span>`;
   $('#jump').innerHTML = D.stocks.map((s, i) => `<a href="javascript:void(0)" data-k="${i}"><span class="r">${i + 1}</span>${logo(s.code, s.name, 18)}${esc(s.name)} <span class="${cls(s.chg)}">${pct(s.chg)}</span></a>`).join('');
-  $('#jump').querySelectorAll('a').forEach(a => a.onclick = () => document.getElementById('st' + a.dataset.k).scrollIntoView({ behavior: 'smooth' }));
+  $('#jump').querySelectorAll('a').forEach(a => a.onclick = () => goTo(+a.dataset.k));
+  $('#summary').innerHTML = summary(D);
+  $('#summary').querySelectorAll('tr[data-k]').forEach(tr => tr.onclick = () => goTo(+tr.dataset.k));
   const box = $('#stocks'); box.innerHTML = '';
   D.stocks.forEach((s, i) => { const el = card(s, i); box.appendChild(el); CHARTS.push(buildChart(el, s)); });
+  if (LAY === 'tab') goTo(0);
   renderArchive(day);
   if (top) window.scrollTo({ top: 0 });
 }
 
+function goTo(i) {
+  if (LAY === 'tab') {
+    document.querySelectorAll('#stocks .card').forEach((c, k) => c.classList.toggle('hide', k !== i));
+    document.querySelectorAll('#jump a').forEach((a, k) => a.classList.toggle('on', k === i));
+  } else document.getElementById('st' + i).scrollIntoView({ behavior: 'smooth' });
+}
+function summary(D) {
+  const rows = D.stocks.map((s, i) => {
+    const lv = s.levels || [], C = s.close;
+    const stop = lv.find(l => l.kind === '손절'), r1 = lv.find(l => l.kind === '저항1');
+    const tg = lv.filter(l => l.kind === '목표' && l.price > C).sort((a, b) => a.price - b.price)[0] || lv.find(l => l.kind === '저항2');
+    const rr = stop && tg && stop.price < C ? ((tg.price / C - 1) / (1 - stop.price / C)).toFixed(1) : '-';
+    const iv = (s.inv || [])[0] || {}, fo = (iv.frgn || 0) + (iv.orgn || 0);
+    const ch = chipOf((s.why && s.why[0]) || (s.notes || [])[0] || '').chips[0];
+    const pc = (l, c) => l ? `${fmt(l.price)} <small class="${c}">${pct((l.price / C - 1) * 100, 1)}</small>` : '-';
+    return `<tr data-k="${i}"><td class="l"><span class="rk">${i + 1}</span></td><td class="l"><span class="nmcell">${logo(s.code, s.name, 20)}<b>${esc(s.name)}</b></span></td><td>${fmt(C)}</td><td class="${cls(s.chg)}">${pct(s.chg)}</td>
+      <td class="l">${ch ? `<span class="cc" style="background:${fixC(ch[1])}">${esc(ch[0])}</span>` : ''}</td><td>${pc(stop, 'dn')}</td><td>${pc(r1, 'up')}</td><td>${pc(tg, 'up')}</td><td><b>${rr}</b></td><td class="${cls(fo)}">${fo > 0 ? '+' : ''}${fmt(fo)}억</td><td>${s.rsi ?? '-'}</td></tr>`;
+  }).join('');
+  return `<h2>한눈에 보기 <small>행을 누르면 그 종목으로</small></h2><div class="tblwrap"><table class="perf sumt"><tr><th class="l">#</th><th class="l">종목</th><th>종가</th><th>등락</th><th class="l">핵심</th><th>손절</th><th>저항1</th><th>첫 목표</th><th>손익비</th><th>외+기(당일)</th><th>RSI</th></tr>${rows}</table></div>`;
+}
 function card(s, i) {
   const el = document.createElement('section'); el.className = 'card'; el.id = 'st' + i;
   const p = s.price || {};
@@ -167,7 +219,7 @@ function chipOf(text) {
 function chipList(items, hl) {
   if (!items || !items.length) return '<div class="hint">없음</div>';
   return `<ul class="cl${hl ? ' hl' : ''}">${items.map(x => { const c = chipOf(x);
-    return `<li${hl ? ` data-hl="${esc(x)}"` : ''}><span class="ccs">${c.chips.map(([l, col]) => `<span class="cc" style="background:${col}">${esc(l)}</span>`).join('')}</span><span class="ct">${esc(c.body)}</span></li>`; }).join('')}</ul>`;
+    return `<li${hl ? ` data-hl="${esc(x)}"` : ''}><span class="ccs">${c.chips.map(([l, col]) => `<span class="cc" style="background:${fixC(col)}">${esc(l)}</span>`).join('')}</span><span class="ct">${esc(c.body)}</span></li>`; }).join('')}</ul>`;
 }
 // 같은 사건 기사 빼기: 제목 낱말이 절반 넘게 겹치면 중복
 function dedupeNews(n, name) {
@@ -204,16 +256,17 @@ const POS = { above: 'aboveBar', below: 'belowBar' };
 
 function buildChart(el, s) {
   const box = el.querySelector('.chart'), side = el.querySelector('.side'), ohlc = el.querySelector('.ohlc');
+  if (DARK) (s.groups || []).forEach(g => { g.color = fixC(g.color); (g.items || []).forEach(it => { it.color = fixC(it.color); (it.marks || []).forEach(m => m.color = fixC(m.color)); }); });
   const rows = s.rows, T = rows.map(r => tm(r.d)), C = rows.map(r => r.c), N = rows.length;
   const idx = new Map(T.map((t, i) => [t, i]));
   const chart = LW.createChart(box, {
     autoSize: true,
-    layout: { background: { type: 'solid', color: '#FFFFFF' }, textColor: '#4B5563', fontSize: 11, fontFamily: 'Malgun Gothic, Apple SD Gothic Neo, sans-serif',
-      panes: { separatorColor: '#C9CDD4', separatorHoverColor: 'rgba(33,86,232,.12)', enableResize: true } },
-    grid: { vertLines: { color: '#F0F1F4' }, horzLines: { color: '#F0F1F4' } },
+    layout: { background: { type: 'solid', color: TH.bg }, textColor: TH.txt, fontSize: 11, fontFamily: 'Malgun Gothic, Apple SD Gothic Neo, sans-serif',
+      panes: { separatorColor: TH.border, separatorHoverColor: 'rgba(33,86,232,.12)', enableResize: true } },
+    grid: { vertLines: { color: TH.grid }, horzLines: { color: TH.grid } },
     crosshair: { mode: LW.CrosshairMode.Normal },
-    rightPriceScale: { borderColor: '#C9CDD4' },
-    timeScale: { borderColor: '#C9CDD4', rightOffset: 6, barSpacing: 7, minBarSpacing: 1.5 },
+    rightPriceScale: { borderColor: TH.border },
+    timeScale: { borderColor: TH.border, rightOffset: 6, barSpacing: 7, minBarSpacing: 1.5 },
     localization: { locale: 'ko-KR', dateFormat: 'yyyy-MM-dd' },
   });
   const pxFmt = { type: 'custom', minMove: 1, formatter: p => Math.round(p).toLocaleString('ko-KR') };
@@ -308,7 +361,7 @@ function buildChart(el, s) {
   const base = [['ma5', '5일선', MAC[5]], ['ma20', '20일선', MAC[20]], ['ma60', '60일선', MAC[60]], ['ma120', '120일선', MAC[120]], ['vol', '거래량 · 20일 평균', '#F08A00'], ['rsi', 'RSI(14) · 30/70', RSIC]];
   side.innerHTML = `
     <h3>작도 — 켜기/끄기 · 마우스 올리면 강조</h3>
-    ${groups.length ? groups.map(g => `<div class="grp" data-g="${g.id}"><label class="row"><input type="checkbox" checked data-g="${g.id}"><span class="sw" style="background:${g.color}"></span><span class="lab">${esc(g.label)}</span></label>
+    ${groups.length ? groups.map(g => `<div class="grp" data-g="${g.id}" title="${esc(g.note || '')}"><label class="row"><input type="checkbox" checked data-g="${g.id}"><span class="sw" style="background:${g.color}"></span><span class="lab">${esc(g.label)}</span></label>
       <div class="note">${esc(g.note || '')}</div>${subsHtml(g)}</div>`).join('') : '<div class="hint">이날 유효한 작도 없음</div>'}
     <h3>지표</h3>
     ${base.map(([id, lab, col]) => `<div class="grp" data-g="${id}"><label class="row"><input type="checkbox" checked data-g="${id}"><span class="sw" style="background:${col}"></span><span class="lab">${lab}</span></label></div>`).join('')}
@@ -331,7 +384,7 @@ function buildChart(el, s) {
 
   // 볼 가격대: 토글(전부) + 행 마우스 오버(하나 강조)
   const tbl = el.querySelector('.lvt'); const lv = tbl ? JSON.parse(tbl.dataset.lv) : [];
-  const lvColor = k => ({ res: UP, sup: DN, stop: '#111111', tgt: '#13A35B', cur: '#F59E0B' }[kcls(k)]);
+  const lvColor = k => ({ res: UP, sup: DN, stop: DARK ? '#E5E7EB' : '#111111', tgt: '#13A35B', cur: '#F59E0B' }[kcls(k)]);
   let allPL = [], hovPL = null;
   side.querySelector('input[data-lv]').onchange = ev => {
     allPL.forEach(p => candle.removePriceLine(p)); allPL = [];

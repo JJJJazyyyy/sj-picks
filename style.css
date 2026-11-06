@@ -134,3 +134,139 @@ ul.cl.hl li.can:hover{background:#FFF4E5}
 .srcchip:hover{border-color:var(--accent);color:var(--accent);background:#fff}
 .srcchip .sn{font-weight:700;color:var(--txt)}
 .srcchip svg{flex:none;opacity:.7}
+
+/* ═════════ 한눈에 보기 (기본 레이아웃 빼고 보임) ═════════ */
+.summary{display:none}
+body:not(.lay-basic) .summary{display:block}
+.sumt tr[data-k]{cursor:pointer}
+.sumt tr[data-k]:hover td{background:var(--hov,#FFF4E5)}
+.sumt .rk{display:inline-block;min-width:20px;text-align:center;background:var(--navy);color:#fff;border-radius:3px;font-weight:800;font-size:12px}
+.sumt .nmcell{display:inline-flex;align-items:center}
+.sumt td{font-size:13px}
+.dsel{font:inherit;font-size:13px;padding:4px 8px;border-radius:3px;border:1px solid #6B7AA1;background:#1F2B47;color:#fff}
+
+/* ═════════ 모드 (색) ═════════ */
+/* 다크 계열 공통 (다크·네이비·터미널) */
+.dk{--hov:#2A2214}
+.dk a{color:var(--link,#7FB2FF)}
+.dk .top select,.dk .dsel{background:var(--bg);border-color:var(--line)}
+.dk .cardhead{background:linear-gradient(var(--panel2),var(--panel))}
+.dk .grp:hover,.dk .sub:hover{background:var(--panel2)}
+.dk .chip,.dk .sub,.dk .srcchip{background:var(--bg);color:var(--sub)}
+.dk .srcchip .sn{color:var(--txt)}
+.dk .ohlc{background:color-mix(in srgb,var(--panel) 88%,transparent)}
+.dk .lvt tr:hover td,.dk ul.cl.hl li.can:hover{background:var(--hov)}
+.dk .lvt tr.currow td{background:#2B2410}
+.dk .invread{background:color-mix(in srgb,#10B981 8%,var(--panel));border-color:color-mix(in srgb,#10B981 25%,var(--panel))}
+.dk .perf tr.hit td{background:#1A1A1A}
+.dk .tag.run{background:#1C2A4A}
+.dk .tag.stop,.dk .k.stop{background:#E5E7EB;color:#111}
+.dk .arch a.cur{background:color-mix(in srgb,var(--up) 15%,var(--panel))}
+.dk .side h3{background:var(--navy2)}
+.dk .jump a .r,.dk .sumt .rk{background:var(--navy2)}
+.dk button{background:var(--panel2);color:var(--txt);border:1px solid var(--line);border-radius:3px}
+.dk .perf th{background:var(--panel2)}
+/* 다크 (HTS 야간) */
+.mode-dark{--bg:#0B0E12;--panel:#12171E;--panel2:#171D25;--line:#2A313C;--line2:#1F252E;--txt:#E5E7EB;--sub:#9AA3AF;--up:#FF4040;--dn:#3D8BFF;--navy:#0E1626;--navy2:#1F2A40;--accent:#5B9BFF}
+/* 네이비 */
+.mode-navy{--bg:#0A1628;--panel:#0F1F35;--panel2:#132840;--line:#1E3A5C;--line2:#17304D;--txt:#E6EEF7;--sub:#8FA6C1;--up:#FF5A5F;--dn:#4DA3FF;--navy:#071120;--navy2:#16365C;--accent:#38BDF8;--link:#7DD3FC;--hov:#1B3554}
+.mode-navy .dk .lvt tr.currow td,.mode-navy .lvt tr.currow td{background:#2A2A14}
+/* 터미널 (블룸버그풍: 검정 + 호박색) */
+.mode-terminal{--bg:#000000;--panel:#0A0A0A;--panel2:#111111;--line:#333333;--line2:#1E1E1E;--txt:#EDEDED;--sub:#A3A3A3;--up:#FF3B30;--dn:#3B82F6;--navy:#000000;--navy2:#1A1A1A;--accent:#FFB000;--link:#FFB000;--hov:#1F1A0A;
+  --font:"D2Coding","Consolas","Malgun Gothic",monospace}
+.mode-terminal .top{border-bottom:1px solid #FFB000}
+.mode-terminal .brand{color:#FFB000;letter-spacing:.5px}
+.mode-terminal .side h3,.mode-terminal .jump a .r,.mode-terminal .sumt .rk{background:#FFB000;color:#000}
+.mode-terminal .cardhead{background:#111;border-bottom-color:#FFB000}
+.mode-terminal .cardhead .rank{background:#FFB000;color:#000}
+.mode-terminal .pn h4,.mode-terminal .box h2{color:#FFB000 !important}
+.mode-terminal .navlink{border-color:#FFB000;color:#FFB000}
+/* 소프트 (토스풍 밝은 회색) */
+.mode-soft{--bg:#F2F4F6;--panel:#FFFFFF;--panel2:#F9FAFB;--line:#E5E8EB;--line2:#F2F4F6;--txt:#191F28;--sub:#8B95A1;--up:#F04452;--dn:#3182F6;--navy:#191F28;--navy2:#333D4B;--accent:#3182F6;
+  --font:"Pretendard","Apple SD Gothic Neo","Malgun Gothic","맑은 고딕",system-ui,sans-serif}
+.mode-soft .top{background:rgba(255,255,255,.94);color:var(--txt);border-bottom:1px solid var(--line)}
+.mode-soft .top select,.mode-soft .dsel,.mode-soft .navlink{background:#F2F4F6;color:var(--txt);border-color:transparent}
+.mode-soft .cardhead{background:#fff}
+.mode-soft .side h3{background:#F2F4F6;color:var(--sub)}
+.mode-soft .chip,.mode-soft .srcchip{background:#F2F4F6;border-color:transparent}
+.mode-soft .invread{background:#F0FAF4;border-color:#DDF3E6}
+
+/* ═════════ 레이아웃 (배치) ═════════ */
+/* 카드: 둥근 카드 · 넉넉한 여백 */
+.lay-card main{max-width:1320px;padding:20px}
+.lay-card .card,.lay-card .box{border:0;border-radius:20px;box-shadow:0 1px 2px rgba(0,0,0,.05),0 10px 30px rgba(0,0,0,.06);overflow:hidden;margin-bottom:20px}
+.lay-card .box{padding:18px 22px}
+.lay-card .cardhead{padding:18px 22px;gap:14px;border-bottom:1px solid var(--line2)}
+.lay-card .cardhead .rank{border-radius:8px}
+.lay-card .cardhead .nm{font-size:24px}
+.lay-card .cardhead .px{font-size:22px}
+.lay-card .chip,.lay-card .srcchip,.lay-card .sub{border-radius:999px}
+.lay-card .chip{padding:3px 10px}
+.lay-card .chartrow{border-bottom:0}
+.lay-card .side{border-left:1px solid var(--line2)}
+.lay-card .side h3{background:none;color:var(--sub);padding:14px 14px 4px}
+.lay-card .grp{border-bottom:0;padding:8px 14px;border-radius:12px;margin:0 6px}
+.lay-card .panels{border-top:1px solid var(--line2)}
+.lay-card .pn{padding:18px 22px}
+.lay-card .k,.lay-card .cc{border-radius:6px}
+.lay-card .jump a{border:0;border-radius:999px;padding:8px 16px;box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.lay-card .jump a .r,.lay-card .sumt .rk{border-radius:999px}
+.lay-card .invread,.lay-card .stat,.lay-card .arch a{border-radius:12px}
+.lay-card .ohlc{border-radius:8px}
+
+/* 탭·대시보드·리포트 공통: 작도 토글을 차트 위 도구줄로 */
+.tb .chartrow{display:flex;flex-direction:column;min-width:0}
+.tb .side{order:-1;border-left:0;border-bottom:1px solid var(--line);max-height:none;overflow:visible;display:flex;flex-wrap:wrap;gap:4px;padding:6px 8px;align-items:center;position:relative;z-index:30}
+.tb .side h3{display:none}
+.tb .side .grp{border:1px solid var(--line);border-radius:3px;padding:2px 8px;background:var(--panel);position:relative}
+.tb .side .grp .note{display:none}
+.tb .side .grp .subs{display:none;position:absolute;top:100%;left:-1px;margin:0;z-index:40;background:var(--panel);border:1px solid var(--line);padding:6px;width:270px;box-shadow:0 6px 18px rgba(0,0,0,.18)}
+.tb .side .grp:hover .subs{display:flex}
+.tb .side .hint{padding:0 4px;font-size:0}
+.tb .side .hint button{font-size:12px}
+
+/* 탭: 한 종목씩, 차트 크게, 정보는 오른쪽 */
+.lay-tab .jump{gap:0;border-bottom:2px solid var(--navy2);margin-bottom:0}
+.lay-tab .jump a{border:1px solid var(--line);border-bottom:0;border-radius:4px 4px 0 0;padding:8px 18px;font-size:15px;background:var(--panel2);margin-right:2px}
+.lay-tab .jump a.on{background:var(--navy2);color:#fff}
+.lay-tab .card.hide{display:none}
+.lay-tab .card{display:grid;grid-template-columns:minmax(0,1fr) 410px;grid-template-areas:"head head" "chart info";border-top:0}
+.lay-tab .cardhead{grid-area:head}
+.lay-tab .chartrow{grid-area:chart;border-bottom:0;border-right:1px solid var(--line)}
+.lay-tab .chartwrap{height:640px}
+.lay-tab .panels{grid-area:info;grid-template-columns:1fr;max-height:690px;overflow:auto;align-content:start}
+.lay-tab .pn{border-right:0;border-bottom:1px solid var(--line2)}
+
+/* 대시보드: 세 종목 나란히 */
+.lay-dash main{max-width:1900px}
+.lay-dash .jump{display:none}
+.lay-dash #stocks{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;align-items:start}
+.lay-dash .card{margin-bottom:0}
+.lay-dash .cardhead .chips{margin-left:0}
+.lay-dash .cardhead .nm{font-size:18px}
+.lay-dash .chartrow{border-bottom:1px solid var(--line)}
+.lay-dash .chartwrap{height:400px}
+.lay-dash .panels{grid-template-columns:1fr}
+.lay-dash .pn{border-right:0;border-bottom:1px solid var(--line2)}
+.lay-dash ul.cl li{grid-template-columns:76px minmax(0,1fr)}
+
+/* 리포트: 좁은 한 줄, 글 먼저 → 차트 */
+.lay-report main{max-width:1000px}
+.lay-report .card{display:flex;flex-direction:column}
+.lay-report .panels{order:1;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--line)}
+.lay-report .pn:nth-child(2){border-right:0}
+.lay-report .pn:nth-child(-n+2){border-bottom:1px solid var(--line2)}
+.lay-report .chartrow{order:2;border-bottom:0}
+.lay-report .chartwrap{height:520px}
+.lay-report .cardhead{order:0}
+.lay-report body,.lay-report{font-size:15px}
+.lay-report .pn h4{font-size:16px}
+
+@media (max-width:1300px){ .lay-dash #stocks{grid-template-columns:1fr} }
+@media (max-width:1100px){
+  .lay-tab .card{grid-template-columns:1fr;grid-template-areas:"head" "chart" "info"}
+  .lay-tab .chartrow{border-right:0}
+  .lay-tab .panels{max-height:none}
+  .lay-tab .chartwrap{height:480px}
+}
+@media (max-width:820px){ .lay-report .panels{grid-template-columns:1fr} .lay-report .pn{border-right:0} }
