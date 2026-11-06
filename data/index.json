@@ -1,0 +1,70 @@
+{
+ "updated": "2026-11-06 11:47",
+ "latest": "20261105",
+ "days": [
+  {
+   "day": "20261105",
+   "stocks": [
+    {
+     "code": "068270",
+     "name": "셀트리온",
+     "chg": 6.25
+    },
+    {
+     "code": "035720",
+     "name": "카카오",
+     "chg": 10.31
+    },
+    {
+     "code": "112610",
+     "name": "씨에스윈드",
+     "chg": 6.16
+    }
+   ]
+  }
+ ],
+ "perf": [
+  {
+   "day": "20261105",
+   "code": "068270",
+   "name": "셀트리온",
+   "sector": "제약",
+   "base": 212500,
+   "stop": 203500,
+   "perf": {},
+   "max_up": null,
+   "max_dn": null,
+   "last": null,
+   "stop_hit": null,
+   "done": false
+  },
+  {
+   "day": "20261105",
+   "code": "035720",
+   "name": "카카오",
+   "sector": "IT 서비스",
+   "base": 32100,
+   "stop": 29783,
+   "perf": {},
+   "max_up": null,
+   "max_dn": null,
+   "last": null,
+   "stop_hit": null,
+   "done": false
+  },
+  {
+   "day": "20261105",
+   "code": "112610",
+   "name": "씨에스윈드",
+   "sector": "금속",
+   "base": 47450,
+   "stop": 45060,
+   "perf": {},
+   "max_up": null,
+   "max_dn": null,
+   "last": null,
+   "stop_hit": null,
+   "done": false
+  }
+ ]
+}
