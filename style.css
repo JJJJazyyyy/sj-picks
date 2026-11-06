@@ -417,3 +417,8 @@ body.resizing,body.resizing *{user-select:none !important;cursor:col-resize !imp
   .lay-f2 .p-why,.lay-f2 .p-lv{height:0 !important;min-height:100%}
 }
 .lay-f3 .pcol.a{height:auto !important;grid-template-columns:minmax(0,var(--c1,1fr)) minmax(0,var(--c2,1.15fr))}
+
+/* 진한 바탕(활성 탭) 위 등락률은 밝게 */
+.jump a.on .up{color:#FF9C9C !important;font-weight:800}
+.jump a.on .dn{color:#A9C8FF !important;font-weight:800}
+.jump a.on .jl{color:#C9D3EC !important}
