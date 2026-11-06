@@ -379,3 +379,41 @@ body.w-full main{max-width:none !important}
 .allbtn button:hover{border-color:var(--accent);color:var(--accent)}
 .tb .side .allbtn{padding:0 2px;order:0}
 .tb .side .allbtn button{padding:2px 6px}
+
+/* ═════════ 머리줄: 왼쪽 로고 · 모드 · 배치 ═════════ */
+.top .hl{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.brand{display:inline-flex;align-items:center;gap:8px;color:inherit;text-decoration:none;font-size:18px;font-weight:800}
+.dk .brand,.mode-light .brand{color:#fff}
+.mode-soft .brand{color:var(--txt)}
+.blogo{height:26px;width:auto;display:block}
+.dlab{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:#C9D3EC}
+.mode-soft .dlab{color:var(--sub)}
+.dsel{padding:3px 6px}
+
+/* ═════════ 전체 폭 · 박스 사이 끌어서 조절 ═════════ */
+main{position:relative;max-width:var(--mainW,1680px) !important}
+.mh{position:absolute;top:0;bottom:0;width:12px;cursor:ew-resize;z-index:35}
+.mh.l{left:-12px} .mh.r{right:-12px}
+.mh::after,.spl::after{content:'';position:absolute;top:0;bottom:0;left:50%;width:2px;margin-left:-1px;background:transparent;transition:background .15s}
+.mh:hover::after,.mh.on::after,.spl:hover::after,.spl.on::after{background:color-mix(in srgb,var(--accent) 60%,transparent)}
+.spl{position:absolute;top:0;width:10px;margin-left:-5px;cursor:col-resize;z-index:35}
+.chartrow,.panels,.card,#stocks,.pcol{position:relative}
+body.resizing,body.resizing *{user-select:none !important;cursor:col-resize !important}
+@media (min-width:821px){ .chartrow{grid-template-columns:minmax(0,var(--cw,1fr)) minmax(180px,var(--sw,260px))} }
+@media (min-width:1101px){
+  .panels{grid-template-columns:minmax(0,var(--p1,1.1fr)) minmax(0,var(--p2,1fr)) minmax(0,var(--p3,1fr)) minmax(0,var(--p4,1.25fr))}
+  .lay-tab .card{grid-template-columns:minmax(0,var(--t1,1fr)) minmax(280px,var(--t2,410px))}
+}
+@media (min-width:1301px){ .lay-dash #stocks{grid-template-columns:minmax(0,var(--d1,1fr)) minmax(0,var(--d2,1fr)) minmax(0,var(--d3,1fr))} }
+
+/* ═════════ 차트 집중 A~C: 16:9 큰 차트 ═════════ */
+.fx .chartrow{height:auto !important}
+.fx .chartwrap{height:auto !important;flex:none;aspect-ratio:16/9;min-height:320px}
+.fx .pcol.b{grid-template-columns:minmax(0,var(--m1,1fr)) minmax(0,var(--m2,1fr))}
+@media (min-width:1251px){
+  .lay-f1 .card{grid-template-columns:minmax(0,var(--a1,3fr)) minmax(300px,var(--a2,1fr))}
+  .lay-f1 .pcol.a{height:0 !important;min-height:100%;overflow:hidden}
+  .lay-f2 .card{grid-template-columns:minmax(0,var(--b1,3.2fr)) minmax(220px,var(--b2,1fr)) minmax(280px,var(--b3,1.25fr))}
+  .lay-f2 .p-why,.lay-f2 .p-lv{height:0 !important;min-height:100%}
+}
+.lay-f3 .pcol.a{height:auto !important;grid-template-columns:minmax(0,var(--c1,1fr)) minmax(0,var(--c2,1.15fr))}

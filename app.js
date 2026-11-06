@@ -2,18 +2,17 @@
 // 주목 종목 BEST3 — 정적 사이트 (data/index.json, data/days/<날짜>.json 을 읽어 그림)
 const LW = window.LightweightCharts;
 // 디자인 고르기: 모드(색) × 레이아웃(배치). ?mode=..&lay=.. (고른 값은 이 브라우저에 기억)
-const MODES = { light: '라이트 (HTS)', dark: '다크 (HTS)', soft: '소프트 (토스풍)' };
-const LAYS = { basic: '기본', card: '카드', tab: '탭 + 오른쪽 정보', dash: '대시보드 3열', f1: '집중 A · 차트 + 오른쪽 정보', f2: '집중 B · 3단 와이드', f3: '집중 C · 차트 위 + 정보 아래' };
+const MODES = { light: '라이트', dark: '다크', soft: '소프트' };
+const LAYS = { basic: '기본', card: '카드', tab: '탭', dash: '3열', f1: '차트 집중 A', f2: '차트 집중 B', f3: '차트 집중 C' };
 const TABBED = ['tab', 'f1', 'f2', 'f3'];
 function pick(key, all, def) {
   let v = new URLSearchParams(location.search).get(key);
   try { if (v && all[v]) localStorage.setItem(key, v); else v = localStorage.getItem(key); } catch (e) { }
   return all[v] ? v : def;
 }
-const WIDTHS = { n: '보통 1440', w: '넓게 1680', xw: '아주 넓게 1920', full: '화면 꽉 채움' };
-const MODE = pick('mode', MODES, 'light'), LAY = pick('lay', LAYS, 'basic'), WID = pick('w', WIDTHS, 'w');
+const MODE = pick('mode', MODES, 'light'), LAY = pick('lay', LAYS, 'basic');
 const DARK = MODE === 'dark';
-document.body.classList.add('mode-' + MODE, 'lay-' + LAY, 'w-' + WID);
+document.body.classList.add('mode-' + MODE, 'lay-' + LAY);
 if (DARK) document.body.classList.add('dk');
 if (['tab', 'dash', 'f1', 'f2', 'f3'].includes(LAY)) document.body.classList.add('tb');
 if (['f1', 'f2', 'f3'].includes(LAY)) document.body.classList.add('fx');
@@ -58,9 +57,9 @@ async function getJSON(u) { const r = await fetch(u, { cache: 'no-cache' }); if 
 let INDEX = null, CUR = null, CURD = null, CHARTS = [], LIVE = null;
 
 async function init() {
-  const sel2 = (id, all, cur, key, pre) => { const el = $(id); el.innerHTML = Object.entries(all).map(([k, v]) => `<option value="${k}"${k === cur ? ' selected' : ''}>${pre} ${v}</option>`).join('');
+  const sel2 = (id, all, cur, key, pre) => { const el = $(id); el.innerHTML = Object.entries(all).map(([k, v]) => `<option value="${k}"${k === cur ? ' selected' : ''}>${pre}${v}</option>`).join('');
     el.onchange = () => { const q = new URLSearchParams(location.search); q.set(key, el.value); location.search = q.toString(); }; };
-  sel2('#modeSel', MODES, MODE, 'mode', '모드:'); sel2('#laySel', LAYS, LAY, 'lay', '레이아웃:'); sel2('#wSel', WIDTHS, WID, 'w', '폭:');
+  sel2('#modeSel', MODES, MODE, 'mode', ''); sel2('#laySel', LAYS, LAY, 'lay', '');
   try { INDEX = await getJSON('data/index.json'); }
   catch (e) { $('#stocks').innerHTML = `<div class="empty">데이터를 불러오지 못했습니다 (${esc(e.message)})</div>`; return; }
   $('#updated').textContent = '갱신 ' + INDEX.updated;
@@ -98,6 +97,7 @@ async function renderDay(day, top = true) {
   if (TABBED.includes(LAY)) goTo(0, false);
   renderArchive(day);
   motion();
+  setupSplits();
   if (top) window.scrollTo({ top: 0 });
 }
 
@@ -162,10 +162,73 @@ function applyLive() {
   $('#summary').innerHTML = summary(CURD);
   $('#summary').querySelectorAll('tr[data-k]').forEach(tr => tr.onclick = () => goTo(+tr.dataset.k));
 }
+// ── 크기 조절: 전체 폭(본문 양쪽 끝) · 박스 사이 경계를 끌기. 두 번 누르면 원래대로. 이 브라우저에 레이아웃별로 기억 ──
+const ROOT = document.documentElement, SZK = 'sz:' + LAY;
+let SZ = {}; try { SZ = JSON.parse(localStorage.getItem(SZK) || '{}'); } catch (e) { }
+Object.entries(SZ).forEach(([k, v]) => ROOT.style.setProperty(k, v));
+const saveSZ = () => { try { localStorage.setItem(SZK, JSON.stringify(SZ)); } catch (e) { } };
+let PLACERS = [];
+const placeAll = () => PLACERS.forEach(f => f());
+function drag(h, onMove, onEnd) {
+  h.onpointerdown = e => {
+    e.preventDefault(); h.setPointerCapture(e.pointerId); document.body.classList.add('resizing'); h.classList.add('on');
+    const st = onMove(null, e);
+    h.onpointermove = ev => onMove(st, ev);
+    h.onpointerup = () => { h.onpointermove = null; document.body.classList.remove('resizing'); h.classList.remove('on'); onEnd(); placeAll(); };
+  };
+}
+function frSplit(grid, vars) {
+  if (!grid) return;
+  const hs = vars.slice(1).map(() => { const h = document.createElement('div'); h.className = 'spl'; h.title = '끌어서 폭 조절 · 두 번 누르면 원래대로'; grid.appendChild(h); return h; });
+  const tracks = () => getComputedStyle(grid).gridTemplateColumns.split(' ').map(parseFloat);
+  const place = () => {
+    const t = tracks(), gap = parseFloat(getComputedStyle(grid).columnGap) || 0;
+    if (t.length !== vars.length || !grid.offsetWidth) { hs.forEach(h => h.style.display = 'none'); return; }
+    let x = 0; hs.forEach((h, i) => { x += t[i] + (i ? gap : 0); h.style.display = ''; h.style.left = (x + gap / 2) + 'px'; h.style.height = grid.offsetHeight + 'px'; });
+  };
+  hs.forEach((h, i) => {
+    drag(h, (st, e) => {
+      if (!st) { const t = tracks(); vars.forEach((v, k) => ROOT.style.setProperty(v, t[k] + 'fr')); return { x0: e.clientX, a0: t[i], b0: t[i + 1] }; }
+      const a = Math.max(140, Math.min(st.a0 + st.b0 - 140, st.a0 + e.clientX - st.x0));
+      ROOT.style.setProperty(vars[i], a + 'fr'); ROOT.style.setProperty(vars[i + 1], (st.a0 + st.b0 - a) + 'fr'); placeAll(); return st;
+    }, () => { vars.forEach(v => SZ[v] = ROOT.style.getPropertyValue(v)); saveSZ(); });
+    h.ondblclick = () => { vars.forEach(v => { ROOT.style.removeProperty(v); delete SZ[v]; }); saveSZ(); placeAll(); };
+  });
+  PLACERS.push(place);
+  if ('ResizeObserver' in window) new ResizeObserver(place).observe(grid);
+  place();
+}
+function mainHandles() {
+  const m = document.querySelector('main'); if (m.querySelector('.mh')) return;
+  ['l', 'r'].forEach(sd => {
+    const h = document.createElement('div'); h.className = 'mh ' + sd; h.title = '끌어서 전체 폭 조절 · 두 번 누르면 원래대로'; m.appendChild(h);
+    drag(h, (st, e) => {
+      if (!st) { const r = m.getBoundingClientRect(); return { cx: r.left + r.width / 2 }; }
+      ROOT.style.setProperty('--mainW', Math.max(900, Math.min(window.innerWidth, 2 * Math.abs(e.clientX - st.cx))) + 'px'); return st;
+    }, () => { SZ['--mainW'] = ROOT.style.getPropertyValue('--mainW'); saveSZ(); });
+    h.ondblclick = () => { ROOT.style.removeProperty('--mainW'); delete SZ['--mainW']; saveSZ(); placeAll(); };
+  });
+}
+function setupSplits() {
+  PLACERS = []; document.querySelectorAll('.spl').forEach(x => x.remove());
+  mainHandles();
+  const cards = [...document.querySelectorAll('#stocks .card')];
+  cards.forEach(c => {
+    if (LAY === 'basic' || LAY === 'card') { frSplit(c.querySelector('.chartrow'), ['--cw', '--sw']); frSplit(c.querySelector('.panels'), ['--p1', '--p2', '--p3', '--p4']); }
+    if (LAY === 'tab') frSplit(c, ['--t1', '--t2']);
+    if (LAY === 'f1') frSplit(c, ['--a1', '--a2']);
+    if (LAY === 'f2') frSplit(c, ['--b1', '--b2', '--b3']);
+    if (LAY === 'f3') frSplit(c.querySelector('.pcol.a'), ['--c1', '--c2']);
+    if (['f1', 'f2', 'f3'].includes(LAY)) frSplit(c.querySelector('.pcol.b'), ['--m1', '--m2']);
+  });
+  if (LAY === 'dash') frSplit($('#stocks'), ['--d1', '--d2', '--d3']);
+}
+window.addEventListener('resize', () => placeAll());
 function goTo(i, scroll = true) {
   if (TABBED.includes(LAY)) {
     document.querySelectorAll('#stocks .card').forEach((c, k) => { c.classList.toggle('hide', k !== i); if (k === i && !c.classList.contains('in')) { c.classList.add('in'); c.querySelectorAll('.px[data-v]').forEach(countUp); } });
     document.querySelectorAll('#jump a').forEach((a, k) => a.classList.toggle('on', k === i));
+    placeAll();
     if (scroll && LAY !== 'tab') { const c = document.getElementById('st' + i), h = document.querySelector('.top').offsetHeight + document.querySelector('#jump').offsetHeight; let y = 0; for (let e = c; e; e = e.offsetParent) y += e.offsetTop; window.scrollTo({ top: y - h - 2, behavior: 'auto' }); }   // offsetTop: 등장 효과의 이동값에 안 흔들림
   } else document.getElementById('st' + i).scrollIntoView({ behavior: 'smooth' });
 }
