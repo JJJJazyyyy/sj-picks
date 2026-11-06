@@ -7,7 +7,7 @@ const LAYS = { basic: '기본', card: '카드', tab: '탭', dash: '3열', f1: '�
 const TABBED = ['tab', 'f1', 'f2', 'f3'];
 function pick(key, all, def) {
   let v = new URLSearchParams(location.search).get(key);
-  try { if (v && all[v]) localStorage.setItem(key, v); else v = localStorage.getItem(key); } catch (e) { }
+  try { if (v && all[v]) localStorage.setItem('sjp:' + key, v); else v = localStorage.getItem('sjp:' + key) || localStorage.getItem(key); } catch (e) { }   // 이 브라우저에만 저장
   return all[v] ? v : def;
 }
 const MODE = pick('mode', MODES, 'light'), LAY = pick('lay', LAYS, 'basic');
@@ -171,9 +171,9 @@ function applyLive() {
 }
 // ── 크기 조절: 전체 폭(본문 양쪽 끝) · 박스 사이 경계를 끌기. 두 번 누르면 원래대로. 이 브라우저에 레이아웃별로 기억 ──
 const ROOT = document.documentElement, SZK = 'sz:' + LAY;
-let SZ = {}; try { SZ = JSON.parse(localStorage.getItem(SZK) || '{}'); } catch (e) { }
+let SZ = {}; try { SZ = JSON.parse(localStorage.getItem('sjp:' + SZK) || localStorage.getItem(SZK) || '{}'); } catch (e) { }
 Object.entries(SZ).forEach(([k, v]) => ROOT.style.setProperty(k, v));
-const saveSZ = () => { try { localStorage.setItem(SZK, JSON.stringify(SZ)); } catch (e) { } };
+const saveSZ = () => { try { localStorage.setItem('sjp:' + SZK, JSON.stringify(SZ)); } catch (e) { } };
 let PLACERS = [];
 const placeAll = () => PLACERS.forEach(f => f());
 function drag(h, onMove, onEnd) {
