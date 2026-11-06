@@ -71,6 +71,10 @@ async function init() {
   setInterval(async () => { try { const L = await getJSON('data/live.json'); if (!LIVE || L.date !== LIVE.date || L.time !== LIVE.time) { LIVE = L; applyLive(); } } catch (e) { } }, 5 * 60 * 1000);
   renderPerf();
   route();
+  if (SHOT) setTimeout(() => {   // 설명 이미지 캡처용: 첫 종목 + 점수표 열기
+    document.querySelectorAll('.rv').forEach(e => e.classList.add('in')); goTo(0, false);
+    const c = document.querySelector('#st0 .scchip'); if (c) c.click();
+  }, 1500);
 }
 
 function route() {
@@ -103,7 +107,9 @@ async function renderDay(day, top = true) {
 }
 
 // ── 효과 (컴퓨터에서 '애니메이션 줄이기'를 켜면 자동으로 끔) ──
-const CALM = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+const SHOT = new URLSearchParams(location.search).has('shot');
+if (SHOT) document.body.classList.add('shot');
+const CALM = SHOT || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
 function countUp(el) {
   const v = +el.dataset.v, p = +el.dataset.p; if (CALM || !v) return;
   const t0 = performance.now();

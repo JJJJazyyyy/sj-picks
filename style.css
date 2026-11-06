@@ -477,3 +477,7 @@ body.resizing .hspl,body.resizing:has(.hspl.on) *{cursor:row-resize !important}
 .lay-f1 .p-why{flex:0 0 var(--whyH,auto);max-height:var(--whyMax,42%)}
 .lay-f3 .pcol.a{height:var(--infoH,auto) !important;overflow:hidden}
 .lay-f3 .p-why,.lay-f3 .p-lv{overflow:auto}
+
+/* 설명 이미지 캡처 모드 */
+.shot .dayhead,.shot #summary{display:none}
+.shot .rv{opacity:1;transform:none}
