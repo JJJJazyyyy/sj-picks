@@ -3,7 +3,8 @@
 const LW = window.LightweightCharts;
 // 디자인 고르기: 모드(색) × 레이아웃(배치). ?mode=..&lay=.. (고른 값은 이 브라우저에 기억)
 const MODES = { light: '라이트 (HTS)', dark: '다크 (HTS)', soft: '소프트 (토스풍)' };
-const LAYS = { basic: '기본', card: '카드', tab: '탭 + 오른쪽 정보', dash: '대시보드 3열' };
+const LAYS = { basic: '기본', card: '카드', tab: '탭 + 오른쪽 정보', dash: '대시보드 3열', f1: '집중 A · 차트 + 오른쪽 정보', f2: '집중 B · 3단 와이드', f3: '집중 C · 차트 위 + 정보 아래' };
+const TABBED = ['tab', 'f1', 'f2', 'f3'];
 function pick(key, all, def) {
   let v = new URLSearchParams(location.search).get(key);
   try { if (v && all[v]) localStorage.setItem(key, v); else v = localStorage.getItem(key); } catch (e) { }
@@ -14,7 +15,8 @@ const MODE = pick('mode', MODES, 'light'), LAY = pick('lay', LAYS, 'basic'), WID
 const DARK = MODE === 'dark';
 document.body.classList.add('mode-' + MODE, 'lay-' + LAY, 'w-' + WID);
 if (DARK) document.body.classList.add('dk');
-if (['tab', 'dash'].includes(LAY)) document.body.classList.add('tb');
+if (['tab', 'dash', 'f1', 'f2', 'f3'].includes(LAY)) document.body.classList.add('tb');
+if (['f1', 'f2', 'f3'].includes(LAY)) document.body.classList.add('fx');
 const THS = {
   light: { bg: '#FFFFFF', txt: '#4B5563', grid: '#F0F1F4', border: '#C9CDD4', up: '#E5202B', dn: '#1A5BD6' },
   dark: { bg: '#0F1318', txt: '#A8B0BD', grid: '#1B2129', border: '#2A313C', up: '#FF4040', dn: '#3D8BFF' },
@@ -87,13 +89,13 @@ async function renderDay(day, top = true) {
   catch (e) { $('#stocks').innerHTML = `<div class="empty">${day} 데이터가 없습니다</div>`; return; }
   const latest = day === INDEX.latest;
   $('#dayhead').innerHTML = `<h1>${dname(day)} 마감 기준 주목 종목 BEST3</h1><span class="meta">${latest ? '최신 · ' : '지난 날짜 · '}다음 거래일 장에서 볼 종목 · 생성 ${esc(D.made || '')}</span>`;
-  $('#jump').innerHTML = D.stocks.map((s, i) => `<a href="javascript:void(0)" data-k="${i}"><span class="r">${i + 1}</span>${logo(s.code, s.name, 18)}${esc(s.name)} <span class="${cls(s.chg)}">${pct(s.chg)}</span></a>`).join('');
+  $('#jump').innerHTML = jumpHTML(D);
   $('#jump').querySelectorAll('a').forEach(a => a.onclick = () => goTo(+a.dataset.k));
   $('#summary').innerHTML = summary(D);
   $('#summary').querySelectorAll('tr[data-k]').forEach(tr => tr.onclick = () => goTo(+tr.dataset.k));
   const box = $('#stocks'); box.innerHTML = '';
   D.stocks.forEach((s, i) => { const el = card(s, i); box.appendChild(el); CHARTS.push(buildChart(el, s)); });
-  if (LAY === 'tab') goTo(0);
+  if (TABBED.includes(LAY)) goTo(0, false);
   renderArchive(day);
   motion();
   if (top) window.scrollTo({ top: 0 });
@@ -105,7 +107,7 @@ function countUp(el) {
   const v = +el.dataset.v, p = +el.dataset.p; if (CALM || !v) return;
   const t0 = performance.now();
   const f = t => { const k = Math.min(1, (t - t0) / 450), e = 1 - Math.pow(1 - k, 3);
-    el.innerHTML = `${fmt(v * e)} <small>그날 ${pct(p * e)}</small>`; if (k < 1) requestAnimationFrame(f); else el.innerHTML = `${fmt(v)} <small>그날 ${pct(p)}</small>`; };
+    el.innerHTML = `${fmt(v * e)} <small class="day">그날 ${pct(p * e)}</small>`; if (k < 1) requestAnimationFrame(f); else el.innerHTML = `${fmt(v)} <small class="day">그날 ${pct(p)}</small>`; };
   requestAnimationFrame(f);
 }
 let IO = null;
@@ -121,6 +123,7 @@ function motion() {
   els.forEach(e => { e.classList.add('rv'); IO.observe(e); });
 }
 window.addEventListener('scroll', () => document.querySelector('.top').classList.toggle('sm', window.scrollY > 40), { passive: true });
+if ('ResizeObserver' in window) new ResizeObserver(() => document.documentElement.style.setProperty('--hdrH', document.querySelector('.top').offsetHeight + 'px')).observe(document.querySelector('.top'));
 // 현재가: 장중 10분 간격 live.json → 없으면 성과 기록의 최근 종가
 function cur(code, day) {
   const L = LIVE && LIVE.prices && LIVE.prices[code];
@@ -142,17 +145,28 @@ function distHTML(s) {
   const a = []; if (stop) a.push(`손절 ${fmt(stop.price)}까지 <b class="dn">${pct((stop.price / ref - 1) * 100, 1)}</b>`); if (r1) a.push(`저항1 ${fmt(r1.price)}까지 <b class="up">${pct((r1.price / ref - 1) * 100, 1)}</b>`);
   return a.join(' · ') + (c ? ' <small>(현재가 기준)</small>' : '');
 }
+function retNow(code, day, base) {
+  const c = cur(code, day); return c && base ? { r: (c.p / base - 1) * 100, c } : null;
+}
+function jumpHTML(D) {
+  return D.stocks.map((s, i) => { const x = retNow(s.code, D.day, s.close);
+    return `<a href="javascript:void(0)" data-k="${i}" title="${x ? '기준가 대비 · ' + esc(x.c.label) : '아직 현재가 없음'}"><span class="r">${i + 1}</span>${logo(s.code, s.name, 18)}${esc(s.name)} <span class="${x ? cls(x.r) : ''}">${x ? pct(x.r) : '-'}</span><span class="jl">기준가 대비</span></a>`; }).join('');
+}
 function applyLive() {
   if (!CURD) return;
+  const on = [...document.querySelectorAll('#jump a')].findIndex(a => a.classList.contains('on'));
+  $('#jump').innerHTML = jumpHTML(CURD); $('#jump').querySelectorAll('a').forEach(a => a.onclick = () => goTo(+a.dataset.k));
+  if (on >= 0) $('#jump').querySelectorAll('a')[on].classList.add('on');
   document.querySelectorAll('[data-now]').forEach(el => { const s = CURD.stocks.find(x => x.code === el.dataset.now); if (s) el.innerHTML = nowHTML(s); });
   document.querySelectorAll('[data-dist]').forEach(el => { const s = CURD.stocks.find(x => x.code === el.dataset.dist); if (s) el.innerHTML = distHTML(s); });
   $('#summary').innerHTML = summary(CURD);
   $('#summary').querySelectorAll('tr[data-k]').forEach(tr => tr.onclick = () => goTo(+tr.dataset.k));
 }
-function goTo(i) {
-  if (LAY === 'tab') {
-    document.querySelectorAll('#stocks .card').forEach((c, k) => c.classList.toggle('hide', k !== i));
+function goTo(i, scroll = true) {
+  if (TABBED.includes(LAY)) {
+    document.querySelectorAll('#stocks .card').forEach((c, k) => { c.classList.toggle('hide', k !== i); if (k === i && !c.classList.contains('in')) { c.classList.add('in'); c.querySelectorAll('.px[data-v]').forEach(countUp); } });
     document.querySelectorAll('#jump a').forEach((a, k) => a.classList.toggle('on', k === i));
+    if (scroll && LAY !== 'tab') { const c = document.getElementById('st' + i), h = document.querySelector('.top').offsetHeight + document.querySelector('#jump').offsetHeight; let y = 0; for (let e = c; e; e = e.offsetParent) y += e.offsetTop; window.scrollTo({ top: y - h - 2, behavior: 'auto' }); }   // offsetTop: 등장 효과의 이동값에 안 흔들림
   } else document.getElementById('st' + i).scrollIntoView({ behavior: 'smooth' });
 }
 function summary(D) {
@@ -185,17 +199,17 @@ function card(s, i) {
   ].filter(Boolean).join('');
   el.innerHTML = `
   <div class="cardhead"><span class="rank">${i + 1}</span>${logo(s.code, s.name, 30)}<span class="nm">${esc(s.name)}</span><span class="cd">${s.code} · ${esc(s.sector || '')}</span>
-    <div class="pbx base"><span class="t">기준가 · ${dname(CUR)} 종가 (분석 시점)</span><span class="v px ${cls(s.chg)}" data-v="${s.close}" data-p="${s.chg}">${fmt(s.close)} <small>그날 ${pct(s.chg)}</small></span></div>
+    <div class="pbx base"><span class="t">기준가 · ${dname(CUR)} 종가 (분석 시점)</span><span class="v px" data-v="${s.close}" data-p="${s.chg}">${fmt(s.close)} <small class="day">그날 ${pct(s.chg)}</small></span></div>
     <span class="parr">→</span><div class="pbx now" data-now="${s.code}">${nowHTML(s)}</div><span class="dist" data-dist="${s.code}">${distHTML(s)}</span>
     <div class="chips">${chips}</div></div>
   <div class="chartrow"><div class="chartwrap"><div class="ohlc"></div><div class="chart"></div></div><div class="side"></div></div>
-  <div class="panels">
-    <div class="pn"><h4 class="why">왜 주목하나</h4>${chipList(s.why && s.why.length ? s.why : s.notes || [], true)}</div>
-    <div class="pn"><h4 class="lv">볼 가격대 <small style="color:#6B7280;font-weight:400">(행에 마우스 → 차트 표시)</small></h4>${levelsTable(s)}
+  <div class="panels"><div class="pcol a">
+    <div class="pn p-why"><h4 class="why">왜 주목하나</h4>${chipList(s.why && s.why.length ? s.why : s.notes || [], true)}</div>
+    <div class="pn p-lv"><h4 class="lv">볼 가격대 <small style="color:#6B7280;font-weight:400">(행에 마우스 → 차트 표시)</small></h4>${levelsTable(s)}
       ${s.watch && s.watch.length ? `<h4 class="lv" style="margin-top:10px">체크 포인트</h4>${chipList(s.watch, true)}` : ''}</div>
-    <div class="pn"><h4 class="sd">수급 (순매수, 억 원)</h4>${invTable(s.inv || [], s.rows)}</div>
-    <div class="pn"><h4 class="nw">재료 · 관련 기사</h4>
-      ${matNews(s)}</div>
+    </div><div class="pcol b"><div class="pn p-inv"><h4 class="sd">수급 (순매수, 억 원)</h4>${invTable(s.inv || [], s.rows)}</div>
+    <div class="pn p-news"><h4 class="nw">재료 · 관련 기사</h4>
+      ${matNews(s)}</div></div>
   </div>`;
   return el;
 }
@@ -433,15 +447,21 @@ function buildChart(el, s) {
   const base = [['ma5', '5일선', MAC[5]], ['ma20', '20일선', MAC[20]], ['ma60', '60일선', MAC[60]], ['ma120', '120일선', MAC[120]], ['vol', '거래량 · 20일 평균', '#F08A00'], ['rsi', 'RSI(14) · 30/70', RSIC]];
   side.innerHTML = `
     <h3>작도 — 켜기/끄기 · 마우스 올리면 강조</h3>
-    ${groups.length ? groups.map(g => `<div class="grp" data-g="${g.id}" title="${esc(g.note || '')}"><label class="row"><input type="checkbox" checked data-g="${g.id}"><span class="sw" style="background:${g.color}"></span><span class="lab">${esc(g.label)}</span></label>
+    <div class="allbtn" data-sec="draw"><button data-all="1">작도 모두 켜기</button><button data-all="0">작도 모두 끄기</button></div>
+    ${groups.length ? groups.map(g => `<div class="grp" data-sec="draw" data-g="${g.id}" title="${esc(g.note || '')}"><label class="row"><input type="checkbox" checked data-g="${g.id}"><span class="sw" style="background:${g.color}"></span><span class="lab">${esc(g.label)}</span></label>
       <div class="note">${esc(g.note || '')}</div>${subsHtml(g)}</div>`).join('') : '<div class="hint">이날 유효한 작도 없음</div>'}
     <h3>지표</h3>
-    ${base.map(([id, lab, col]) => `<div class="grp" data-g="${id}"><label class="row"><input type="checkbox" checked data-g="${id}"><span class="sw" style="background:${col}"></span><span class="lab">${lab}</span></label></div>`).join('')}
+    <div class="allbtn" data-sec="ind"><button data-all="1">지표 모두 켜기</button><button data-all="0">지표 모두 끄기</button></div>
+    ${base.map(([id, lab, col]) => `<div class="grp" data-sec="ind" data-g="${id}"><label class="row"><input type="checkbox" checked data-g="${id}"><span class="sw" style="background:${col}"></span><span class="lab">${lab}</span></label></div>`).join('')}
     <div class="grp" data-g="levels"><label class="row"><input type="checkbox" data-lv="1"><span class="sw" style="background:#111"></span><span class="lab">볼 가격대 선 (지지·저항·손절·목표)</span></label></div>
     <h3>보기</h3>
     <div class="hint">드래그 = 좌우 이동 · 휠 = 확대/축소 · 가격축 드래그 = 세로 확대<br>
       <button data-r="66">3개월</button> <button data-r="130">6개월</button> <button data-r="260">1년</button></div>`;
   side.querySelectorAll('input[data-g]').forEach(cb => cb.onchange = () => show(cb.dataset.g, cb.checked));
+  side.querySelectorAll('.allbtn button').forEach(b => b.onclick = () => {      // 모두 켜기 / 끄기
+    const on = b.dataset.all === '1', sec = b.parentNode.dataset.sec;
+    side.querySelectorAll(`.grp[data-sec="${sec}"] input[data-g]`).forEach(cb => { if (cb.checked !== on) { cb.checked = on; show(cb.dataset.g, on); } });
+  });
   side.querySelectorAll('.grp[data-g]').forEach(div => {
     const g = div.dataset.g; if (g === 'levels') return;
     div.onmouseenter = () => { if (!div.querySelector('input').checked) return; focus(e => e.g === g); };
@@ -549,7 +569,8 @@ function renderPerf() {
     }).join('') : '<tr><td class="l" colspan="12">아직 기록 없음</td></tr>');
 }
 function renderArchive(day) {
-  $('#archList').innerHTML = INDEX.days.map(d => `<a href="#${d.day}" class="${d.day === day ? 'cur' : ''}"><span class="d">${dname(d.day)} 마감</span><br>${d.stocks.map(s => `${logo(s.code, s.name, 15)}${esc(s.name)} <span class="${cls(s.chg)}">${pct(s.chg)}</span>`).join(' · ')}</a>`).join('');
+  $('#archList').innerHTML = INDEX.days.map(d => `<a href="#${d.day}" class="${d.day === day ? 'cur' : ''}"><span class="d">${dname(d.day)} 마감</span><br>${d.stocks.map(s => { const pf = (INDEX.perf || []).find(p => p.day === d.day && p.code === s.code), x = pf ? retNow(s.code, d.day, pf.base) : null;
+    return `${logo(s.code, s.name, 15)}${esc(s.name)} <span class="${x ? cls(x.r) : ''}">${x ? pct(x.r) : '-'}</span>`; }).join(' · ')}<br><small class="al">기준가 대비 지금 등락</small></a>`).join('');
 }
 
 init();
