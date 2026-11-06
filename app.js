@@ -92,9 +92,32 @@ async function renderDay(day, top = true) {
   D.stocks.forEach((s, i) => { const el = card(s, i); box.appendChild(el); CHARTS.push(buildChart(el, s)); });
   if (LAY === 'tab') goTo(0);
   renderArchive(day);
+  motion();
   if (top) window.scrollTo({ top: 0 });
 }
 
+// ── 효과 (컴퓨터에서 '애니메이션 줄이기'를 켜면 자동으로 끔) ──
+const CALM = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+function countUp(el) {
+  const v = +el.dataset.v, p = +el.dataset.p; if (CALM || !v) return;
+  const t0 = performance.now();
+  const f = t => { const k = Math.min(1, (t - t0) / 450), e = 1 - Math.pow(1 - k, 3);
+    el.innerHTML = `${fmt(v * e)} <small>${pct(p * e)}</small>`; if (k < 1) requestAnimationFrame(f); else el.innerHTML = `${fmt(v)} <small>${pct(p)}</small>`; };
+  requestAnimationFrame(f);
+}
+let IO = null;
+function motion() {
+  const els = document.querySelectorAll('.card, .box, .jump');
+  if (CALM || !('IntersectionObserver' in window)) { els.forEach(e => e.classList.add('in')); return; }
+  if (IO) IO.disconnect();
+  IO = new IntersectionObserver(es => es.forEach(en => {
+    if (!en.isIntersecting) return;
+    en.target.classList.add('in'); IO.unobserve(en.target);
+    en.target.querySelectorAll('.px[data-v]').forEach(countUp);
+  }), { threshold: 0.06 });
+  els.forEach(e => { e.classList.add('rv'); IO.observe(e); });
+}
+window.addEventListener('scroll', () => document.querySelector('.top').classList.toggle('sm', window.scrollY > 40), { passive: true });
 function goTo(i) {
   if (LAY === 'tab') {
     document.querySelectorAll('#stocks .card').forEach((c, k) => c.classList.toggle('hide', k !== i));
@@ -111,7 +134,7 @@ function summary(D) {
     const ch = chipOf((s.why && s.why[0]) || (s.notes || [])[0] || '').chips[0];
     const pc = (l, c) => l ? `${fmt(l.price)} <small class="${c}">${pct((l.price / C - 1) * 100, 1)}</small>` : '-';
     return `<tr data-k="${i}"><td class="l"><span class="rk">${i + 1}</span></td><td class="l"><span class="nmcell">${logo(s.code, s.name, 20)}<b>${esc(s.name)}</b></span></td><td>${fmt(C)}</td><td class="${cls(s.chg)}">${pct(s.chg)}</td>
-      <td class="l">${ch ? `<span class="cc" style="background:${fixC(ch[1])}">${esc(ch[0])}</span>` : ''}</td><td>${pc(stop, 'dn')}</td><td>${pc(r1, 'up')}</td><td>${pc(tg, 'up')}</td><td><b>${rr}</b></td><td class="${cls(fo)}">${fo > 0 ? '+' : ''}${fmt(fo)}억</td><td>${s.rsi ?? '-'}</td></tr>`;
+      <td class="l">${ch ? `<span class="cc" style="--c:${fixC(ch[1])}">${esc(ch[0])}</span>` : ''}</td><td>${pc(stop, 'dn')}</td><td>${pc(r1, 'up')}</td><td>${pc(tg, 'up')}</td><td><b>${rr}</b></td><td class="${cls(fo)}">${fo > 0 ? '+' : ''}${fmt(fo)}억</td><td>${s.rsi ?? '-'}</td></tr>`;
   }).join('');
   return `<h2>한눈에 보기 <small>행을 누르면 그 종목으로</small></h2><div class="tblwrap"><table class="perf sumt"><tr><th class="l">#</th><th class="l">종목</th><th>종가</th><th>등락</th><th class="l">핵심</th><th>손절</th><th>저항1</th><th>첫 목표</th><th>손익비</th><th>외+기(당일)</th><th>RSI</th></tr>${rows}</table></div>`;
 }
@@ -128,7 +151,7 @@ function card(s, i) {
   ].filter(Boolean).join('');
   el.innerHTML = `
   <div class="cardhead"><span class="rank">${i + 1}</span>${logo(s.code, s.name, 30)}<span class="nm">${esc(s.name)}</span><span class="cd">${s.code} · ${esc(s.sector || '')}</span>
-    <span class="px ${cls(s.chg)}">${fmt(s.close)} <small>${pct(s.chg)}</small></span><div class="chips">${chips}</div></div>
+    <span class="px ${cls(s.chg)}" data-v="${s.close}" data-p="${s.chg}">${fmt(s.close)} <small>${pct(s.chg)}</small></span><div class="chips">${chips}</div></div>
   <div class="chartrow"><div class="chartwrap"><div class="ohlc"></div><div class="chart"></div></div><div class="side"></div></div>
   <div class="panels">
     <div class="pn"><h4 class="why">왜 주목하나</h4>${chipList(s.why && s.why.length ? s.why : s.notes || [], true)}</div>
@@ -217,7 +240,7 @@ function chipOf(text) {
 function chipList(items, hl) {
   if (!items || !items.length) return '<div class="hint">없음</div>';
   return `<ul class="cl${hl ? ' hl' : ''}">${items.map(x => { const c = chipOf(x);
-    return `<li${hl ? ` data-hl="${esc(x)}"` : ''}><span class="ccs">${c.chips.map(([l, col]) => `<span class="cc" style="background:${fixC(col)}">${esc(l)}</span>`).join('')}</span><span class="ct">${esc(c.body)}</span></li>`; }).join('')}</ul>`;
+    return `<li${hl ? ` data-hl="${esc(x)}"` : ''}><span class="ccs">${c.chips.map(([l, col]) => `<span class="cc" style="--c:${fixC(col)}">${esc(l)}</span>`).join('')}</span><span class="ct">${esc(c.body)}</span></li>`; }).join('')}</ul>`;
 }
 // 같은 사건 기사 빼기: 제목 낱말이 절반 넘게 겹치면 중복
 function dedupeNews(n, name) {
@@ -235,7 +258,7 @@ function matNews(s) {
   const news = dedupeNews(s.news || [], s.name);
   const mat = s.material && s.material.length ? s.material : news.map(x => x.summary).filter(Boolean);
   const body = mat.length ? chipList(mat, false) : '<div class="hint">기사 요약 준비 중</div>';
-  const src = news.length ? `<div class="srcs"><span class="srclab">원문</span>${news.map(x => `<a class="srcchip" href="${esc(x.url)}" target="_blank" rel="noopener noreferrer" title="${esc(x.title + (x.summary ? '\n\n' + x.summary : ''))}"><span class="sn">${esc(x.type === 'dart' ? 'DART' : x.type === 'search' ? '제목검색' : x.source || '기사')}</span>${esc(x.title.length > 26 ? x.title.slice(0, 26) + '…' : x.title)} ${EXT}</a>`).join('')}</div>` : '';
+  const src = news.length ? `<div class="srcs"><span class="srclab">원문</span>${news.map(x => `<a class="srcchip" href="${esc(x.url)}" target="_blank" rel="noopener noreferrer" title="${esc(x.title + (x.summary ? '\n\n' + x.summary : ''))}"><span class="sn">${esc(x.type === 'dart' ? 'DART' : x.type === 'search' ? '제목검색' : x.source || '기사')}</span><span class="st">${esc(x.title)}</span>${EXT}</a>`).join('')}</div>` : '';
   return body + src;
 }
 

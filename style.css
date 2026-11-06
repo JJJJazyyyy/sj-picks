@@ -244,3 +244,46 @@ body:not(.lay-basic) .summary{display:block}
   .lay-tab .panels{max-height:none}
   .lay-tab .chartwrap{height:480px}
 }
+
+/* ═════════ 칩 E: 연한 바탕 + 같은 색 진한 글자 (볼드 없음) ═════════ */
+.cc,.k{font-weight:400 !important;text-shadow:none;background:color-mix(in srgb,var(--c,#6B7280) 13%,var(--panel)) !important;color:color-mix(in srgb,var(--c,#6B7280) 82%,#000) !important;border:1px solid color-mix(in srgb,var(--c,#6B7280) 35%,var(--panel))}
+.dk .cc,.dk .k{background:color-mix(in srgb,var(--c,#9CA3AF) 26%,var(--panel)) !important;color:color-mix(in srgb,var(--c,#9CA3AF) 55%,#fff) !important;border-color:color-mix(in srgb,var(--c,#9CA3AF) 50%,var(--panel))}
+.k.res{--c:var(--up)} .k.sup{--c:var(--dn)} .k.stop{--c:#111111} .k.tgt{--c:#13A35B} .k.cur{--c:#F59E0B}
+.dk .k.stop{--c:#D1D5DB}
+.k{padding:0 5px;line-height:1.5}
+
+/* ═════════ 한 줄 + 말줄임 ═════════ */
+.srcchip{white-space:nowrap;max-width:100%;min-width:0}
+.srcchip .sn{flex:none}
+.srcchip .st{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;max-width:240px}
+.jump a,.sumt .nmcell,.cardhead .cd{white-space:nowrap}
+
+/* ═════════ 효과 ═════════ */
+.rv{opacity:0;transform:translateY(14px);transition:opacity .45s ease,transform .45s ease}
+.rv.in{opacity:1;transform:none}
+.rv.in.card{transform:none}
+.top{transition:padding .25s ease}
+.top .brand{transition:font-size .25s ease}
+.top.sm{padding-top:3px;padding-bottom:3px}
+.top.sm .brand{font-size:14px}
+/* 행 강조 슬라이드 */
+ul.cl li{border-left:3px solid transparent;transition:background .15s,border-color .15s,padding .15s}
+ul.cl li:hover{border-left-color:#F59E0B;padding-left:7px}
+.lvt tr td:first-child{transition:box-shadow .15s}
+.lvt tr:hover td:first-child{box-shadow:inset 3px 0 #F59E0B}
+/* 칩 반응 + 나머지 흐림 */
+ul.cl li,.side .sub{transition:opacity .2s,background .15s,border-color .15s,padding .15s}
+ul.cl:hover li{opacity:.45}
+ul.cl li:hover{opacity:1}
+.cc,.sub,.srcchip{transition:transform .12s,filter .12s}
+ul.cl li:hover .cc,.sub:hover{transform:scale(1.06)}
+.subs:hover .sub{opacity:.45} .subs .sub:hover{opacity:1}
+/* 들림 */
+.jump a,.arch a,.srcchip,.stat,.sumt tr[data-k]{transition:transform .18s ease,box-shadow .18s ease,background .15s}
+.jump a:hover,.arch a:hover,.srcchip:hover,.stat:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(0,0,0,.12)}
+.lay-card .card{transition:box-shadow .2s ease}
+.lay-card .card:hover{box-shadow:0 2px 4px rgba(0,0,0,.06),0 16px 40px rgba(0,0,0,.10)}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{transition:none !important;animation:none !important}
+  .rv{opacity:1;transform:none}
+}
