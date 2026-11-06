@@ -59,7 +59,7 @@ let INDEX = null, CUR = null, CURD = null, CHARTS = [], LIVE = null;
 async function init() {
   const sel2 = (id, all, cur, key, pre) => { const el = $(id); el.innerHTML = Object.entries(all).map(([k, v]) => `<option value="${k}"${k === cur ? ' selected' : ''}>${pre}${v}</option>`).join('');
     el.onchange = () => { const q = new URLSearchParams(location.search); q.set(key, el.value); location.search = q.toString(); }; };
-  sel2('#modeSel', MODES, MODE, 'mode', ''); sel2('#laySel', LAYS, LAY, 'lay', '');
+  sel2('#modeSel', MODES, MODE, 'mode', '모드: '); sel2('#laySel', LAYS, LAY, 'lay', '배치: ');
   try { INDEX = await getJSON('data/index.json'); }
   catch (e) { $('#stocks').innerHTML = `<div class="empty">데이터를 불러오지 못했습니다 (${esc(e.message)})</div>`; return; }
   $('#updated').textContent = '갱신 ' + INDEX.updated;
