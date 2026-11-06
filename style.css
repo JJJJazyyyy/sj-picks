@@ -146,7 +146,7 @@ body:not(.lay-basic) .summary{display:block}
 .dsel{font:inherit;font-size:13px;padding:4px 8px;border-radius:3px;border:1px solid #6B7AA1;background:#1F2B47;color:#fff}
 
 /* ═════════ 모드 (색) ═════════ */
-/* 다크 계열 공통 (다크·네이비·터미널) */
+/* 다크 공통 */
 .dk{--hov:#2A2214}
 .dk a{color:var(--link,#7FB2FF)}
 .dk .top select,.dk .dsel{background:var(--bg);border-color:var(--line)}
@@ -168,19 +168,6 @@ body:not(.lay-basic) .summary{display:block}
 .dk .perf th{background:var(--panel2)}
 /* 다크 (HTS 야간) */
 .mode-dark{--bg:#0B0E12;--panel:#12171E;--panel2:#171D25;--line:#2A313C;--line2:#1F252E;--txt:#E5E7EB;--sub:#9AA3AF;--up:#FF4040;--dn:#3D8BFF;--navy:#0E1626;--navy2:#1F2A40;--accent:#5B9BFF}
-/* 네이비 */
-.mode-navy{--bg:#0A1628;--panel:#0F1F35;--panel2:#132840;--line:#1E3A5C;--line2:#17304D;--txt:#E6EEF7;--sub:#8FA6C1;--up:#FF5A5F;--dn:#4DA3FF;--navy:#071120;--navy2:#16365C;--accent:#38BDF8;--link:#7DD3FC;--hov:#1B3554}
-.mode-navy .dk .lvt tr.currow td,.mode-navy .lvt tr.currow td{background:#2A2A14}
-/* 터미널 (블룸버그풍: 검정 + 호박색) */
-.mode-terminal{--bg:#000000;--panel:#0A0A0A;--panel2:#111111;--line:#333333;--line2:#1E1E1E;--txt:#EDEDED;--sub:#A3A3A3;--up:#FF3B30;--dn:#3B82F6;--navy:#000000;--navy2:#1A1A1A;--accent:#FFB000;--link:#FFB000;--hov:#1F1A0A;
-  --font:"D2Coding","Consolas","Malgun Gothic",monospace}
-.mode-terminal .top{border-bottom:1px solid #FFB000}
-.mode-terminal .brand{color:#FFB000;letter-spacing:.5px}
-.mode-terminal .side h3,.mode-terminal .jump a .r,.mode-terminal .sumt .rk{background:#FFB000;color:#000}
-.mode-terminal .cardhead{background:#111;border-bottom-color:#FFB000}
-.mode-terminal .cardhead .rank{background:#FFB000;color:#000}
-.mode-terminal .pn h4,.mode-terminal .box h2{color:#FFB000 !important}
-.mode-terminal .navlink{border-color:#FFB000;color:#FFB000}
 /* 소프트 (토스풍 밝은 회색) */
 .mode-soft{--bg:#F2F4F6;--panel:#FFFFFF;--panel2:#F9FAFB;--line:#E5E8EB;--line2:#F2F4F6;--txt:#191F28;--sub:#8B95A1;--up:#F04452;--dn:#3182F6;--navy:#191F28;--navy2:#333D4B;--accent:#3182F6;
   --font:"Pretendard","Apple SD Gothic Neo","Malgun Gothic","맑은 고딕",system-ui,sans-serif}
@@ -214,7 +201,7 @@ body:not(.lay-basic) .summary{display:block}
 .lay-card .invread,.lay-card .stat,.lay-card .arch a{border-radius:12px}
 .lay-card .ohlc{border-radius:8px}
 
-/* 탭·대시보드·리포트 공통: 작도 토글을 차트 위 도구줄로 */
+/* 탭·대시보드 공통: 작도 토글을 차트 위 도구줄로 */
 .tb .chartrow{display:flex;flex-direction:column;min-width:0}
 .tb .side{order:-1;border-left:0;border-bottom:1px solid var(--line);max-height:none;overflow:visible;display:flex;flex-wrap:wrap;gap:4px;padding:6px 8px;align-items:center;position:relative;z-index:30}
 .tb .side h3{display:none}
@@ -250,18 +237,6 @@ body:not(.lay-basic) .summary{display:block}
 .lay-dash .pn{border-right:0;border-bottom:1px solid var(--line2)}
 .lay-dash ul.cl li{grid-template-columns:76px minmax(0,1fr)}
 
-/* 리포트: 좁은 한 줄, 글 먼저 → 차트 */
-.lay-report main{max-width:1000px}
-.lay-report .card{display:flex;flex-direction:column}
-.lay-report .panels{order:1;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--line)}
-.lay-report .pn:nth-child(2){border-right:0}
-.lay-report .pn:nth-child(-n+2){border-bottom:1px solid var(--line2)}
-.lay-report .chartrow{order:2;border-bottom:0}
-.lay-report .chartwrap{height:520px}
-.lay-report .cardhead{order:0}
-.lay-report body,.lay-report{font-size:15px}
-.lay-report .pn h4{font-size:16px}
-
 @media (max-width:1300px){ .lay-dash #stocks{grid-template-columns:1fr} }
 @media (max-width:1100px){
   .lay-tab .card{grid-template-columns:1fr;grid-template-areas:"head" "chart" "info"}
@@ -269,4 +244,3 @@ body:not(.lay-basic) .summary{display:block}
   .lay-tab .panels{max-height:none}
   .lay-tab .chartwrap{height:480px}
 }
-@media (max-width:820px){ .lay-report .panels{grid-template-columns:1fr} .lay-report .pn{border-right:0} }

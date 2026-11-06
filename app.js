@@ -2,27 +2,25 @@
 // 주목 종목 BEST3 — 정적 사이트 (data/index.json, data/days/<날짜>.json 을 읽어 그림)
 const LW = window.LightweightCharts;
 // 디자인 고르기: 모드(색) × 레이아웃(배치). ?mode=..&lay=.. (고른 값은 이 브라우저에 기억)
-const MODES = { light: '라이트 (HTS)', dark: '다크 (HTS)', soft: '소프트 (토스풍)', navy: '네이비', terminal: '터미널 (블룸버그풍)' };
-const LAYS = { basic: '기본', card: '카드', tab: '탭 + 오른쪽 정보', dash: '대시보드 3열', report: '리포트 (읽기형)' };
+const MODES = { light: '라이트 (HTS)', dark: '다크 (HTS)', soft: '소프트 (토스풍)' };
+const LAYS = { basic: '기본', card: '카드', tab: '탭 + 오른쪽 정보', dash: '대시보드 3열' };
 function pick(key, all, def) {
   let v = new URLSearchParams(location.search).get(key);
   try { if (v && all[v]) localStorage.setItem(key, v); else v = localStorage.getItem(key); } catch (e) { }
   return all[v] ? v : def;
 }
 const MODE = pick('mode', MODES, 'light'), LAY = pick('lay', LAYS, 'basic');
-const DARK = ['dark', 'navy', 'terminal'].includes(MODE);
+const DARK = MODE === 'dark';
 document.body.classList.add('mode-' + MODE, 'lay-' + LAY);
 if (DARK) document.body.classList.add('dk');
-if (['tab', 'dash', 'report'].includes(LAY)) document.body.classList.add('tb');
+if (['tab', 'dash'].includes(LAY)) document.body.classList.add('tb');
 const THS = {
   light: { bg: '#FFFFFF', txt: '#4B5563', grid: '#F0F1F4', border: '#C9CDD4', up: '#E5202B', dn: '#1A5BD6' },
   dark: { bg: '#0F1318', txt: '#A8B0BD', grid: '#1B2129', border: '#2A313C', up: '#FF4040', dn: '#3D8BFF' },
   soft: { bg: '#FFFFFF', txt: '#8B95A1', grid: '#F2F4F6', border: '#E5E8EB', up: '#F04452', dn: '#3182F6' },
-  navy: { bg: '#0F1F35', txt: '#8FA6C1', grid: '#16304D', border: '#1E3A5C', up: '#FF5A5F', dn: '#4DA3FF' },
-  terminal: { bg: '#000000', txt: '#A3A3A3', grid: '#141414', border: '#333333', up: '#FF3B30', dn: '#3B82F6' },
 };
 const TH = THS[MODE];
-const UP = TH.up, DN = TH.dn, RSIC = DARK ? (MODE === 'terminal' ? '#FFB000' : '#C084FC') : '#8E44AD';
+const UP = TH.up, DN = TH.dn, RSIC = DARK ? '#C084FC' : '#8E44AD';
 const MAC = DARK ? { 5: '#F472D0', 20: '#FBBF24', 60: '#34D399', 120: '#9CA3AF' } : { 5: '#D62FD0', 20: '#F08A00', 60: '#13A35B', 120: '#7A8494' };
 function fixC(c) {   // 다크에서 너무 어두운 작도 색은 밝게
   if (!DARK || !c || c[0] !== '#') return c;
