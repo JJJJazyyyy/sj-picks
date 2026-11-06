@@ -81,13 +81,12 @@ function card(s, i) {
     <span class="px ${cls(s.chg)}">${fmt(s.close)} <small>${pct(s.chg)}</small></span><div class="chips">${chips}</div></div>
   <div class="chartrow"><div class="chartwrap"><div class="ohlc"></div><div class="chart"></div></div><div class="side"></div></div>
   <div class="panels">
-    <div class="pn"><h4 class="why">왜 주목하나</h4><ul class="hl">${(s.why && s.why.length ? s.why : s.notes || []).map(x => `<li data-hl="${esc(x)}">${esc(x)}</li>`).join('')}</ul></div>
+    <div class="pn"><h4 class="why">왜 주목하나</h4>${chipList(s.why && s.why.length ? s.why : s.notes || [], true)}</div>
     <div class="pn"><h4 class="lv">볼 가격대 <small style="color:#6B7280;font-weight:400">(행에 마우스 → 차트 표시)</small></h4>${levelsTable(s)}
-      ${s.watch && s.watch.length ? `<h4 class="lv" style="margin-top:10px">체크 포인트</h4><ul class="hl">${s.watch.map(x => `<li data-hl="${esc(x)}">${esc(x)}</li>`).join('')}</ul>` : ''}</div>
+      ${s.watch && s.watch.length ? `<h4 class="lv" style="margin-top:10px">체크 포인트</h4>${chipList(s.watch, true)}` : ''}</div>
     <div class="pn"><h4 class="sd">수급 (순매수, 억 원)</h4>${invTable(s.inv || [], s.rows)}</div>
     <div class="pn"><h4 class="nw">재료 · 관련 기사</h4>
-      ${s.material && s.material.length ? `<ul class="mat">${s.material.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
-      ${newsList(s.news || [])}</div>
+      ${matNews(s)}</div>
   </div>`;
   return el;
 }
@@ -149,9 +148,45 @@ function invRead(inv, rows) {
   return `<div class="invread"><ul>${out.map(x => `<li>${x}</li>`).join('')}</ul>
     <div class="legend">읽는 법: <span class="up">+ 빨강 = 순매수(산 돈)</span>, <span class="dn">− 파랑 = 순매도(판 돈)</span>, 단위 억 원. 외국인·기관이 <b>같이, 여러 날 연속</b> 사면 강한 신호이고, 개인만 사면 주의.</div></div>`;
 }
-function newsList(n) {
-  if (!n.length) return '<div class="hint">기사 요약 준비 중</div>';
-  return `<ul class="news">${n.map(x => `<li><a href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">${esc(x.title)}</a><span class="src">${esc(x.source || '')}${x.type === 'search' ? ' · 제목 검색' : ''}</span><div class="sm">${esc(x.summary || '')}</div></li>`).join('')}</ul>`;
+// 항목 앞 색깔 칩: 문장 종류(엘리엇·피보나치·RSI·수급…)를 칩으로, 뒤에 내용
+const CAT = [
+  [/다이버전스/, '다이버전스', '#16A085'], [/A-B-C|ABC 조정/, 'A-B-C', '#7C3AED'], [/엘리엇|[0-9]파(?![가-힣])|파동/, '엘리엇', '#2156E8'],
+  [/피보나치|되돌림/, '피보나치', '#2980B9'], [/추세선/, '추세선', '#1E2329'], [/큰 추세|추세는|하락 추세|상승 추세/, '추세', '#374151'], [/52주|신고가|신저가/, '52주', '#6B7280'], [/이중바닥|쌍바닥|W자|넥라인/, '이중바닥', '#7C3AED'],
+  [/RSI|과매도|과열/, 'RSI', '#8E44AD'], [/외국인|기관|순매수|순매도|수급/, '수급', '#0E9F6E'], [/거래량/, '거래량', '#F08A00'],
+  [/\d+일선|정배열|이평/, '이평선', '#13A35B'], [/돌파/, '돌파', '#E5202B'], [/공시|공급계약|수주/, '공시', '#475569'],
+  [/실적|분기|영업이익|매출/, '실적', '#B45309'], [/리포트|목표가|증권사/, '리포트', '#6D28D9'], [/자사주|소각|배당/, '주주환원', '#0369A1'],
+  [/분할|합병|상장|연기/, '이벤트', '#0E7490'], [/출시|허가|승인|진출/, '사업', '#0F766E'], [/윗꼬리|아랫꼬리|양봉|음봉|캔들/, '캔들', '#BE185D'],
+  [/손절|이탈|무효/, '손절', '#111111'], [/지지|버티/, '지지', DN], [/저항/, '저항', UP], [/PER|PBR|밸류|저평가|고평가/, '밸류', '#6B7280'],
+];
+function cats(t, n = 2) { const out = []; for (const [re, lab, col] of CAT) { if (re.test(t) && !out.some(x => x[0] === lab)) out.push([lab, col]); if (out.length >= n) break; } return out; }
+function chipOf(text) {
+  const m = String(text).match(/^([^:：]{2,14})[:：]\s*(.+)$/);
+  if (m) { const c = cats(m[1], 1)[0] || cats(m[2], 1)[0] || ['', '#6B7280']; return { chips: [[m[1].trim(), c[1]]], body: m[2] }; }
+  const cs = cats(text); return { chips: cs.length ? cs : [['메모', '#9CA3AF']], body: text };
+}
+function chipList(items, hl) {
+  if (!items || !items.length) return '<div class="hint">없음</div>';
+  return `<ul class="cl${hl ? ' hl' : ''}">${items.map(x => { const c = chipOf(x);
+    return `<li${hl ? ` data-hl="${esc(x)}"` : ''}><span class="ccs">${c.chips.map(([l, col]) => `<span class="cc" style="background:${col}">${esc(l)}</span>`).join('')}</span><span class="ct">${esc(c.body)}</span></li>`; }).join('')}</ul>`;
+}
+// 같은 사건 기사 빼기: 제목 낱말이 절반 넘게 겹치면 중복
+function dedupeNews(n, name) {
+  const tok = t => new Set(String(t).replace(/[^\w가-힣]+/g, ' ').split(' ').filter(w => w.length >= 2 && w !== name));
+  const kept = [];
+  for (const x of n) {
+    const a = tok(x.title);
+    if (kept.some(k => { const b = tok(k.title); let i = 0; a.forEach(w => { if (b.has(w)) i++; }); const long = [...a].some(w => w.length >= 4 && b.has(w)); return long || i / Math.max(1, Math.min(a.size, b.size)) >= 0.5; })) continue;
+    kept.push(x);
+  }
+  return kept;
+}
+const EXT = '<svg viewBox="0 0 24 24" width="11" height="11" aria-hidden="true"><path fill="currentColor" d="M14 3h7v7h-2V6.41l-9.29 9.3-1.42-1.42 9.3-9.29H14V3zM5 5h6v2H7v10h10v-4h2v6H5V5z"/></svg>';
+function matNews(s) {
+  const news = dedupeNews(s.news || [], s.name);
+  const mat = s.material && s.material.length ? s.material : news.map(x => x.summary).filter(Boolean);
+  const body = mat.length ? chipList(mat, false) : '<div class="hint">기사 요약 준비 중</div>';
+  const src = news.length ? `<div class="srcs"><span class="srclab">원문</span>${news.map(x => `<a class="srcchip" href="${esc(x.url)}" target="_blank" rel="noopener noreferrer" title="${esc(x.title + (x.summary ? '\n\n' + x.summary : ''))}"><span class="sn">${esc(x.type === 'dart' ? 'DART' : x.type === 'search' ? '제목검색' : x.source || '기사')}</span>${esc(x.title.length > 26 ? x.title.slice(0, 26) + '…' : x.title)} ${EXT}</a>`).join('')}</div>` : '';
+  return body + src;
 }
 
 // ───────────────────────── 차트 ─────────────────────────
