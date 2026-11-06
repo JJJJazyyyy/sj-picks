@@ -422,3 +422,8 @@ body.resizing,body.resizing *{user-select:none !important;cursor:col-resize !imp
 .jump a.on .up{color:#FF9C9C !important;font-weight:800}
 .jump a.on .dn{color:#A9C8FF !important;font-weight:800}
 .jump a.on .jl{color:#C9D3EC !important}
+
+/* 경계 가까이 오면 연한 파랑, 위에 올리면 진한 파랑 */
+.spl.near::after,.mh.near::after{background:color-mix(in srgb,var(--accent) 45%,transparent);width:3px;margin-left:-1.5px}
+.spl:hover::after,.mh:hover::after,.spl.on::after,.mh.on::after{background:var(--accent) !important;width:4px !important;margin-left:-2px !important}
+.spl::after,.mh::after{transition:background .15s,width .15s}

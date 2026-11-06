@@ -224,6 +224,21 @@ function setupSplits() {
   if (LAY === 'dash') frSplit($('#stocks'), ['--d1', '--d2', '--d3']);
 }
 window.addEventListener('resize', () => placeAll());
+// 경계 가까이(28px) 마우스가 오면 경계선을 파랗게 — 끌 수 있다는 힌트
+let nearRAF = 0;
+document.addEventListener('mousemove', e => {
+  if (nearRAF || document.body.classList.contains('resizing')) return;
+  nearRAF = requestAnimationFrame(() => {
+    nearRAF = 0;
+    document.querySelectorAll('.spl, .mh').forEach(h => {
+      if (h.style.display === 'none') return;
+      const r = h.getBoundingClientRect(), cx = r.left + r.width / 2;
+      const near = Math.abs(e.clientX - cx) < 28 && e.clientY >= r.top - 8 && e.clientY <= r.bottom + 8;
+      h.classList.toggle('near', near);
+    });
+  });
+}, { passive: true });
+document.addEventListener('mouseleave', () => document.querySelectorAll('.spl.near, .mh.near').forEach(h => h.classList.remove('near')));
 function goTo(i, scroll = true) {
   if (TABBED.includes(LAY)) {
     document.querySelectorAll('#stocks .card').forEach((c, k) => { c.classList.toggle('hide', k !== i); if (k === i && !c.classList.contains('in')) { c.classList.add('in'); c.querySelectorAll('.px[data-v]').forEach(countUp); } });
