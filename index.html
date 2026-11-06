@@ -6,7 +6,7 @@
 <link rel="icon" href="logo.png">
 <meta name="robots" content="noindex,nofollow,noarchive">
 <title>종목 Pick</title>
-<link rel="stylesheet" href="style.css?v=20">
+<link rel="stylesheet" href="style.css?v=22">
 <script src="https://unpkg.com/lightweight-charts@5.0.9/dist/lightweight-charts.standalone.production.js"></script>
 </head>
 <body>
@@ -18,6 +18,7 @@
   </div>
   <nav>
     <select id="daySel" aria-label="날짜 선택"></select>
+    <a href="#method" class="navlink">선정 방식</a>
     <a href="#perf" class="navlink">지난 종목 성과</a>
     <a href="#archive" class="navlink">아카이브</a>
   </nav>
@@ -27,6 +28,7 @@
   <section class="box summary" id="summary"></section>
   <div class="jump" id="jump"></div>
   <div id="stocks"></div>
+  <section class="box" id="method"></section>
   <section class="box" id="perf">
     <h2>지난 관심종목 성과 <small>기준가 = 선정일 종가 · N거래일 뒤 종가 등락률 · 손절선은 종가 기준</small></h2>
     <div id="perfStats" class="stats"></div>
@@ -38,6 +40,6 @@
   </section>
 </main>
 <footer>개인 참고용 · 시세 한국투자증권 Open API · 작도는 일봉에서 자동 계산(해석에 따라 다를 수 있음) · <span id="updated"></span></footer>
-<script src="app.js?v=20"></script>
+<script src="app.js?v=22"></script>
 </body>
 </html>

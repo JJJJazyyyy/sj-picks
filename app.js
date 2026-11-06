@@ -93,7 +93,8 @@ async function renderDay(day, top = true) {
   $('#summary').innerHTML = summary(D);
   $('#summary').querySelectorAll('tr[data-k]').forEach(tr => tr.onclick = () => goTo(+tr.dataset.k));
   const box = $('#stocks'); box.innerHTML = '';
-  D.stocks.forEach((s, i) => { const el = card(s, i); box.appendChild(el); CHARTS.push(buildChart(el, s)); });
+  D.stocks.forEach((s, i) => { const el = card(s, i); box.appendChild(el); CHARTS.push(buildChart(el, s)); bindScore(el, s); });
+  $('#method').innerHTML = methodHTML(D);
   if (TABBED.includes(LAY)) goTo(0, false);
   renderArchive(day);
   motion();
@@ -106,7 +107,7 @@ const CALM = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)')
 function countUp(el) {
   const v = +el.dataset.v, p = +el.dataset.p; if (CALM || !v) return;
   const t0 = performance.now();
-  const f = t => { const k = Math.min(1, (t - t0) / 450), e = 1 - Math.pow(1 - k, 3);
+  const f = t => { const k = Math.max(0, Math.min(1, (t - t0) / 450)), e = 1 - Math.pow(1 - k, 3);
     el.innerHTML = `${fmt(v * e)} <small class="day">그날 ${pct(p * e)}</small>`; if (k < 1) requestAnimationFrame(f); else el.innerHTML = `${fmt(v)} <small class="day">그날 ${pct(p)}</small>`; };
   requestAnimationFrame(f);
 }
@@ -264,11 +265,76 @@ function summary(D) {
   return `<h2>한눈에 보기 <small>회색 = 분석 시점(${dname(D.day)} 종가) · 노랑 = 지금${c0 ? ` (${esc(c0.label)})` : ''} · 손절·목표까지는 현재가 기준 · 행을 누르면 그 종목으로</small></h2>
   <div class="tblwrap"><table class="perf sumt"><tr><th class="l">#</th><th class="l">종목</th><th class="g1">기준가</th><th class="g1">그날 등락</th><th class="g2">현재가</th><th class="g2">기준가 대비</th><th class="l">핵심</th><th>손절까지</th><th>첫 목표까지</th><th>손익비</th><th>외+기(그날)</th><th>RSI</th></tr>${rows}</table></div>`;
 }
+// ── 선정 점수: 머리줄 칩 → 차트 위에 떠서 펼치는 항목별 점수표 ──
+const scMax = s => (s.items || []).reduce((a, x) => a + (x.max || 0), 0);
+function scoreChip(s) {
+  if (s.score == null) return '';
+  const rk = s.rank && s.ncand ? ` · ${s.ncand}개 중 ${s.rank}위` : '';
+  return `<button class="scchip" type="button" aria-expanded="false">선정 <b>${s.score}</b>${s.items ? `<small>/${scMax(s)}</small>` : ''}점${rk} <span class="car">▾</span></button>`;
+}
+function scoreTable(s) {
+  if (!s.items) return '<div class="hint">이날은 항목별 점수 기록이 없어요</div>';
+  const big = Math.max(2, ...s.items.map(x => Math.abs(x.pts)));
+  const rows = s.items.map(x => {
+    const k = x.pts > 0 ? 'p' : x.pts < 0 ? 'n' : 'z', w = Math.max(4, Math.abs(x.pts || x.max || 0.5) / big * 100);
+    return `<tr class="${k}" title="${esc(x.rule)}"><td>${esc(x.label)}</td><td class="vv">${esc(x.val)}</td><td class="bb"><i style="width:${w}%"></i></td><td class="pp">${x.pts > 0 ? '+' : ''}${x.pts}</td></tr>`;
+  }).join('');
+  const sk = (s.skipped || []).slice(0, 4).map(k => `<li>${k.rank}위 ${esc(k.name)} (${k.score}점) — ${esc(k.why)}</li>`).join('');
+  const more = (s.skipped || []).length > 4 ? `<li>외 ${(s.skipped || []).length - 4}개</li>` : '';
+  return `<div class="sph"><b>선정 점수 ${s.score}</b> / ${scMax(s)}점${s.rank ? ` · 후보 ${s.ncand}개 중 ${s.rank}위` : ''}</div>
+    <table class="spt">${rows}</table>
+    ${sk ? `<div class="sps"><b>위 순위인데 안 뽑힌 종목</b><ul>${sk}${more}</ul></div>` : ''}
+    ${s.pickNote ? `<div class="spn">${esc(s.pickNote)}</div>` : ''}
+    <a class="spm" href="javascript:void(0)">선정 방식 보기 ↓</a>`;
+}
+let SC_PIN = null;
+function bindScore(el, s) {
+  const chip = el.querySelector('.scchip'); if (!chip) return;
+  const pop = document.createElement('div'); pop.className = 'scpop'; pop.innerHTML = scoreTable(s); el.appendChild(pop);
+  const place = () => { const cr = el.getBoundingClientRect(), r = chip.getBoundingClientRect();
+    pop.style.top = (r.bottom - cr.top + 4) + 'px'; pop.style.left = Math.max(4, Math.min(cr.width - pop.offsetWidth - 4, r.left - cr.left)) + 'px'; };
+  const open = () => { pop.classList.add('show'); place(); };
+  const close = () => { if (SC_PIN === pop) return; pop.classList.remove('show'); };
+  chip.onmouseenter = open;
+  chip.onmouseleave = () => setTimeout(() => { if (!pop.matches(':hover') && !chip.matches(':hover')) close(); }, 120);
+  pop.onmouseleave = () => setTimeout(() => { if (!pop.matches(':hover') && !chip.matches(':hover')) close(); }, 120);
+  chip.onclick = e => { e.stopPropagation();
+    if (SC_PIN === pop) { SC_PIN = null; chip.classList.remove('on'); chip.setAttribute('aria-expanded', 'false'); pop.classList.remove('show'); return; }
+    unpin(); SC_PIN = pop; chip.classList.add('on'); chip.setAttribute('aria-expanded', 'true'); open(); };
+  pop.onclick = e => e.stopPropagation();
+  pop.querySelector('.spm').onclick = () => { unpin(); document.getElementById('method').scrollIntoView({ behavior: 'smooth' }); };
+}
+function unpin() {
+  if (!SC_PIN) return; SC_PIN.classList.remove('show');
+  const c = SC_PIN.parentNode.querySelector('.scchip'); if (c) { c.classList.remove('on'); c.setAttribute('aria-expanded', 'false'); }
+  SC_PIN = null;
+}
+document.addEventListener('click', unpin);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') unpin(); });
+
+// ── 페이지 아래 '선정 방식': 단계 + 점수표(그날 세 종목 점수를 열로) ──
+function methodHTML(D) {
+  const st = D.stocks.filter(x => x.items);
+  const base = st[0] ? st[0].items : null;
+  const steps = `<ol class="msteps">
+    <li><b>후보 모으기</b> — 코스피·코스닥 각각 등락률 상위 30 · 거래대금 상위 30 · 거래증가율 상위 30 (순위 조회가 모자라면 최근 후보 목록으로 보충)</li>
+    <li><b>제외</b> — ETF·ETN·스팩·리츠·우선주, 일봉 130개 미만, 종가 1,000원 미만, 거래대금 50억 미만</li>
+    <li><b>점수</b> — 아래 13개 항목을 더함 (최고 ${base ? base.reduce((a, x) => a + x.max, 0) : 14.5}점)</li>
+    <li><b>최종 3종목</b> — 점수 순으로, 상한가(+29.5% 이상)는 다음 날 진입이 어려워 빼고, 업종이 겹치면 다음 순위</li></ol>`;
+  if (!base) return `<h2>선정 방식</h2>${steps}`;
+  const head = st.map(x => `<th>${logo(x.code, x.name, 16)}${esc(x.name)}</th>`).join('');
+  const rows = base.map((it, k) => `<tr><td class="l"><b>${esc(it.label)}</b></td><td class="l rl">${esc(it.rule)}</td>${st.map(x => { const v = x.items[k];
+    return `<td class="${v.pts > 0 ? 'up' : v.pts < 0 ? 'dn' : 'zz'}">${v.pts > 0 ? '+' : ''}${v.pts} <small>${esc(v.val)}</small></td>`; }).join('')}</tr>`).join('');
+  const tot = `<tr class="tot"><td class="l" colspan="2"><b>합계</b></td>${st.map(x => `<td><b>${x.score}</b>${x.rank ? ` <small>${x.ncand}개 중 ${x.rank}위</small>` : ''}</td>`).join('')}</tr>`;
+  const note = st.find(x => x.pickNote);
+  return `<h2>선정 방식 <small>${dname(D.day)} 마감 기준 세 종목 점수를 나란히</small></h2>${steps}
+    ${note ? `<div class="spn">${esc(note.pickNote)}</div>` : ''}
+    <div class="tblwrap"><table class="perf mtab"><tr><th class="l">항목</th><th class="l">조건 · 점수</th>${head}</tr>${rows}${tot}</table></div>`;
+}
 function card(s, i) {
   const el = document.createElement('section'); el.className = 'card'; el.id = 'st' + i;
   const p = s.price || {};
   const chips = [
-    s.score != null && `<span class="chip">조건 점수 <b>${s.score}</b></span>`,
     s.vr != null && `<span class="chip">거래량 <b>${s.vr}배</b></span>`,
     s.rsi != null && `<span class="chip">RSI <b>${s.rsi}</b></span>`,
     p.per && `<span class="chip">PER <b>${(+p.per).toFixed(1)}</b></span>`,
@@ -278,7 +344,7 @@ function card(s, i) {
   el.innerHTML = `
   <div class="cardhead"><span class="rank">${i + 1}</span>${logo(s.code, s.name, 30)}<span class="nm">${esc(s.name)}</span><span class="cd">${s.code} · ${esc(s.sector || '')}</span>
     <div class="pbx base"><span class="t">기준가 · ${dname(CUR)} 종가 (분석 시점)</span><span class="v px" data-v="${s.close}" data-p="${s.chg}">${fmt(s.close)} <small class="day">그날 ${pct(s.chg)}</small></span></div>
-    <span class="parr">→</span><div class="pbx now" data-now="${s.code}">${nowHTML(s)}</div><span class="dist" data-dist="${s.code}">${distHTML(s)}</span>
+    <span class="parr">→</span><div class="pbx now" data-now="${s.code}">${nowHTML(s)}</div><span class="dist" data-dist="${s.code}">${distHTML(s)}</span>${scoreChip(s)}
     <div class="chips">${chips}</div></div>
   <div class="chartrow"><div class="chartwrap"><div class="ohlc"></div><div class="chart"></div></div><div class="side"></div></div>
   <div class="panels"><div class="pcol a">

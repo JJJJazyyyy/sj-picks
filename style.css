@@ -427,3 +427,34 @@ body.resizing,body.resizing *{user-select:none !important;cursor:col-resize !imp
 .spl.near::after,.mh.near::after{background:color-mix(in srgb,var(--accent) 45%,transparent);width:3px;margin-left:-1.5px}
 .spl:hover::after,.mh:hover::after,.spl.on::after,.mh.on::after{background:var(--accent) !important;width:4px !important;margin-left:-2px !important}
 .spl::after,.mh::after{transition:background .15s,width .15s}
+
+/* ═════════ 선정 점수 칩 · 떠서 펼치는 점수표 ═════════ */
+.scchip{display:inline-flex;align-items:center;gap:3px;font:inherit;font-size:12px;cursor:pointer;white-space:nowrap;border-radius:4px;padding:3px 9px;
+  border:1px solid color-mix(in srgb,var(--accent) 45%,var(--panel));background:color-mix(in srgb,var(--accent) 10%,var(--panel));color:color-mix(in srgb,var(--accent) 85%,#000)}
+.dk .scchip{color:color-mix(in srgb,var(--accent) 60%,#fff)}
+.scchip b{font-size:14px} .scchip small{font-size:11px;opacity:.75}
+.scchip .car{font-size:10px;transition:transform .15s}
+.scchip.on{outline:2px solid var(--accent)} .scchip.on .car{transform:rotate(180deg)}
+.scpop{position:absolute;z-index:70;width:360px;max-width:calc(100% - 8px);display:none;background:var(--panel);border:1px solid color-mix(in srgb,var(--accent) 45%,var(--panel));border-radius:8px;
+  box-shadow:0 10px 28px rgba(0,0,0,.18);padding:8px 10px;font-size:12px;color:var(--txt)}
+.scpop.show{display:block}
+@keyframes spin{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.sph{margin-bottom:4px}
+.spt{width:100%;border-collapse:collapse}
+.spt td{padding:2px 4px;border-bottom:1px solid var(--line2);white-space:nowrap}
+.spt td.vv{color:var(--sub);font-size:11.5px}
+.spt td.bb{width:38%}
+.spt td.bb i{display:block;height:7px;border-radius:2px;background:#13A35B}
+.spt tr.n td.bb i{background:var(--up)} .spt tr.z td.bb i{background:var(--line)}
+.spt td.pp{text-align:right;font-weight:800;width:34px}
+.spt tr.p td.pp{color:#13A35B} .spt tr.n td.pp{color:var(--up)} .spt tr.z td{color:var(--sub)} .spt tr.z td.pp{font-weight:400}
+.sps{margin-top:6px;font-size:11.5px;color:var(--sub)} .sps ul{margin:2px 0 0;padding-left:16px}
+.spn{margin-top:6px;font-size:11.5px;padding:4px 6px;border-radius:4px;background:color-mix(in srgb,#F59E0B 12%,var(--panel));color:var(--txt)}
+.spm{display:inline-block;margin-top:6px;font-size:11.5px}
+/* 선정 방식 칸 */
+.msteps{margin:0 0 8px;padding-left:20px;font-size:13px} .msteps li{margin:2px 0}
+.mtab td.rl{color:var(--sub);font-size:12px;white-space:normal;min-width:260px}
+.mtab td small{color:var(--sub);font-size:11px}
+.mtab td.zz{color:var(--sub)}
+.mtab tr.tot td{border-top:2px solid var(--line);font-size:13.5px}
+.mtab th .logo{margin-right:4px}
