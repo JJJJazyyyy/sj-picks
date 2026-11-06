@@ -9,9 +9,10 @@ function pick(key, all, def) {
   try { if (v && all[v]) localStorage.setItem(key, v); else v = localStorage.getItem(key); } catch (e) { }
   return all[v] ? v : def;
 }
-const MODE = pick('mode', MODES, 'light'), LAY = pick('lay', LAYS, 'basic');
+const WIDTHS = { n: '보통 1440', w: '넓게 1680', xw: '아주 넓게 1920', full: '화면 꽉 채움' };
+const MODE = pick('mode', MODES, 'light'), LAY = pick('lay', LAYS, 'basic'), WID = pick('w', WIDTHS, 'w');
 const DARK = MODE === 'dark';
-document.body.classList.add('mode-' + MODE, 'lay-' + LAY);
+document.body.classList.add('mode-' + MODE, 'lay-' + LAY, 'w-' + WID);
 if (DARK) document.body.classList.add('dk');
 if (['tab', 'dash'].includes(LAY)) document.body.classList.add('tb');
 const THS = {
@@ -52,12 +53,12 @@ window.logoErr = img => {
 };
 async function getJSON(u) { const r = await fetch(u, { cache: 'no-cache' }); if (!r.ok) throw new Error(u + ' ' + r.status); return r.json(); }
 
-let INDEX = null, CUR = null, CHARTS = [];
+let INDEX = null, CUR = null, CURD = null, CHARTS = [], LIVE = null;
 
 async function init() {
   const sel2 = (id, all, cur, key, pre) => { const el = $(id); el.innerHTML = Object.entries(all).map(([k, v]) => `<option value="${k}"${k === cur ? ' selected' : ''}>${pre} ${v}</option>`).join('');
     el.onchange = () => { const q = new URLSearchParams(location.search); q.set(key, el.value); location.search = q.toString(); }; };
-  sel2('#modeSel', MODES, MODE, 'mode', '모드:'); sel2('#laySel', LAYS, LAY, 'lay', '레이아웃:');
+  sel2('#modeSel', MODES, MODE, 'mode', '모드:'); sel2('#laySel', LAYS, LAY, 'lay', '레이아웃:'); sel2('#wSel', WIDTHS, WID, 'w', '폭:');
   try { INDEX = await getJSON('data/index.json'); }
   catch (e) { $('#stocks').innerHTML = `<div class="empty">데이터를 불러오지 못했습니다 (${esc(e.message)})</div>`; return; }
   $('#updated').textContent = '갱신 ' + INDEX.updated;
@@ -65,6 +66,8 @@ async function init() {
   sel.innerHTML = INDEX.days.map(d => `<option value="${d.day}">${dname(d.day)} 마감 · ${d.stocks.map(s => esc(s.name)).join(', ')}</option>`).join('');
   sel.onchange = () => { location.hash = sel.value; };
   window.addEventListener('hashchange', route);
+  try { LIVE = await getJSON('data/live.json'); } catch (e) { LIVE = null; }
+  setInterval(async () => { try { const L = await getJSON('data/live.json'); if (!LIVE || L.date !== LIVE.date || L.time !== LIVE.time) { LIVE = L; applyLive(); } } catch (e) { } }, 5 * 60 * 1000);
   renderPerf();
   route();
 }
@@ -80,7 +83,7 @@ async function renderDay(day, top = true) {
   CUR = day; $('#daySel').value = day;
   CHARTS.forEach(c => c.remove()); CHARTS = [];
   let D;
-  try { D = await getJSON(`data/days/${day}.json`); }
+  try { D = await getJSON(`data/days/${day}.json`); CURD = D; }
   catch (e) { $('#stocks').innerHTML = `<div class="empty">${day} 데이터가 없습니다</div>`; return; }
   const latest = day === INDEX.latest;
   $('#dayhead').innerHTML = `<h1>${dname(day)} 마감 기준 주목 종목 BEST3</h1><span class="meta">${latest ? '최신 · ' : '지난 날짜 · '}다음 거래일 장에서 볼 종목 · 생성 ${esc(D.made || '')}</span>`;
@@ -102,7 +105,7 @@ function countUp(el) {
   const v = +el.dataset.v, p = +el.dataset.p; if (CALM || !v) return;
   const t0 = performance.now();
   const f = t => { const k = Math.min(1, (t - t0) / 450), e = 1 - Math.pow(1 - k, 3);
-    el.innerHTML = `${fmt(v * e)} <small>${pct(p * e)}</small>`; if (k < 1) requestAnimationFrame(f); else el.innerHTML = `${fmt(v)} <small>${pct(p)}</small>`; };
+    el.innerHTML = `${fmt(v * e)} <small>그날 ${pct(p * e)}</small>`; if (k < 1) requestAnimationFrame(f); else el.innerHTML = `${fmt(v)} <small>그날 ${pct(p)}</small>`; };
   requestAnimationFrame(f);
 }
 let IO = null;
@@ -118,6 +121,34 @@ function motion() {
   els.forEach(e => { e.classList.add('rv'); IO.observe(e); });
 }
 window.addEventListener('scroll', () => document.querySelector('.top').classList.toggle('sm', window.scrollY > 40), { passive: true });
+// 현재가: 장중 10분 간격 live.json → 없으면 성과 기록의 최근 종가
+function cur(code, day) {
+  const L = LIVE && LIVE.prices && LIVE.prices[code];
+  if (L && LIVE.date >= day) return { p: L.p, o: L.o, h: L.h, l: L.l, v: L.v, d: LIVE.date, label: `${md(LIVE.date)} ${LIVE.time}${LIVE.closed ? ' · 장 마감' : ' · 10분 간격'}`, live: true };
+  const pf = (INDEX.perf || []).find(p => p.day === day && p.code === code);
+  if (pf && pf.last) return { p: pf.last.c, d: pf.last.d, label: `${md(pf.last.d)} 종가` };
+  return null;
+}
+function levelOf(s, k) { return (s.levels || []).find(l => l.kind === k); }
+function firstTarget(s, ref) { return (s.levels || []).filter(l => l.kind === '목표' && l.price > ref).sort((a, b) => a.price - b.price)[0] || levelOf(s, '저항2'); }
+function nowHTML(s) {
+  const c = cur(s.code, CUR);
+  if (!c) return `<span class="t">현재가</span><span class="v muted">아직 없음 <small>다음 장부터</small></span>`;
+  const r = (c.p / s.close - 1) * 100;
+  return `<span class="t">현재가 · ${esc(c.label)}</span><span class="v ${cls(r)}">${fmt(c.p)} <small>기준가 대비 ${pct(r)}</small></span>`;
+}
+function distHTML(s) {
+  const c = cur(s.code, CUR), ref = c ? c.p : s.close, stop = levelOf(s, '손절'), r1 = levelOf(s, '저항1');
+  const a = []; if (stop) a.push(`손절 ${fmt(stop.price)}까지 <b class="dn">${pct((stop.price / ref - 1) * 100, 1)}</b>`); if (r1) a.push(`저항1 ${fmt(r1.price)}까지 <b class="up">${pct((r1.price / ref - 1) * 100, 1)}</b>`);
+  return a.join(' · ') + (c ? ' <small>(현재가 기준)</small>' : '');
+}
+function applyLive() {
+  if (!CURD) return;
+  document.querySelectorAll('[data-now]').forEach(el => { const s = CURD.stocks.find(x => x.code === el.dataset.now); if (s) el.innerHTML = nowHTML(s); });
+  document.querySelectorAll('[data-dist]').forEach(el => { const s = CURD.stocks.find(x => x.code === el.dataset.dist); if (s) el.innerHTML = distHTML(s); });
+  $('#summary').innerHTML = summary(CURD);
+  $('#summary').querySelectorAll('tr[data-k]').forEach(tr => tr.onclick = () => goTo(+tr.dataset.k));
+}
 function goTo(i) {
   if (LAY === 'tab') {
     document.querySelectorAll('#stocks .card').forEach((c, k) => c.classList.toggle('hide', k !== i));
@@ -126,17 +157,20 @@ function goTo(i) {
 }
 function summary(D) {
   const rows = D.stocks.map((s, i) => {
-    const lv = s.levels || [], C = s.close;
-    const stop = lv.find(l => l.kind === '손절'), r1 = lv.find(l => l.kind === '저항1');
-    const tg = lv.filter(l => l.kind === '목표' && l.price > C).sort((a, b) => a.price - b.price)[0] || lv.find(l => l.kind === '저항2');
-    const rr = stop && tg && stop.price < C ? ((tg.price / C - 1) / (1 - stop.price / C)).toFixed(1) : '-';
+    const B = s.close, c = cur(s.code, D.day), ref = c ? c.p : B;
+    const stop = levelOf(s, '손절'), tg = firstTarget(s, ref);
+    const rr = stop && tg && stop.price < ref ? ((tg.price / ref - 1) / (1 - stop.price / ref)).toFixed(1) : '-';
     const iv = (s.inv || [])[0] || {}, fo = (iv.frgn || 0) + (iv.orgn || 0);
     const ch = chipOf((s.why && s.why[0]) || (s.notes || [])[0] || '').chips[0];
-    const pc = (l, c) => l ? `${fmt(l.price)} <small class="${c}">${pct((l.price / C - 1) * 100, 1)}</small>` : '-';
-    return `<tr data-k="${i}"><td class="l"><span class="rk">${i + 1}</span></td><td class="l"><span class="nmcell">${logo(s.code, s.name, 20)}<b>${esc(s.name)}</b></span></td><td>${fmt(C)}</td><td class="${cls(s.chg)}">${pct(s.chg)}</td>
-      <td class="l">${ch ? `<span class="cc" style="--c:${fixC(ch[1])}">${esc(ch[0])}</span>` : ''}</td><td>${pc(stop, 'dn')}</td><td>${pc(r1, 'up')}</td><td>${pc(tg, 'up')}</td><td><b>${rr}</b></td><td class="${cls(fo)}">${fo > 0 ? '+' : ''}${fmt(fo)}억</td><td>${s.rsi ?? '-'}</td></tr>`;
+    const r = c ? (c.p / B - 1) * 100 : null;
+    const ds = (l, k) => l ? `<span class="${k}">${pct((l.price / ref - 1) * 100, 1)}</span> <small>${fmt(l.price)}</small>` : '-';
+    return `<tr data-k="${i}"><td class="l"><span class="rk">${i + 1}</span></td><td class="l"><span class="nmcell">${logo(s.code, s.name, 20)}<b>${esc(s.name)}</b></span></td>
+      <td class="g1">${fmt(B)}</td><td class="g1 ${cls(s.chg)}">${pct(s.chg)}</td><td class="g2">${c ? fmt(c.p) : '-'}</td><td class="g2 ${cls(r)}">${c ? pct(r) : '-'}</td>
+      <td class="l">${ch ? `<span class="cc" style="--c:${fixC(ch[1])}">${esc(ch[0])}</span>` : ''}</td><td>${ds(stop, 'dn')}</td><td>${ds(tg, 'up')}</td><td><b>${rr}</b></td><td class="${cls(fo)}">${fo > 0 ? '+' : ''}${fmt(fo)}억</td><td>${s.rsi ?? '-'}</td></tr>`;
   }).join('');
-  return `<h2>한눈에 보기 <small>행을 누르면 그 종목으로</small></h2><div class="tblwrap"><table class="perf sumt"><tr><th class="l">#</th><th class="l">종목</th><th>종가</th><th>등락</th><th class="l">핵심</th><th>손절</th><th>저항1</th><th>첫 목표</th><th>손익비</th><th>외+기(당일)</th><th>RSI</th></tr>${rows}</table></div>`;
+  const c0 = D.stocks.length ? cur(D.stocks[0].code, D.day) : null;
+  return `<h2>한눈에 보기 <small>회색 = 분석 시점(${dname(D.day)} 종가) · 노랑 = 지금${c0 ? ` (${esc(c0.label)})` : ''} · 손절·목표까지는 현재가 기준 · 행을 누르면 그 종목으로</small></h2>
+  <div class="tblwrap"><table class="perf sumt"><tr><th class="l">#</th><th class="l">종목</th><th class="g1">기준가</th><th class="g1">그날 등락</th><th class="g2">현재가</th><th class="g2">기준가 대비</th><th class="l">핵심</th><th>손절까지</th><th>첫 목표까지</th><th>손익비</th><th>외+기(그날)</th><th>RSI</th></tr>${rows}</table></div>`;
 }
 function card(s, i) {
   const el = document.createElement('section'); el.className = 'card'; el.id = 'st' + i;
@@ -151,7 +185,9 @@ function card(s, i) {
   ].filter(Boolean).join('');
   el.innerHTML = `
   <div class="cardhead"><span class="rank">${i + 1}</span>${logo(s.code, s.name, 30)}<span class="nm">${esc(s.name)}</span><span class="cd">${s.code} · ${esc(s.sector || '')}</span>
-    <span class="px ${cls(s.chg)}" data-v="${s.close}" data-p="${s.chg}">${fmt(s.close)} <small>${pct(s.chg)}</small></span><div class="chips">${chips}</div></div>
+    <div class="pbx base"><span class="t">기준가 · ${dname(CUR)} 종가 (분석 시점)</span><span class="v px ${cls(s.chg)}" data-v="${s.close}" data-p="${s.chg}">${fmt(s.close)} <small>그날 ${pct(s.chg)}</small></span></div>
+    <span class="parr">→</span><div class="pbx now" data-now="${s.code}">${nowHTML(s)}</div><span class="dist" data-dist="${s.code}">${distHTML(s)}</span>
+    <div class="chips">${chips}</div></div>
   <div class="chartrow"><div class="chartwrap"><div class="ohlc"></div><div class="chart"></div></div><div class="side"></div></div>
   <div class="panels">
     <div class="pn"><h4 class="why">왜 주목하나</h4>${chipList(s.why && s.why.length ? s.why : s.notes || [], true)}</div>
@@ -164,23 +200,26 @@ function card(s, i) {
   return el;
 }
 
-const KORD = { '목표': 0, '저항2': 1, '저항1': 2, '지지1': 3, '지지2': 4, '손절': 5 };
-function kcls(k) { return k === '현재가' ? 'cur' : k.startsWith('저항') ? 'res' : k.startsWith('지지') ? 'sup' : k === '손절' ? 'stop' : 'tgt'; }
+const KORD = { '목표': 0, '저항2': 1, '저항1': 2, '현재가': 2.5, '기준가': 2.6, '지지1': 3, '지지2': 4, '손절': 5 };
+function kcls(k) { return k === '현재가' ? 'cur' : k === '기준가' ? 'base' : k.startsWith('저항') ? 'res' : k.startsWith('지지') ? 'sup' : k === '손절' ? 'stop' : 'tgt'; }
 function levelsTable(s) {
   if (!(s.levels || []).length) return '<div class="hint">계산된 가격대 없음</div>';
   const C = s.close;
-  const lv = (s.levels || []).concat([{ kind: '현재가', price: C, basis: '선정일 종가 — 위는 저항·목표, 아래는 지지·손절' }])
-    .sort((a, b) => b.price - a.price || (a.kind === '현재가' ? 1 : b.kind === '현재가' ? -1 : (KORD[a.kind] ?? 9) - (KORD[b.kind] ?? 9)));
-  const rows = lv.map((l, j) => l.kind === '현재가'
-    ? `<tr data-j="${j}" class="currow"><td><span class="k cur">현재가</span></td><td><b>${fmt(C)}</b></td><td>0.0%</td><td class="b">${esc(l.basis)}</td></tr>`
+  const cn = cur(s.code, CUR);
+  const extra = [{ kind: '기준가', price: C, basis: `${dname(CUR)} 종가 = 분석 시점 — 위는 저항·목표, 아래는 지지·손절` }];
+  if (cn) extra.push({ kind: '현재가', price: cn.p, basis: cn.label });
+  const lv = (s.levels || []).concat(extra)
+    .sort((a, b) => b.price - a.price || (KORD[a.kind] ?? 9) - (KORD[b.kind] ?? 9));
+  const rows = lv.map((l, j) => l.kind === '기준가' || l.kind === '현재가'
+    ? `<tr data-j="${j}" class="${l.kind === '기준가' ? 'baserow' : 'currow'}"><td><span class="k ${kcls(l.kind)}">${l.kind}</span></td><td><b>${fmt(l.price)}</b></td><td class="${cls(l.price - C)}">${l.kind === '기준가' ? '0.0%' : pct((l.price / C - 1) * 100, 1)}</td><td class="b">${esc(l.basis)}</td></tr>`
     : `<tr data-j="${j}"><td><span class="k ${kcls(l.kind)}">${esc(l.kind)}</span></td><td>${fmt(l.price)}</td><td class="${cls(l.price - C)}">${pct((l.price / C - 1) * 100, 1)}</td><td class="b">${esc(l.basis)}</td></tr>`).join('');
   const stop = lv.find(l => l.kind === '손절'); const r1 = lv.filter(l => l.kind === '저항1')[0]; const tg = lv.filter(l => l.kind === '목표').sort((a, b) => a.price - b.price)[0];
   let rr = '';
   if (stop && (r1 || tg)) {
     const risk = (1 - stop.price / C) * 100;
-    rr = `<div class="rr">손절까지 <b class="dn">-${risk.toFixed(1)}%</b>${r1 ? ` · 저항1까지 <b class="up">${pct((r1.price / C - 1) * 100, 1)}</b>` : ''}${tg ? ` · 첫 목표까지 <b class="up">${pct((tg.price / C - 1) * 100, 1)}</b> (손익비 ${((tg.price / C - 1) * 100 / risk).toFixed(1)})` : ''}</div>`;
+    rr = `<div class="rr"><small>기준가 기준</small> 손절까지 <b class="dn">-${risk.toFixed(1)}%</b>${r1 ? ` · 저항1까지 <b class="up">${pct((r1.price / C - 1) * 100, 1)}</b>` : ''}${tg ? ` · 첫 목표까지 <b class="up">${pct((tg.price / C - 1) * 100, 1)}</b> (손익비 ${((tg.price / C - 1) * 100 / risk).toFixed(1)})` : ''}</div>`;
   }
-  return `<table class="lvt" data-lv='${esc(JSON.stringify(lv))}'><tr><th>구분</th><th>가격</th><th>현재가 대비</th><th style="text-align:left">근거</th></tr>${rows}</table>${rr}`;
+  return `<table class="lvt" data-lv='${esc(JSON.stringify(lv))}'><tr><th>구분</th><th>가격</th><th>기준가 대비</th><th style="text-align:left">근거</th></tr>${rows}</table>${rr}`;
 }
 function invTable(inv, rows) {
   if (!inv.length) return '<div class="hint">수급 데이터 없음</div>';
@@ -278,7 +317,11 @@ const POS = { above: 'aboveBar', below: 'belowBar' };
 function buildChart(el, s) {
   const box = el.querySelector('.chart'), side = el.querySelector('.side'), ohlc = el.querySelector('.ohlc');
   if (DARK) (s.groups || []).forEach(g => { g.color = fixC(g.color); (g.items || []).forEach(it => { it.color = fixC(it.color); (it.marks || []).forEach(m => m.color = fixC(m.color)); }); });
-  const rows = s.rows, T = rows.map(r => tm(r.d)), C = rows.map(r => r.c), N = rows.length;
+  const pickI = s.rows.length - 1;
+  const rows = s.rows.concat((s.after || []).filter(r => r.d > s.rows[pickI].d));
+  const lc = cur(s.code, CUR);
+  if (lc && lc.live && lc.d > rows[rows.length - 1].d && lc.o) rows.push({ d: lc.d, o: lc.o, h: lc.h, l: lc.l, c: lc.p, v: lc.v, live: true });
+  const T = rows.map(r => tm(r.d)), C = rows.map(r => r.c), N = rows.length;
   const idx = new Map(T.map((t, i) => [t, i]));
   const chart = LW.createChart(box, {
     autoSize: true,
@@ -295,8 +338,16 @@ function buildChart(el, s) {
   const add = (e) => { reg.push(e); return e; };
 
   // 캔들
+  if (N - 1 > pickI) {      // 선정 후 구간 옅은 배경
+    const bg = chart.addSeries(LW.AreaSeries, { priceScaleId: 'bgband', lineColor: 'rgba(0,0,0,0)', lineWidth: 1, topColor: DARK ? 'rgba(245,158,11,.10)' : 'rgba(245,158,11,.13)', bottomColor: DARK ? 'rgba(245,158,11,.10)' : 'rgba(245,158,11,.13)',
+      priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false }, 0);
+    chart.priceScale('bgband').applyOptions({ scaleMargins: { top: 0, bottom: 0 }, visible: false });
+    bg.setData(rows.map((r, i) => i >= pickI ? { time: T[i], value: 1 } : { time: T[i] }));
+  }
   const candle = chart.addSeries(LW.CandlestickSeries, { upColor: UP, downColor: DN, borderUpColor: UP, borderDownColor: DN, wickUpColor: UP, wickDownColor: DN, priceLineColor: UP, priceFormat: pxFmt }, 0);
   candle.setData(rows.map((r, i) => ({ time: T[i], open: r.o, high: r.h, low: r.l, close: r.c })));
+  LW.createSeriesMarkers(candle, [{ time: T[pickI], position: 'aboveBar', shape: 'arrowDown', color: '#F59E0B', text: '선정', size: 1 }]);
+  candle.createPriceLine({ price: s.close, color: '#F59E0B', lineWidth: 1, lineStyle: LW.LineStyle.Dashed, axisLabelVisible: true, title: '기준가' });
   add({ g: 'candle', kind: 'candle', series: candle });
   // 이동평균
   const maVal = {};
@@ -405,11 +456,11 @@ function buildChart(el, s) {
 
   // 볼 가격대: 토글(전부) + 행 마우스 오버(하나 강조)
   const tbl = el.querySelector('.lvt'); const lv = tbl ? JSON.parse(tbl.dataset.lv) : [];
-  const lvColor = k => ({ res: UP, sup: DN, stop: DARK ? '#E5E7EB' : '#111111', tgt: '#13A35B', cur: '#F59E0B' }[kcls(k)]);
+  const lvColor = k => ({ res: UP, sup: DN, stop: DARK ? '#E5E7EB' : '#111111', tgt: '#13A35B', cur: '#F59E0B', base: '#6B7280' }[kcls(k)]);
   let allPL = [], hovPL = null;
   side.querySelector('input[data-lv]').onchange = ev => {
     allPL.forEach(p => candle.removePriceLine(p)); allPL = [];
-    if (ev.target.checked) allPL = lv.filter(l => l.kind !== '현재가').map(l => candle.createPriceLine({ price: l.price, color: lvColor(l.kind), lineWidth: 1, lineStyle: LW.LineStyle.SparseDotted, axisLabelVisible: true, title: l.kind }));
+    if (ev.target.checked) allPL = lv.filter(l => l.kind !== '현재가' && l.kind !== '기준가').map(l => candle.createPriceLine({ price: l.price, color: lvColor(l.kind), lineWidth: 1, lineStyle: LW.LineStyle.SparseDotted, axisLabelVisible: true, title: l.kind }));
   };
   if (tbl) tbl.querySelectorAll('tr[data-j]').forEach(tr => {
     tr.onmouseenter = () => {
@@ -465,7 +516,7 @@ function buildChart(el, s) {
   function legend(i) {
     const r = rows[i], p = i > 0 ? rows[i - 1].c : r.o, ch = (r.c / p - 1) * 100;
     const mv = [5, 20, 60, 120].map(n => maVal[n][i] != null ? `<span class="mav" style="color:${MAC[n]}">${n} ${fmt(maVal[n][i])}</span>` : '').join('');
-    ohlc.innerHTML = `<b>${tm(r.d)}</b> 시 ${fmt(r.o)} 고 <span class="up">${fmt(r.h)}</span> 저 <span class="dn">${fmt(r.l)}</span> 종 <b class="${cls(ch)}">${fmt(r.c)} (${pct(ch)})</b> · 거래량 ${fmt(r.v)}${mv}<span class="mav" style="color:${RSIC}">RSI ${rv[i] != null ? rv[i].toFixed(1) : '-'}</span>`;
+    ohlc.innerHTML = `<b>${tm(r.d)}</b>${i === pickI ? ' <span class="pk">선정일</span>' : i > pickI ? ` <span class="pk2">선정 +${i - pickI}일${r.live ? ' · 진행 중' : ''}</span>` : ''} 시 ${fmt(r.o)} 고 <span class="up">${fmt(r.h)}</span> 저 <span class="dn">${fmt(r.l)}</span> 종 <b class="${cls(ch)}">${fmt(r.c)} (${pct(ch)})</b> · 거래량 ${fmt(r.v)}${mv}<span class="mav" style="color:${RSIC}">RSI ${rv[i] != null ? rv[i].toFixed(1) : '-'}</span>`;
   }
   legend(N - 1);
   chart.subscribeCrosshairMove(p => { const i = p && p.time ? idx.get(typeof p.time === 'string' ? p.time : `${p.time.year}-${String(p.time.month).padStart(2, '0')}-${String(p.time.day).padStart(2, '0')}`) : null; legend(i == null ? N - 1 : i); });

@@ -287,3 +287,30 @@ ul.cl li:hover .cc,.sub:hover{transform:scale(1.06)}
   *,*::before,*::after{transition:none !important;animation:none !important}
   .rv{opacity:1;transform:none}
 }
+
+/* ═════════ 폭 ═════════ */
+body.w-n main{max-width:1440px !important}
+body.w-w main{max-width:1680px !important}
+body.w-xw main{max-width:1920px !important}
+body.w-full main{max-width:none !important}
+
+/* ═════════ 기준가 / 현재가 ═════════ */
+.pbx{display:flex;flex-direction:column;gap:0;padding:3px 10px;border-radius:6px;border:1px solid var(--line);line-height:1.35}
+.pbx .t{font-size:11px;color:var(--sub);white-space:nowrap}
+.pbx .v{font-size:18px;font-weight:800;white-space:nowrap}
+.pbx .v small{font-size:12px;font-weight:700}
+.pbx .v.muted{color:var(--sub);font-size:14px}
+.pbx.base{background:var(--panel2)}
+.pbx.now{background:color-mix(in srgb,#F59E0B 12%,var(--panel));border-color:color-mix(in srgb,#F59E0B 45%,var(--panel))}
+.parr{color:var(--sub);font-size:18px}
+.dist{font-size:12.5px;color:var(--sub);white-space:nowrap}
+.dist small{font-size:11px}
+.cardhead .px{font-size:18px}
+.sumt th.g1,.sumt td.g1{background:color-mix(in srgb,var(--sub) 9%,var(--panel))}
+.sumt th.g2,.sumt td.g2{background:color-mix(in srgb,#F59E0B 11%,var(--panel))}
+.sumt td small{color:var(--sub);font-size:11px}
+.k.base{--c:#6B7280}
+.lvt tr.baserow td{background:color-mix(in srgb,var(--sub) 10%,var(--panel));border-top:2px solid color-mix(in srgb,var(--sub) 50%,var(--panel));border-bottom:2px solid color-mix(in srgb,var(--sub) 50%,var(--panel))}
+.ohlc .pk{background:#F59E0B;color:#fff;border-radius:2px;padding:0 4px;font-size:11px}
+.ohlc .pk2{background:color-mix(in srgb,#F59E0B 18%,var(--panel));color:color-mix(in srgb,#F59E0B 80%,#000);border-radius:2px;padding:0 4px;font-size:11px}
+.dk .ohlc .pk2{color:#FCD34D}
