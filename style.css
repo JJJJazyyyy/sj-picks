@@ -518,3 +518,9 @@ body.resizing .hspl,body.resizing:has(.hspl.on) *{cursor:row-resize !important}
 .pdet summary small{margin-left:6px}
 .lay-card .pm-c{border-radius:12px}
 .tfs.rng button.on{background:var(--panel);color:var(--accent);border-color:var(--line);font-weight:400}
+
+/* 종목 성격 칩 (11/9: 급등 후보 2 + 추세형 1) */
+.cardhead .kind{font-size:12px;font-weight:800;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.cardhead .kind.hot{background:#FFE4E1;color:#C4161C}
+.cardhead .kind.swing{background:#E0F2F1;color:#0E7490}
+@media (prefers-color-scheme: dark){.cardhead .kind.hot{background:#4A1A1C;color:#FF8A8A}.cardhead .kind.swing{background:#0F3B40;color:#7DD3DC}}

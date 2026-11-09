@@ -369,7 +369,7 @@ function card(s, i) {
     p.mcap_eok && `<span class="chip">시총 <b>${fmt(p.mcap_eok)}억</b></span>`,
   ].filter(Boolean).join('');
   el.innerHTML = `
-  <div class="cardhead"><span class="rank">${i + 1}</span>${logo(s.code, s.name, 30)}<span class="nm">${esc(s.name)}</span><span class="cd">${s.code} · ${esc(s.sector || '')}</span>
+  <div class="cardhead"><span class="rank">${i + 1}</span>${logo(s.code, s.name, 30)}<span class="nm">${esc(s.name)}</span>${s.kind === 'swing' ? '<span class="kind swing" title="추세가 좋아 며칠에 걸쳐 미리 모아 가기 좋은 자리: 평행채널 하단 근접·상승 추세 눌림 등">미리 담아 둘 종목 · 추세</span>' : s.kind === 'hot' ? '<span class="kind hot" title="다음 날 바로 움직일 수 있는 종목">급등 후보</span>' : ''}<span class="cd">${s.code} · ${esc(s.sector || '')}</span>
     <div class="pbx base"><span class="t">진입가 · ${dname(CUR)} 종가 (분석 시점)</span><span class="v px" data-v="${s.close}" data-p="${s.chg}">${fmt(s.close)} <small class="day">(${pct(s.chg)})</small></span></div>
     <span class="parr">→</span><div class="pbx now" data-now="${s.code}">${nowHTML(s)}</div><span class="dist" data-dist="${s.code}">${distHTML(s)}</span>${scoreChip(s)}
     <div class="chips">${chips}</div></div>
