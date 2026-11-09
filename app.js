@@ -160,7 +160,8 @@ function retNow(code, day, base) {
 // 종목 성격 칩 (11/9부터 days json의 kind: hot = 급등 후보, swing = 미리 담을 종목. 없으면 안 붙임)
 function kindChip(s, sm) {
   const K = { hot: ['급등 후보', '다음 날 바로 움직일 수 있는 종목'], swing: ['미리 담을 종목', '추세가 좋아 며칠에 걸쳐 미리 모아 가기 좋은 자리: 평행채널 하단 근접·상승 추세 눌림 등'] }[s.kind];
-  return K ? `<span class="kind ${s.kind}${sm ? ' sm' : ''}" title="${K[1]}">${K[0]}</span>` : '';
+  const ic = s.kind === 'hot' ? '<polyline points="1.5,10 5,6.5 7.5,9 12.5,3.5"/><polyline points="9,3.5 12.5,3.5 12.5,7"/>' : '<circle cx="7" cy="7" r="5.5"/><polyline points="7,4 7,7 9.2,8.4"/>';
+  return K ? `<span class="kind ${s.kind}${sm ? ' sm' : ''}" title="${K[1]}"><svg viewBox="0 0 14 14" aria-hidden="true">${ic}</svg>${K[0]}</span>` : '';
 }
 function jumpHTML(D) {
   return D.stocks.map((s, i) => { const x = retNow(s.code, D.day, s.close);
