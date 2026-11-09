@@ -23,6 +23,7 @@ const THS = {
 };
 const TH = THS[MODE];
 const UP = TH.up, DN = TH.dn, RSIC = DARK ? '#C084FC' : '#8E44AD';
+const ORG = DARK ? '#FB923C' : '#EA580C';   // 선정·진입가 주황 (밝은 노랑 주황은 흰 바탕에서 잘 안 보여서 진하게)
 const MAC = DARK ? { 5: '#F472D0', 20: '#FBBF24', 60: '#34D399', 120: '#9CA3AF' } : { 5: '#D62FD0', 20: '#F08A00', 60: '#13A35B', 120: '#7A8494' };
 function fixC(c) {   // 다크에서 너무 어두운 작도 색은 밝게
   if (!DARK || !c || c[0] !== '#') return c;
@@ -559,15 +560,15 @@ function buildChart(el, s, tf = 'D', mrows = null) {
 
   // 캔들
   if (N - 1 > pickI) {      // 선정 후 구간 옅은 배경
-    const bg = chart.addSeries(LW.AreaSeries, { priceScaleId: 'bgband', lineColor: 'rgba(0,0,0,0)', lineWidth: 1, topColor: DARK ? 'rgba(245,158,11,.10)' : 'rgba(245,158,11,.13)', bottomColor: DARK ? 'rgba(245,158,11,.10)' : 'rgba(245,158,11,.13)',
+    const bg = chart.addSeries(LW.AreaSeries, { priceScaleId: 'bgband', lineColor: 'rgba(0,0,0,0)', lineWidth: 1, topColor: DARK ? 'rgba(251,146,60,.10)' : 'rgba(234,88,12,.08)', bottomColor: DARK ? 'rgba(251,146,60,.10)' : 'rgba(234,88,12,.08)',
       priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false }, 0);
     chart.priceScale('bgband').applyOptions({ scaleMargins: { top: 0, bottom: 0 }, visible: false });
     bg.setData(rows.map((r, i) => i >= pickI ? { time: T[i], value: 1 } : { time: T[i] }));
   }
   const candle = chart.addSeries(LW.CandlestickSeries, { upColor: UP, downColor: DN, borderUpColor: UP, borderDownColor: DN, wickUpColor: UP, wickDownColor: DN, priceLineColor: UP, priceFormat: pxFmt }, 0);
   candle.setData(rows.map((r, i) => ({ time: T[i], open: r.o, high: r.h, low: r.l, close: r.c })));
-  if (pickI >= 0) LW.createSeriesMarkers(candle, [{ time: T[pickI], position: 'aboveBar', shape: 'arrowDown', color: '#F59E0B', text: '선정', size: 1 }]);
-  candle.createPriceLine({ price: s.close, color: '#F59E0B', lineWidth: 1, lineStyle: LW.LineStyle.Dashed, axisLabelVisible: true, title: '진입가' });
+  if (pickI >= 0) LW.createSeriesMarkers(candle, [{ time: T[pickI], position: 'aboveBar', shape: 'arrowDown', color: ORG, text: '선정', size: 1.6 }]);
+  candle.createPriceLine({ price: s.close, color: ORG, lineWidth: 2, lineStyle: LW.LineStyle.Dashed, axisLabelVisible: true, title: '진입가' });
   const stopLv = levelOf(s, '손절');      // 축에는 현재가·진입가·손절만 상시 표시
   if (stopLv) candle.createPriceLine({ price: stopLv.price, color: DARK ? '#E5E7EB' : '#111111', lineWidth: 1, lineStyle: LW.LineStyle.SparseDotted, axisLabelVisible: true, title: '손절' });
   add({ g: 'candle', kind: 'candle', series: candle });
@@ -719,7 +720,7 @@ function buildChart(el, s, tf = 'D', mrows = null) {
     <h3>보기</h3>
     <div class="hint">드래그 = 좌우 이동 · 휠 = 확대/축소 · 가격축 드래그 = 세로 확대<br>
       <span class="tfs">${TFS.map(([k, t]) => `<button data-tf="${k}" class="${k === tf ? 'on' : ''}">${t}</button>`).join('')}</span>
-      ${(ID ? [['1주', 5], ['1달', 21], ['3달', 60]].map(([t, d]) => [t, d * TFPD[tf]]) : [['3개월', 66], ['6개월', 130], ['1년', 260]]).map(([t, n]) => `<button data-r="${n}">${t}</button>`).join(' ')}</div>`;
+      <span class="tfs rng">${(ID ? [['1주', 5], ['1달', 21], ['3달', 60]].map(([t, d]) => [t, d * TFPD[tf]]) : [['3개월', 66], ['6개월', 130], ['1년', 260]]).map(([t, n]) => `<button data-r="${n}">${t}</button>`).join('')}</span></div>`;
   const secCbs = sec => [...side.querySelectorAll(`.grp[data-sec="${sec}"] input[data-g]`)];
   const syncSw = () => side.querySelectorAll('.msw').forEach(b => {      // 하나라도 켜져 있으면 켬
     const on = secCbs(b.dataset.sec).some(cb => cb.checked);
@@ -747,7 +748,7 @@ function buildChart(el, s, tf = 'D', mrows = null) {
 
   // 볼 가격대: 토글(전부) + 행 마우스 오버(하나 강조)
   const tbl = el.querySelector('.lvt'); const lv = tbl ? JSON.parse(tbl.dataset.lv) : [];
-  const lvColor = k => ({ res: UP, sup: DN, stop: DARK ? '#E5E7EB' : '#111111', tgt: '#13A35B', cur: '#F59E0B', base: '#6B7280' }[kcls(k)]);
+  const lvColor = k => ({ res: UP, sup: DN, stop: DARK ? '#E5E7EB' : '#111111', tgt: '#13A35B', cur: ORG, base: '#6B7280' }[kcls(k)]);
   let allPL = [], hovPL = null;
   side.querySelector('input[data-lv]').onchange = ev => {
     allPL.forEach(p => candle.removePriceLine(p)); allPL = [];
@@ -798,7 +799,7 @@ function buildChart(el, s, tf = 'D', mrows = null) {
     if (!tg.g.size && !tg.items.size && !tg.prices.length) return;
     li.classList.add('can');
     li.onmouseenter = () => {
-      hlPL = tg.prices.map(([v, t]) => candle.createPriceLine({ price: v, color: '#F59E0B', lineWidth: 2, lineStyle: LW.LineStyle.Dashed, axisLabelVisible: true, title: t }));
+      hlPL = tg.prices.map(([v, t]) => candle.createPriceLine({ price: v, color: ORG, lineWidth: 2, lineStyle: LW.LineStyle.Dashed, axisLabelVisible: true, title: t }));
       focus(e => e.g === 'candle' || tg.g.has(e.g) || tg.items.has(e.item));
     };
     li.onmouseleave = () => { hlPL.forEach(p => candle.removePriceLine(p)); hlPL = []; unfocus(); };

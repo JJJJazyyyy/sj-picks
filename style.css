@@ -109,10 +109,10 @@ footer{color:var(--sub);font-size:12px;text-align:center;padding:12px 16px 28px}
 }
 
 ul.hl li.can{cursor:pointer;border-radius:2px;padding:0 3px;margin-left:-3px}
-ul.hl li.can::marker{color:#F59E0B}
+ul.hl li.can::marker{color:#EA580C}
 ul.hl li.can:hover{background:#FFF4E5}
-.k.cur{background:#F59E0B}
-.lvt tr.currow td{background:#FFF8E1;border-top:2px solid #F59E0B;border-bottom:2px solid #F59E0B}
+.k.cur{background:#EA580C}
+.lvt tr.currow td{background:#FFF8E1;border-top:2px solid #EA580C;border-bottom:2px solid #EA580C}
 .invread{margin-top:8px;font-size:12.5px;background:#F6FBF7;border:1px solid #D5EBDD;padding:6px 8px}
 .invread ul{margin:0;padding-left:16px}
 .invread li{margin:2px 0}
@@ -251,7 +251,7 @@ body:not(.lay-basic) .summary{display:block}
 /* ═════════ 칩 E: 연한 바탕 + 같은 색 진한 글자 (볼드 없음) ═════════ */
 .cc,.k{font-weight:400 !important;text-shadow:none;background:color-mix(in srgb,var(--c,#6B7280) 13%,var(--panel)) !important;color:color-mix(in srgb,var(--c,#6B7280) 82%,#000) !important;border:1px solid color-mix(in srgb,var(--c,#6B7280) 35%,var(--panel))}
 .dk .cc,.dk .k{background:color-mix(in srgb,var(--c,#9CA3AF) 26%,var(--panel)) !important;color:color-mix(in srgb,var(--c,#9CA3AF) 55%,#fff) !important;border-color:color-mix(in srgb,var(--c,#9CA3AF) 50%,var(--panel))}
-.k.res{--c:var(--up)} .k.sup{--c:var(--dn)} .k.stop{--c:#111111} .k.tgt{--c:#13A35B} .k.cur{--c:#F59E0B}
+.k.res{--c:var(--up)} .k.sup{--c:var(--dn)} .k.stop{--c:#111111} .k.tgt{--c:#13A35B} .k.cur{--c:#EA580C}
 .dk .k.stop{--c:#D1D5DB}
 .k{padding:0 5px;line-height:1.5}
 
@@ -271,9 +271,9 @@ body:not(.lay-basic) .summary{display:block}
 .top.sm .brand{font-size:14px}
 /* 행 강조 슬라이드 */
 ul.cl li{border-left:3px solid transparent;transition:background .15s,border-color .15s,padding .15s}
-ul.cl li:hover{border-left-color:#F59E0B;padding-left:7px}
+ul.cl li:hover{border-left-color:#EA580C;padding-left:7px}
 .lvt tr td:first-child{transition:box-shadow .15s}
-.lvt tr:hover td:first-child{box-shadow:inset 3px 0 #F59E0B}
+.lvt tr:hover td:first-child{box-shadow:inset 3px 0 #EA580C}
 /* 칩 반응 + 나머지 흐림 */
 ul.cl li,.side .sub{transition:opacity .2s,background .15s,border-color .15s,padding .15s}
 ul.cl:hover li{opacity:.45}
@@ -304,19 +304,19 @@ body.w-full main{max-width:none !important}
 .pbx .v small{font-size:12px;font-weight:700}
 .pbx .v.muted{color:var(--sub);font-size:14px}
 .pbx.base{background:var(--panel2)}
-.pbx.now{background:color-mix(in srgb,#F59E0B 12%,var(--panel));border-color:color-mix(in srgb,#F59E0B 45%,var(--panel))}
+.pbx.now{background:color-mix(in srgb,#EA580C 12%,var(--panel));border-color:color-mix(in srgb,#EA580C 45%,var(--panel))}
 .parr{color:var(--sub);font-size:18px}
 .dist{font-size:12.5px;color:var(--sub);white-space:nowrap}
 .dist small{font-size:11px}
 .cardhead .px{font-size:18px}
 .sumt th.g1,.sumt td.g1{background:color-mix(in srgb,var(--sub) 9%,var(--panel))}
-.sumt th.g2,.sumt td.g2{background:color-mix(in srgb,#F59E0B 11%,var(--panel))}
+.sumt th.g2,.sumt td.g2{background:color-mix(in srgb,#EA580C 11%,var(--panel))}
 .sumt td small{color:var(--sub);font-size:11px}
 .k.base{--c:#6B7280}
 .lvt tr.baserow td{background:color-mix(in srgb,var(--sub) 10%,var(--panel));border-top:2px solid color-mix(in srgb,var(--sub) 50%,var(--panel));border-bottom:2px solid color-mix(in srgb,var(--sub) 50%,var(--panel))}
-.ohlc .pk{background:#F59E0B;color:#fff;border-radius:2px;padding:0 4px;font-size:11px}
-.ohlc .pk2{background:color-mix(in srgb,#F59E0B 18%,var(--panel));color:color-mix(in srgb,#F59E0B 80%,#000);border-radius:2px;padding:0 4px;font-size:11px}
-.dk .ohlc .pk2{color:#FCD34D}
+.ohlc .pk{background:#EA580C;color:#fff;border-radius:2px;padding:0 4px;font-size:11px}
+.ohlc .pk2{background:color-mix(in srgb,#EA580C 18%,var(--panel));color:color-mix(in srgb,#EA580C 80%,#000);border-radius:2px;padding:0 4px;font-size:11px}
+.dk .ohlc .pk2{color:#FDBA74}
 
 /* ═════════ 패널 묶음 (기본은 묶음 없이 4칸) ═════════ */
 .pcol{display:contents}
@@ -455,7 +455,7 @@ body.resizing,body.resizing *{user-select:none !important;cursor:col-resize !imp
 .spt td.pp{text-align:right;font-weight:800;width:34px}
 .spt tr.p td.pp{color:#13A35B} .spt tr.n td.pp{color:var(--up)} .spt tr.z td{color:var(--sub)} .spt tr.z td.pp{font-weight:400}
 .sps{margin-top:6px;font-size:11.5px;color:var(--sub)} .sps ul{margin:2px 0 0;padding-left:16px}
-.spn{margin-top:6px;font-size:11.5px;padding:4px 6px;border-radius:4px;background:color-mix(in srgb,#F59E0B 12%,var(--panel));color:var(--txt)}
+.spn{margin-top:6px;font-size:11.5px;padding:4px 6px;border-radius:4px;background:color-mix(in srgb,#EA580C 12%,var(--panel));color:var(--txt)}
 .spm{display:inline-block;margin-top:6px;font-size:11.5px}
 /* 선정 방식 칸 */
 .msteps{margin:0 0 8px;padding-left:20px;font-size:13px} .msteps li{margin:2px 0}
@@ -490,7 +490,7 @@ body.resizing .hspl,body.resizing:has(.hspl.on) *{cursor:row-resize !important}
 
 /* ═════════ 기간 (30M·1H·4H·1D) ═════════ */
 .tfs{display:inline-flex;margin-right:8px;vertical-align:middle}
-.tfs button{font:inherit;font-size:12px;padding:1px 8px;border:1px solid var(--line);background:var(--panel);color:var(--txt);cursor:pointer;margin-left:-1px}
+.tfs button{font:inherit;font-size:12px;line-height:22px;height:24px;padding:0 9px;box-sizing:border-box;border:1px solid var(--line);background:var(--panel);color:var(--txt);cursor:pointer;margin-left:-1px}
 .tfs button:first-child{border-radius:3px 0 0 3px;margin-left:0}
 .tfs button:last-child{border-radius:0 3px 3px 0}
 .tfs button.on{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700;position:relative;z-index:1}
@@ -517,3 +517,4 @@ body.resizing .hspl,body.resizing:has(.hspl.on) *{cursor:row-resize !important}
 .pdet summary{cursor:pointer;font-size:12.5px;color:var(--sub);padding:4px 0}
 .pdet summary small{margin-left:6px}
 .lay-card .pm-c{border-radius:12px}
+.tfs.rng button.on{background:var(--panel);color:var(--accent);border-color:var(--line);font-weight:400}
