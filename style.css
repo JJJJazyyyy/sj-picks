@@ -528,5 +528,6 @@ body.resizing .hspl,body.resizing:has(.hspl.on) *{cursor:row-resize !important}
 .kind.hot{background:#E5202B;color:#fff}
 .kind.swing{background:#0E7490;color:#fff}
 .dk .kind.hot{background:#D11A26}.dk .kind.swing{background:#0E7490}
-.sumt .nmcell{display:flex}.sumt .nmcell b{margin-right:16px}.sumt .nmcell .kind{margin-left:auto}   /* 표: 칩은 종목 칸 오른쪽 끝, 이름과 최소 16px */
+.sumt .nmcell{display:flex}.sumt .nmcell b{margin-right:28px}.sumt .nmcell .kind{margin-left:auto}   /* 표: 칩은 종목 칸 오른쪽 끝, 이름과 최소 16px */
 .jump a .kind{margin-left:10px}
+.jump a .pv,.jump a .jl{align-self:baseline}   /* '진입 후'를 등락률 글자와 같은 줄 높이에 */

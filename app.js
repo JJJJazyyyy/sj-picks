@@ -165,7 +165,7 @@ function kindChip(s, sm) {
 }
 function jumpHTML(D) {
   return D.stocks.map((s, i) => { const x = retNow(s.code, D.day, s.close);
-    return `<a href="javascript:void(0)" data-k="${i}" title="${x ? '진입 후 · ' + esc(x.c.label) : '아직 현재가 없음'}"><span class="r">${i + 1}</span>${logo(s.code, s.name, 18)}${esc(s.name)}${kindChip(s, 1)} <span class="${x ? cls(x.r) : ''}">${x ? pct(x.r) : '-'}</span><span class="jl">진입 후</span></a>`; }).join('');
+    return `<a href="javascript:void(0)" data-k="${i}" title="${x ? '진입 후 · ' + esc(x.c.label) : '아직 현재가 없음'}"><span class="r">${i + 1}</span>${logo(s.code, s.name, 18)}${esc(s.name)}${kindChip(s, 1)} <span class="pv ${x ? cls(x.r) : ''}">${x ? pct(x.r) : '-'}</span><span class="jl">진입 후</span></a>`; }).join('');
 }
 function applyLive() {
   if (!CURD) return;
