@@ -23,7 +23,8 @@ const THS = {
 };
 const TH = THS[MODE];
 const UP = TH.up, DN = TH.dn, RSIC = DARK ? '#C084FC' : '#8E44AD';
-const ORG = DARK ? '#FB923C' : '#EA580C';   // 선정·진입가 주황 (밝은 노랑 주황은 흰 바탕에서 잘 안 보여서 진하게)
+const ORG = DARK ? '#FB923C' : '#EA580C';   // 선정 화살표 주황 (밝은 노랑 주황은 흰 바탕에서 잘 안 보여서 진하게)
+const ENT = DARK ? '#9DB0E0' : '#2A3858';   // 진입가 선 남색 실선 (현재가 빨강·피보나치 주황 점선과 구분, 11/9 사용자 선택 B)
 const MAC = DARK ? { 5: '#F472D0', 20: '#FBBF24', 60: '#34D399', 120: '#9CA3AF' } : { 5: '#D62FD0', 20: '#F08A00', 60: '#13A35B', 120: '#7A8494' };
 function fixC(c) {   // 다크에서 너무 어두운 작도 색은 밝게
   if (!DARK || !c || c[0] !== '#') return c;
@@ -568,7 +569,7 @@ function buildChart(el, s, tf = 'D', mrows = null) {
   const candle = chart.addSeries(LW.CandlestickSeries, { upColor: UP, downColor: DN, borderUpColor: UP, borderDownColor: DN, wickUpColor: UP, wickDownColor: DN, priceLineColor: UP, priceFormat: pxFmt }, 0);
   candle.setData(rows.map((r, i) => ({ time: T[i], open: r.o, high: r.h, low: r.l, close: r.c })));
   if (pickI >= 0) LW.createSeriesMarkers(candle, [{ time: T[pickI], position: 'aboveBar', shape: 'arrowDown', color: ORG, text: '선정', size: 1.6 }]);
-  candle.createPriceLine({ price: s.close, color: ORG, lineWidth: 2, lineStyle: LW.LineStyle.Dashed, axisLabelVisible: true, title: '진입가' });
+  candle.createPriceLine({ price: s.close, color: ENT, lineWidth: 2, lineStyle: LW.LineStyle.Solid, axisLabelVisible: true, title: '진입가' });
   const stopLv = levelOf(s, '손절');      // 축에는 현재가·진입가·손절만 상시 표시
   if (stopLv) candle.createPriceLine({ price: stopLv.price, color: DARK ? '#E5E7EB' : '#111111', lineWidth: 1, lineStyle: LW.LineStyle.SparseDotted, axisLabelVisible: true, title: '손절' });
   add({ g: 'candle', kind: 'candle', series: candle });
@@ -748,7 +749,7 @@ function buildChart(el, s, tf = 'D', mrows = null) {
 
   // 볼 가격대: 토글(전부) + 행 마우스 오버(하나 강조)
   const tbl = el.querySelector('.lvt'); const lv = tbl ? JSON.parse(tbl.dataset.lv) : [];
-  const lvColor = k => ({ res: UP, sup: DN, stop: DARK ? '#E5E7EB' : '#111111', tgt: '#13A35B', cur: ORG, base: '#6B7280' }[kcls(k)]);
+  const lvColor = k => ({ res: UP, sup: DN, stop: DARK ? '#E5E7EB' : '#111111', tgt: '#13A35B', cur: ORG, base: ENT }[kcls(k)]);
   let allPL = [], hovPL = null;
   side.querySelector('input[data-lv]').onchange = ev => {
     allPL.forEach(p => candle.removePriceLine(p)); allPL = [];
@@ -879,7 +880,7 @@ async function perfMini() {
     const head = `<div class="pm-h">${logo(p.code, p.name, 18)}<b>${esc(p.name)}</b><span class="pm-s" title="진입가">${md(p.day)} · ${fmt(p.base)}</span></div>`;
     if (!path) return `<a class="pm-c" href="#${p.day}">${head}<div class="pm-none">아직 진입 뒤 시세 없음</div><div class="pm-f">${st}</div></a>`;
     const S = miniSVG(p, path), days = new Set(path.pts.map(x => x.d)).size;
-    return `<a class="pm-c" href="#${p.day}" title="${esc(p.name)} · ${path.src} 기준 · 점선 = 진입가, 파란 점선 = 손절 ${fmt(p.stop)}">${head}${S.svg}<div class="pm-f">${st}${S.mx >= 10 ? ' <span class="tag hot">+10% 터치</span>' : ''}<span class="pm-s">${days}일 · ${path.src}</span></div></a>`;
+    return `<a class="pm-c" href="#${p.day}" title="${esc(p.name)} · ${path.src} 기준 · 남색 선 = 진입가, 파란 점선 = 손절 ${fmt(p.stop)}">${head}${S.svg}<div class="pm-f">${st}${S.mx >= 10 ? ' <span class="tag hot">+10% 터치</span>' : ''}<span class="pm-s">${days}일 · ${path.src}</span></div></a>`;
   }));
   if (q === PMQ) el.innerHTML = cards.join('');
 }
