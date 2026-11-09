@@ -663,22 +663,28 @@ function buildChart(el, s) {
   const subsHtml = g => (g.items || []).length > 1 ? `<div class="subs">${g.items.map((it, k) => `<span class="sub" data-i="${g.id}:${k}" style="border-color:${it.color}">${esc(it.sub || it.label || '')}</span>`).join('')}</div>` : '';
   const base = [['ma5', '5일선', MAC[5]], ['ma20', '20일선', MAC[20]], ['ma60', '60일선', MAC[60]], ['ma120', '120일선', MAC[120]], ['vol', '거래량 · 20일 평균', '#F08A00'], ['rsi', 'RSI(14) · 30/70', RSIC]];
   side.innerHTML = `
-    <h3>작도 — 켜기/끄기 · 마우스 올리면 강조</h3>
-    <div class="allbtn" data-sec="draw"><button data-all="1">작도 모두 켜기</button><button data-all="0">작도 모두 끄기</button></div>
+    <div class="mt">${[['draw', '작도'], ['ind', '지표']].map(([k, t]) => `<button type="button" class="msw on" data-sec="${k}" role="switch" aria-checked="true" title="${t} 전부 켜기/끄기">${t}<span class="tr"></span></button>`).join('')}</div>
+    <h3>작도 — 마우스 올리면 강조</h3>
     ${groups.length ? groups.map(g => `<div class="grp" data-sec="draw" data-g="${g.id}" title="${esc(g.note || '')}"><label class="row"><input type="checkbox" checked data-g="${g.id}"><span class="sw" style="background:${g.color}"></span><span class="lab">${esc(g.label)}</span></label>
       <div class="note">${esc(g.note || '')}</div>${subsHtml(g)}</div>`).join('') : '<div class="hint">이날 유효한 작도 없음</div>'}
     <h3>지표</h3>
-    <div class="allbtn" data-sec="ind"><button data-all="1">지표 모두 켜기</button><button data-all="0">지표 모두 끄기</button></div>
     ${base.map(([id, lab, col]) => `<div class="grp" data-sec="ind" data-g="${id}"><label class="row"><input type="checkbox" checked data-g="${id}"><span class="sw" style="background:${col}"></span><span class="lab">${lab}</span></label></div>`).join('')}
     <div class="grp" data-g="levels"><label class="row"><input type="checkbox" data-lv="1"><span class="sw" style="background:#111"></span><span class="lab">볼 가격대 선 (지지·저항·손절·목표)</span></label></div>
     <h3>보기</h3>
     <div class="hint">드래그 = 좌우 이동 · 휠 = 확대/축소 · 가격축 드래그 = 세로 확대<br>
       <button data-r="66">3개월</button> <button data-r="130">6개월</button> <button data-r="260">1년</button></div>`;
-  side.querySelectorAll('input[data-g]').forEach(cb => cb.onchange = () => show(cb.dataset.g, cb.checked));
-  side.querySelectorAll('.allbtn button').forEach(b => b.onclick = () => {      // 모두 켜기 / 끄기
-    const on = b.dataset.all === '1', sec = b.parentNode.dataset.sec;
-    side.querySelectorAll(`.grp[data-sec="${sec}"] input[data-g]`).forEach(cb => { if (cb.checked !== on) { cb.checked = on; show(cb.dataset.g, on); } });
+  const secCbs = sec => [...side.querySelectorAll(`.grp[data-sec="${sec}"] input[data-g]`)];
+  const syncSw = () => side.querySelectorAll('.msw').forEach(b => {      // 하나라도 켜져 있으면 켬
+    const on = secCbs(b.dataset.sec).some(cb => cb.checked);
+    b.classList.toggle('on', on); b.setAttribute('aria-checked', on);
   });
+  side.querySelectorAll('input[data-g]').forEach(cb => cb.onchange = () => { show(cb.dataset.g, cb.checked); syncSw(); });
+  side.querySelectorAll('.msw').forEach(b => b.onclick = () => {      // 작도·지표 전체 스위치
+    const on = !b.classList.contains('on');
+    secCbs(b.dataset.sec).forEach(cb => { if (cb.checked !== on) { cb.checked = on; show(cb.dataset.g, on); } });
+    syncSw();
+  });
+  syncSw();
   side.querySelectorAll('.grp[data-g]').forEach(div => {
     const g = div.dataset.g; if (g === 'levels') return;
     div.onmouseenter = () => { if (!div.querySelector('input').checked) return; focus(e => e.g === g); };
