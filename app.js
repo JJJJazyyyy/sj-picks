@@ -97,7 +97,7 @@ async function renderDay(day, top = true) {
   $('#summary').innerHTML = summary(D);
   $('#summary').querySelectorAll('tr[data-k]').forEach(tr => tr.onclick = () => goTo(+tr.dataset.k));
   const box = $('#stocks'); box.innerHTML = '';
-  D.stocks.forEach((s, i) => { const el = card(s, i); box.appendChild(el); CHARTS.push(buildChart(el, s)); bindScore(el, s); });
+  D.stocks.forEach((s, i) => { const el = card(s, i); box.appendChild(el); CHARTS.push(buildChart(el, s)); bindScore(el, s); if (TF !== 'D') setTF(el, s, TF); });
   $('#method').innerHTML = methodHTML(D);
   if (TABBED.includes(LAY)) goTo(0, false);
   renderArchive(day);
@@ -498,15 +498,50 @@ function rsi(c, n = 14) {
 }
 const POS = { above: 'aboveBar', below: 'belowBar' };
 
-function buildChart(el, s) {
+// ── 분봉: data/min/<코드>.json(30분봉, 아침 갱신) + live.json m30(오늘 봉, 장중 10분) → 30M·1H·4H ──
+const MIN = {}, TFS = [['30', '30M'], ['60', '1H'], ['240', '4H'], ['D', '1D']], TFPD = { 30: 13, 60: 7, 240: 2 };
+let TF = 'D'; try { TF = localStorage.getItem('sjp:tf') || 'D'; } catch (e) { }
+async function minRows(code, tf) {
+  if (!(code in MIN)) { try { MIN[code] = (await getJSON(`data/min/${code}.json`)).bars; } catch (e) { MIN[code] = null; } }
+  let b = MIN[code]; if (!b || !b.length) return null;
+  const lt = LIVE && LIVE.m30 && LIVE.m30[code];
+  if (lt && lt.length) { const last = b[b.length - 1][0]; b = b.concat(lt.filter(x => x[0] > last)); }
+  const key = t => { if (tf === '30') return t; if (tf === '60') return t - t % 3600; const d = t - t % 86400; return d + (t - d >= 13 * 3600 ? 13 : 9) * 3600; };
+  const m = new Map();
+  for (const [t, o, h, l, c, v] of b) {
+    const k = key(t), x = m.get(k);
+    if (!x) m.set(k, { t: k, o, h, l, c, v }); else { x.h = Math.max(x.h, h); x.l = Math.min(x.l, l); x.c = c; x.v += v; }
+  }
+  return [...m.values()].sort((a, b2) => a.t - b2.t);
+}
+async function setTF(el, s, tf) {
+  const k = CHARTS.findIndex(c => c._el === el); if (k < 0) return;
+  let m = null;
+  if (tf !== 'D') { m = await minRows(s.code, tf); if (!m) { const o = el.querySelector('.ohlc'); if (o) o.innerHTML = '<b>분봉 없음</b> — 분봉은 최근 3일 종목과 추적 중인 종목만 있어요'; return; } }
+  TF = tf; try { localStorage.setItem('sjp:tf', tf); } catch (e) { }
+  CHARTS[k].remove(); el.querySelector('.chart').innerHTML = '';
+  CHARTS[k] = buildChart(el, s, tf, m);
+}
+const pad2 = n => String(n).padStart(2, '0');
+const tlab = t => { const d = new Date(t * 1000); return `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())} ${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}`; };
+
+function buildChart(el, s, tf = 'D', mrows = null) {
   const box = el.querySelector('.chart'), side = el.querySelector('.side'), ohlc = el.querySelector('.ohlc');
   (s.groups || []).forEach(g => { if (g.id === 'vol') g.id = 'volx'; });      // 작도 '거래량 급증'과 지표 '거래량' 분리
   if (DARK) (s.groups || []).forEach(g => { g.color = fixC(g.color); (g.items || []).forEach(it => { it.color = fixC(it.color); (it.marks || []).forEach(m => m.color = fixC(m.color)); }); });
-  const pickI = s.rows.length - 1;
-  const rows = s.rows.concat((s.after || []).filter(r => r.d > s.rows[pickI].d));
-  const lc = cur(s.code, CUR);
-  if (lc && lc.live && lc.d > rows[rows.length - 1].d && lc.o) rows.push({ d: lc.d, o: lc.o, h: lc.h, l: lc.l, c: lc.p, v: lc.v, live: true });
-  const T = rows.map(r => tm(r.d)), C = rows.map(r => r.c), N = rows.length;
+  const ID = tf !== 'D' && mrows && mrows.length;      // 분봉 차트
+  if (!ID) tf = 'D';
+  let pickI = s.rows.length - 1, rows;
+  if (ID) {
+    rows = mrows;
+    const pd = s.rows[pickI].d, end = Date.UTC(+pd.slice(0, 4), +pd.slice(4, 6) - 1, +pd.slice(6, 8) + 1) / 1000;
+    pickI = rows.reduce((k, r, i) => r.t < end ? i : k, -1);
+  } else {
+    rows = s.rows.concat((s.after || []).filter(r => r.d > s.rows[pickI].d));
+    const lc = cur(s.code, CUR);
+    if (lc && lc.live && lc.d > rows[rows.length - 1].d && lc.o) rows.push({ d: lc.d, o: lc.o, h: lc.h, l: lc.l, c: lc.p, v: lc.v, live: true });
+  }
+  const T = rows.map(r => ID ? r.t : tm(r.d)), C = rows.map(r => r.c), N = rows.length;
   const idx = new Map(T.map((t, i) => [t, i]));
   const chart = LW.createChart(box, {
     autoSize: true,
@@ -515,7 +550,7 @@ function buildChart(el, s) {
     grid: { vertLines: { color: TH.grid }, horzLines: { color: TH.grid } },
     crosshair: { mode: LW.CrosshairMode.Normal },
     rightPriceScale: { borderColor: TH.border },
-    timeScale: { borderColor: TH.border, rightOffset: 6, barSpacing: 7, minBarSpacing: 1.5 },
+    timeScale: { borderColor: TH.border, rightOffset: 6, barSpacing: 7, minBarSpacing: 1.5, timeVisible: !!ID },
     localization: { locale: 'ko-KR', dateFormat: 'yyyy-MM-dd' },
   });
   const pxFmt = { type: 'custom', minMove: 1, formatter: p => Math.round(p).toLocaleString('ko-KR') };
@@ -531,7 +566,7 @@ function buildChart(el, s) {
   }
   const candle = chart.addSeries(LW.CandlestickSeries, { upColor: UP, downColor: DN, borderUpColor: UP, borderDownColor: DN, wickUpColor: UP, wickDownColor: DN, priceLineColor: UP, priceFormat: pxFmt }, 0);
   candle.setData(rows.map((r, i) => ({ time: T[i], open: r.o, high: r.h, low: r.l, close: r.c })));
-  LW.createSeriesMarkers(candle, [{ time: T[pickI], position: 'aboveBar', shape: 'arrowDown', color: '#F59E0B', text: '선정', size: 1 }]);
+  if (pickI >= 0) LW.createSeriesMarkers(candle, [{ time: T[pickI], position: 'aboveBar', shape: 'arrowDown', color: '#F59E0B', text: '선정', size: 1 }]);
   candle.createPriceLine({ price: s.close, color: '#F59E0B', lineWidth: 1, lineStyle: LW.LineStyle.Dashed, axisLabelVisible: true, title: '진입가' });
   const stopLv = levelOf(s, '손절');      // 축에는 현재가·진입가·손절만 상시 표시
   if (stopLv) candle.createPriceLine({ price: stopLv.price, color: DARK ? '#E5E7EB' : '#111111', lineWidth: 1, lineStyle: LW.LineStyle.SparseDotted, axisLabelVisible: true, title: '손절' });
@@ -564,10 +599,12 @@ function buildChart(el, s) {
   try { const ps = chart.panes(); ps[0].setStretchFactor(4); ps[1].setStretchFactor(1); ps[2].setStretchFactor(1.1); } catch (e) { /* 이전 버전 호환 */ }
 
   // 작도
-  const groups = s.groups || [];
+  // 분봉에서는 가로선 작도(피보나치·넥라인·목표선 등)만 화면 전체 폭으로 — 날짜로 찍은 사선·표시는 1D에서만
+  const flat = it => it.k === 'line' && !(it.pane > 0) && (it.pts || []).length > 1 && it.pts.every(q => q[1] === it.pts[0][1]);
+  const groups = !ID ? (s.groups || []) : (s.groups || []).map(g => ({ ...g, items: (g.items || []).filter(flat).map(it => ({ ...it, marks: null, pts: [[T[0], it.pts[0][1]], [T[N - 1], it.pts[0][1]]] })) })).filter(g => g.items.length);
   groups.forEach(g => (g.items || []).forEach((it, k) => {
     const key = g.id + ':' + k;
-    const pts = dedupe((it.pts || []).map(([d, v]) => ({ time: tm(d), value: v })));
+    const pts = dedupe((it.pts || []).map(([d, v]) => ({ time: ID ? d : tm(d), value: v })));
     let sr;
     if (it.k === 'hist') {
       sr = chart.addSeries(LW.HistogramSeries, { color: it.color, priceFormat: volFmt, priceLineVisible: false, lastValueVisible: false }, it.pane || 1);
@@ -669,7 +706,8 @@ function buildChart(el, s) {
 
   // 옆 패널 (토글 + 강조)
   const subsHtml = g => (g.items || []).length > 1 ? `<div class="subs">${g.items.map((it, k) => `<span class="sub" data-i="${g.id}:${k}" style="border-color:${it.color}">${esc(it.sub || it.label || '')}</span>`).join('')}</div>` : '';
-  const base = [['ma5', '5일선', MAC[5]], ['ma20', '20일선', MAC[20]], ['ma60', '60일선', MAC[60]], ['ma120', '120일선', MAC[120]], ['vol', '거래량 · 20일 평균', '#F08A00'], ['rsi', 'RSI(14) · 30/70', RSIC]];
+  const ml = n => ID ? `MA${n}` : `${n}일선`;
+  const base = [['ma5', ml(5), MAC[5]], ['ma20', ml(20), MAC[20]], ['ma60', ml(60), MAC[60]], ['ma120', ml(120), MAC[120]], ['vol', ID ? '거래량 · 20봉 평균' : '거래량 · 20일 평균', '#F08A00'], ['rsi', 'RSI(14) · 30/70', RSIC]];
   side.innerHTML = `
     <div class="mt">${[['draw', '작도'], ['ind', '지표']].map(([k, t]) => `<button type="button" class="msw on" data-sec="${k}" role="switch" aria-checked="true" title="${t} 전부 켜기/끄기">${t}<span class="tr"></span></button>`).join('')}</div>
     <h3>작도 — 마우스 올리면 강조</h3>
@@ -680,7 +718,8 @@ function buildChart(el, s) {
     <div class="grp" data-g="levels"><label class="row"><input type="checkbox" data-lv="1"><span class="sw" style="background:#111"></span><span class="lab">볼 가격대 선 (지지·저항·손절·목표)</span></label></div>
     <h3>보기</h3>
     <div class="hint">드래그 = 좌우 이동 · 휠 = 확대/축소 · 가격축 드래그 = 세로 확대<br>
-      <button data-r="66">3개월</button> <button data-r="130">6개월</button> <button data-r="260">1년</button></div>`;
+      <span class="tfs">${TFS.map(([k, t]) => `<button data-tf="${k}" class="${k === tf ? 'on' : ''}">${t}</button>`).join('')}</span>
+      ${(ID ? [['1주', 5], ['1달', 21], ['3달', 60]].map(([t, d]) => [t, d * TFPD[tf]]) : [['3개월', 66], ['6개월', 130], ['1년', 260]]).map(([t, n]) => `<button data-r="${n}">${t}</button>`).join(' ')}</div>`;
   const secCbs = sec => [...side.querySelectorAll(`.grp[data-sec="${sec}"] input[data-g]`)];
   const syncSw = () => side.querySelectorAll('.msw').forEach(b => {      // 하나라도 켜져 있으면 켬
     const on = secCbs(b.dataset.sec).some(cb => cb.checked);
@@ -702,6 +741,7 @@ function buildChart(el, s) {
     sp.onmouseenter = ev => { ev.stopPropagation(); const k = sp.dataset.i; focus(e => e.item === k); };
     sp.onmouseleave = () => { const g = sp.dataset.i.split(':')[0]; focus(e => e.g === g); };
   });
+  side.querySelectorAll('button[data-tf]').forEach(b => b.onclick = () => { if (b.dataset.tf !== tf) setTF(el, s, b.dataset.tf); });
   const range = n => chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, N - n), to: N + 5 });
   side.querySelectorAll('button[data-r]').forEach(b => b.onclick = () => range(+b.dataset.r));
 
@@ -723,7 +763,8 @@ function buildChart(el, s) {
   });
 
   // 왜 주목하나 · 체크 포인트 → 문장이 가리키는 작도·가격을 강조
-  const hiN = Math.max(...rows.slice(N - 21, N - 1).map(r => r.h)), loAll = Math.min(...rows.map(r => r.l)), hiAll = Math.max(...rows.map(r => r.h));
+  const RR = ID ? s.rows : rows, NR = RR.length;      // 20일 고점·52주 최저 등은 늘 일봉 기준
+  const hiN = Math.max(...RR.slice(NR - 21, NR - 1).map(r => r.h)), loAll = Math.min(...RR.map(r => r.l)), hiAll = Math.max(...RR.map(r => r.h));
   const has = g => reg.some(e => e.g === g);
   function targets(txt) {
     const g = new Set(), items = new Set(), prices = [];
@@ -767,11 +808,12 @@ function buildChart(el, s) {
   function legend(i) {
     const r = rows[i], p = i > 0 ? rows[i - 1].c : r.o, ch = (r.c / p - 1) * 100;
     const mv = [5, 20, 60, 120].map(n => maVal[n][i] != null ? `<span class="mav" style="color:${MAC[n]}">${n} ${fmt(maVal[n][i])}</span>` : '').join('');
-    ohlc.innerHTML = `<b>${tm(r.d)}</b>${i === pickI ? ' <span class="pk">선정일</span>' : i > pickI ? ` <span class="pk2">선정 +${i - pickI}일${r.live ? ' · 진행 중' : ''}</span>` : ''} 시 ${fmt(r.o)} 고 <span class="up">${fmt(r.h)}</span> 저 <span class="dn">${fmt(r.l)}</span> 종 <b class="${cls(ch)}">${fmt(r.c)} (${pct(ch)})</b> · 거래량 ${fmt(r.v)}${mv}<span class="mav" style="color:${RSIC}">RSI ${rv[i] != null ? rv[i].toFixed(1) : '-'}</span>`;
+    ohlc.innerHTML = `<b>${ID ? tlab(r.t) : tm(r.d)}</b>${ID ? (i > pickI ? ' <span class="pk2">선정 후</span>' : '') : i === pickI ? ' <span class="pk">선정일</span>' : i > pickI ? ` <span class="pk2">선정 +${i - pickI}일${r.live ? ' · 진행 중' : ''}</span>` : ''} 시 ${fmt(r.o)} 고 <span class="up">${fmt(r.h)}</span> 저 <span class="dn">${fmt(r.l)}</span> 종 <b class="${cls(ch)}">${fmt(r.c)} (${pct(ch)})</b> · 거래량 ${fmt(r.v)}${mv}<span class="mav" style="color:${RSIC}">RSI ${rv[i] != null ? rv[i].toFixed(1) : '-'}</span>`;
   }
   legend(N - 1);
-  chart.subscribeCrosshairMove(p => { const i = p && p.time ? idx.get(typeof p.time === 'string' ? p.time : `${p.time.year}-${String(p.time.month).padStart(2, '0')}-${String(p.time.day).padStart(2, '0')}`) : null; legend(i == null ? N - 1 : i); });
+  chart.subscribeCrosshairMove(p => { const i = p && p.time ? idx.get(typeof p.time === 'number' || typeof p.time === 'string' ? p.time : `${p.time.year}-${String(p.time.month).padStart(2, '0')}-${String(p.time.day).padStart(2, '0')}`) : null; legend(i == null ? N - 1 : i); });
   range(130); sched();
+  chart._el = el;
   return chart;
 }
 function dedupe(pts) {

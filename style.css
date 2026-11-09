@@ -487,3 +487,11 @@ body.resizing .hspl,body.resizing:has(.hspl.on) *{cursor:row-resize !important}
 /* 설명 이미지 캡처 모드 */
 .shot .dayhead,.shot #summary{display:none}
 .shot .rv{opacity:1;transform:none}
+
+/* ═════════ 기간 (30M·1H·4H·1D) ═════════ */
+.tfs{display:inline-flex;margin-right:8px;vertical-align:middle}
+.tfs button{font:inherit;font-size:12px;padding:1px 8px;border:1px solid var(--line);background:var(--panel);color:var(--txt);cursor:pointer;margin-left:-1px}
+.tfs button:first-child{border-radius:3px 0 0 3px;margin-left:0}
+.tfs button:last-child{border-radius:0 3px 3px 0}
+.tfs button.on{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700;position:relative;z-index:1}
+.tfs button:hover:not(.on){color:var(--accent)}
