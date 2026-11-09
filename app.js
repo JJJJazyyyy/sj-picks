@@ -671,7 +671,7 @@ function buildChart(el, s, tf = 'D', mrows = null) {
     } catch (e) { /* 이전 버전 */ }
   }
 
-  // 작도 이름표: 축 대신 선 위에 작게 (피보나치는 선 왼쪽, 나머지는 선 오른쪽 끝)
+  // 작도 이름표: 축 대신 선 위에 작게 (피보나치는 선 왼쪽, 나머지는 선 오른쪽 끝 바깥 빈 곳 — 캔들과 안 겹치게)
   const ovl = document.createElement('div'); ovl.className = 'ovl'; box.appendChild(ovl);
   const labs = reg.filter(e => e.axis && e.pts && e.pts.length);
   labs.forEach(e => {
@@ -682,6 +682,7 @@ function buildChart(el, s, tf = 'D', mrows = null) {
     ovl.appendChild(e.lab);
   });
   ovl.style.setProperty('--halo', TH.bg);
+  if (labs.some(e => e.side === 'r')) chart.timeScale().applyOptions({ rightOffset: 16 });   // 오른쪽 이름표 자리
   let rafP = 0;
   function sched() { if (!rafP) rafP = requestAnimationFrame(() => { rafP = 0; place(); }); }
   function place() {
@@ -695,7 +696,10 @@ function buildChart(el, s, tf = 'D', mrows = null) {
       const y = e.series.priceToCoordinate(p.value);
       let x = ts.timeToCoordinate(p.time);
       if (x == null) x = e.side === 'l' ? 0 : W;
-      x = e.side === 'l' ? Math.max(4, x + 2) : Math.min(W - 4, x - 2);
+      let out = false;
+      if (e.side === 'l') x = Math.max(4, x + 2);
+      else { out = x + 6 + e.lab.offsetWidth <= W - 2; x = out ? x + 6 : Math.min(W - 4, x - 2); }   // 선 끝 오른쪽 빈 곳에 자리가 있으면 거기, 없으면 선 위
+      e.lab.classList.toggle('o', out);
       if (y == null || y < 0 || y > H) { e.lab.style.visibility = 'hidden'; return; }
       e.lab.style.visibility = ''; side[e.side].push({ e, x, y });
     });
@@ -749,7 +753,8 @@ function buildChart(el, s, tf = 'D', mrows = null) {
     sp.onmouseleave = () => { const g = sp.dataset.i.split(':')[0]; focus(e => e.g === g); };
   });
   side.querySelectorAll('button[data-tf]').forEach(b => b.onclick = () => { if (b.dataset.tf !== tf) setTF(el, s, b.dataset.tf); });
-  const range = n => chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, N - n), to: N + 5 });
+  const RLAB = labs.some(e => e.side === 'r');
+  const range = n => chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, N - n), to: N + (RLAB ? Math.max(8, Math.round(n * .14)) : 5) });   // 오른쪽 작도 이름표 자리 (보이는 봉 수의 14%)
   side.querySelectorAll('button[data-r]').forEach(b => b.onclick = () => range(+b.dataset.r));
 
   // 볼 가격대: 토글(전부) + 행 마우스 오버(하나 강조)

@@ -37,6 +37,7 @@ main{max-width:1440px;margin:0 auto;padding:12px 16px 24px}
 .ovl{position:absolute;left:0;top:0;pointer-events:none;overflow:hidden;z-index:3}
 .ovl span{position:absolute;font-size:10.5px;line-height:1;white-space:nowrap;transform:translateY(-100%);padding-bottom:2px;text-shadow:0 0 2px var(--halo),0 0 3px var(--halo),0 0 4px var(--halo);transition:opacity .15s}
 .ovl span.r{transform:translate(-100%,-100%)}
+.ovl span.r.o{transform:translate(0,-50%);padding-bottom:0}
 .ohlc{position:absolute;left:8px;top:6px;z-index:5;font-size:12px;pointer-events:none;background:rgba(255,255,255,.85);padding:2px 6px;border-radius:2px;max-width:calc(100% - 90px)}
 .chartwrap{overflow:hidden}
 .ohlc .mav{margin-left:8px}
