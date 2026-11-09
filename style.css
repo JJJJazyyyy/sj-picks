@@ -522,12 +522,12 @@ body.resizing .hspl,body.resizing:has(.hspl.on) *{cursor:row-resize !important}
 .tfs.rng button.on{background:var(--panel);color:var(--accent);border-color:var(--line);font-weight:400}
 
 /* 종목 성격 칩 (11/9: 급등 후보 2 + 추세형 1) */
-.kind{display:inline-flex;align-items:center;gap:3px;font-size:12px;font-weight:800;padding:2px 8px;border-radius:4px;white-space:nowrap}
+.kind{display:inline-flex;align-items:center;gap:3px;font-size:12px;font-weight:800;padding:2px 8px;border-radius:999px;white-space:nowrap}
 .kind.sm{font-size:11px;font-weight:700;padding:0 7px;line-height:18px}
 .kind svg{width:1.1em;height:1.1em;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
-.kind.hot{background:#E5202B;color:#fff}
-.kind.swing{background:#0E7490;color:#fff}
-.dk .kind.hot{background:#D11A26}.dk .kind.swing{background:#0E7490}
-.sumt .nmcell{display:flex}.sumt .nmcell b{margin-right:28px}.sumt .nmcell .kind{margin-left:auto}   /* 표: 칩은 종목 칸 오른쪽 끝, 이름과 최소 16px */
+.kind.hot{background:#FFE4E1;color:#C4161C}
+.kind.swing{background:#E0F2F1;color:#0E7490}
+.dk .kind.hot{background:#4A1A1C;color:#FF8A8A}.dk .kind.swing{background:#0F3B40;color:#7DD3DC}
+.sumt td.nmtd,.sumt td.kc{width:1%;white-space:nowrap}.sumt td.kc{text-align:right;padding-left:20px}   /* 표: 칩은 따로 칸 — 가장 긴 종목명에서 약 5칸 띄우고 칩끼리 오른쪽 끝 맞춤 */
 .jump a .kind{margin-left:10px}
 .jump a .pv,.jump a .jl{align-self:baseline}   /* '진입 후'를 등락률 글자와 같은 줄 높이에 */

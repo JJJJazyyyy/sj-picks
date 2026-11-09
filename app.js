@@ -291,13 +291,13 @@ function summary(D) {
     const ch = chipOf((s.why && s.why[0]) || (s.notes || [])[0] || '').chips[0];
     const r = c ? (c.p / B - 1) * 100 : null;
     const ds = (l, k) => l ? `<span class="${k}">${pct((l.price / ref - 1) * 100, 1)}</span> <small>${fmt(l.price)}</small>` : '-';
-    return `<tr data-k="${i}"><td class="l"><span class="rk">${i + 1}</span></td><td class="l"><span class="nmcell">${logo(s.code, s.name, 20)}<b>${esc(s.name)}</b>${kindChip(s, 1)}</span></td>
+    return `<tr data-k="${i}"><td class="l"><span class="rk">${i + 1}</span></td><td class="l nmtd"><span class="nmcell">${logo(s.code, s.name, 20)}<b>${esc(s.name)}</b></span></td><td class="kc">${kindChip(s, 1)}</td>
       <td class="g1">${fmt(B)} <small class="${cls(s.chg)}">(${pct(s.chg)})</small></td><td class="g2">${c ? fmt(c.p) : '-'}</td><td class="g2 ${cls(r)}">${c ? pct(r) : '-'}</td>
       <td class="l">${ch ? `<span class="cc" style="--c:${fixC(ch[1])}">${esc(ch[0])}</span>` : ''}</td><td>${ds(stop, 'dn')}</td><td>${ds(tg, 'up')}</td><td><b>${rr}</b></td><td class="${cls(fo)}">${fo > 0 ? '+' : ''}${fmt(fo)}억</td><td>${s.rsi ?? '-'}</td></tr>`;
   }).join('');
   const c0 = D.stocks.length ? cur(D.stocks[0].code, D.day) : null;
   return `<h2>한눈에 보기 <small>회색 = 분석 시점(${dname(D.day)} 종가) · 노랑 = 지금${c0 ? ` (${esc(c0.label)})` : ''} · 손절·목표까지는 현재가 기준 · 행을 누르면 그 종목으로</small></h2>
-  <div class="tblwrap"><table class="perf sumt"><tr><th class="l">#</th><th class="l">종목</th><th class="g1">진입가</th><th class="g2">현재가</th><th class="g2">진입 후</th><th class="l">핵심</th><th>손절까지</th><th>첫 목표까지</th><th>손익비</th><th>외+기(당일)</th><th>RSI</th></tr>${rows}</table></div>`;
+  <div class="tblwrap"><table class="perf sumt"><tr><th class="l">#</th><th class="l" colspan="2">종목</th><th class="g1">진입가</th><th class="g2">현재가</th><th class="g2">진입 후</th><th class="l">핵심</th><th>손절까지</th><th>첫 목표까지</th><th>손익비</th><th>외+기(당일)</th><th>RSI</th></tr>${rows}</table></div>`;
 }
 // ── 선정 점수: 머리줄 칩 → 차트 위에 떠서 펼치는 항목별 점수표 ──
 const scMax = s => (s.items || []).reduce((a, x) => a + (x.max || 0), 0);
