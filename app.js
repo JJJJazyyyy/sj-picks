@@ -157,9 +157,9 @@ function distHTML(s) {
 function retNow(code, day, base) {
   const c = cur(code, day); return c && base ? { r: (c.p / base - 1) * 100, c } : null;
 }
-// 종목 성격 칩 (11/9부터 days json의 kind: hot = 급등 예상, swing = 미리 담을 종목. 없으면 안 붙임)
+// 종목 성격 칩 (11/9부터 days json의 kind: hot = 급등 후보, swing = 미리 담을 종목. 없으면 안 붙임)
 function kindChip(s, sm) {
-  const K = { hot: ['급등 예상', '다음 날 바로 움직일 수 있는 종목'], swing: ['미리 담을 종목', '추세가 좋아 며칠에 걸쳐 미리 모아 가기 좋은 자리: 평행채널 하단 근접·상승 추세 눌림 등'] }[s.kind];
+  const K = { hot: ['급등 후보', '다음 날 바로 움직일 수 있는 종목'], swing: ['미리 담을 종목', '추세가 좋아 며칠에 걸쳐 미리 모아 가기 좋은 자리: 평행채널 하단 근접·상승 추세 눌림 등'] }[s.kind];
   return K ? `<span class="kind ${s.kind}${sm ? ' sm' : ''}" title="${K[1]}">${K[0]}</span>` : '';
 }
 function jumpHTML(D) {
