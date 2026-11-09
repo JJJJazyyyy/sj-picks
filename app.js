@@ -157,9 +157,14 @@ function distHTML(s) {
 function retNow(code, day, base) {
   const c = cur(code, day); return c && base ? { r: (c.p / base - 1) * 100, c } : null;
 }
+// 종목 성격 칩 (11/9부터 days json의 kind: hot = 급등 예상, swing = 미리 담을 종목. 없으면 안 붙임)
+function kindChip(s, sm) {
+  const K = { hot: ['급등 예상', '다음 날 바로 움직일 수 있는 종목'], swing: ['미리 담을 종목', '추세가 좋아 며칠에 걸쳐 미리 모아 가기 좋은 자리: 평행채널 하단 근접·상승 추세 눌림 등'] }[s.kind];
+  return K ? `<span class="kind ${s.kind}${sm ? ' sm' : ''}" title="${K[1]}">${K[0]}</span>` : '';
+}
 function jumpHTML(D) {
   return D.stocks.map((s, i) => { const x = retNow(s.code, D.day, s.close);
-    return `<a href="javascript:void(0)" data-k="${i}" title="${x ? '진입 후 · ' + esc(x.c.label) : '아직 현재가 없음'}"><span class="r">${i + 1}</span>${logo(s.code, s.name, 18)}${esc(s.name)} <span class="${x ? cls(x.r) : ''}">${x ? pct(x.r) : '-'}</span><span class="jl">진입 후</span></a>`; }).join('');
+    return `<a href="javascript:void(0)" data-k="${i}" title="${x ? '진입 후 · ' + esc(x.c.label) : '아직 현재가 없음'}"><span class="r">${i + 1}</span>${logo(s.code, s.name, 18)}${esc(s.name)}${kindChip(s, 1)} <span class="${x ? cls(x.r) : ''}">${x ? pct(x.r) : '-'}</span><span class="jl">진입 후</span></a>`; }).join('');
 }
 function applyLive() {
   if (!CURD) return;
@@ -285,7 +290,7 @@ function summary(D) {
     const ch = chipOf((s.why && s.why[0]) || (s.notes || [])[0] || '').chips[0];
     const r = c ? (c.p / B - 1) * 100 : null;
     const ds = (l, k) => l ? `<span class="${k}">${pct((l.price / ref - 1) * 100, 1)}</span> <small>${fmt(l.price)}</small>` : '-';
-    return `<tr data-k="${i}"><td class="l"><span class="rk">${i + 1}</span></td><td class="l"><span class="nmcell">${logo(s.code, s.name, 20)}<b>${esc(s.name)}</b></span></td>
+    return `<tr data-k="${i}"><td class="l"><span class="rk">${i + 1}</span></td><td class="l"><span class="nmcell">${logo(s.code, s.name, 20)}<b>${esc(s.name)}</b>${kindChip(s, 1)}</span></td>
       <td class="g1">${fmt(B)} <small class="${cls(s.chg)}">(${pct(s.chg)})</small></td><td class="g2">${c ? fmt(c.p) : '-'}</td><td class="g2 ${cls(r)}">${c ? pct(r) : '-'}</td>
       <td class="l">${ch ? `<span class="cc" style="--c:${fixC(ch[1])}">${esc(ch[0])}</span>` : ''}</td><td>${ds(stop, 'dn')}</td><td>${ds(tg, 'up')}</td><td><b>${rr}</b></td><td class="${cls(fo)}">${fo > 0 ? '+' : ''}${fmt(fo)}억</td><td>${s.rsi ?? '-'}</td></tr>`;
   }).join('');
@@ -370,7 +375,7 @@ function card(s, i) {
     p.mcap_eok && `<span class="chip">시총 <b>${fmt(p.mcap_eok)}억</b></span>`,
   ].filter(Boolean).join('');
   el.innerHTML = `
-  <div class="cardhead"><span class="rank">${i + 1}</span>${logo(s.code, s.name, 30)}<span class="nm">${esc(s.name)}</span>${s.kind === 'swing' ? '<span class="kind swing" title="추세가 좋아 며칠에 걸쳐 미리 모아 가기 좋은 자리: 평행채널 하단 근접·상승 추세 눌림 등">미리 담아 둘 종목 · 추세</span>' : s.kind === 'hot' ? '<span class="kind hot" title="다음 날 바로 움직일 수 있는 종목">급등 후보</span>' : ''}<span class="cd">${s.code} · ${esc(s.sector || '')}</span>
+  <div class="cardhead"><span class="rank">${i + 1}</span>${logo(s.code, s.name, 30)}<span class="nm">${esc(s.name)}</span>${kindChip(s)}<span class="cd">${s.code} · ${esc(s.sector || '')}</span>
     <div class="pbx base"><span class="t">진입가 · ${dname(CUR)} 종가 (분석 시점)</span><span class="v px" data-v="${s.close}" data-p="${s.chg}">${fmt(s.close)} <small class="day">(${pct(s.chg)})</small></span></div>
     <span class="parr">→</span><div class="pbx now" data-now="${s.code}">${nowHTML(s)}</div><span class="dist" data-dist="${s.code}">${distHTML(s)}</span>${scoreChip(s)}
     <div class="chips">${chips}</div></div>
