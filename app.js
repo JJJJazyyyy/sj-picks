@@ -532,6 +532,8 @@ function buildChart(el, s) {
   candle.setData(rows.map((r, i) => ({ time: T[i], open: r.o, high: r.h, low: r.l, close: r.c })));
   LW.createSeriesMarkers(candle, [{ time: T[pickI], position: 'aboveBar', shape: 'arrowDown', color: '#F59E0B', text: '선정', size: 1 }]);
   candle.createPriceLine({ price: s.close, color: '#F59E0B', lineWidth: 1, lineStyle: LW.LineStyle.Dashed, axisLabelVisible: true, title: '기준가' });
+  const stopLv = levelOf(s, '손절');      // 축에는 현재가·기준가·손절만 상시 표시
+  if (stopLv) candle.createPriceLine({ price: stopLv.price, color: DARK ? '#E5E7EB' : '#111111', lineWidth: 1, lineStyle: LW.LineStyle.SparseDotted, axisLabelVisible: true, title: '손절' });
   add({ g: 'candle', kind: 'candle', series: candle });
   // 이동평균
   const maVal = {};
@@ -573,11 +575,12 @@ function buildChart(el, s) {
     } else {
       sr = chart.addSeries(LW.LineSeries, {
         color: it.color, lineWidth: it.w || 1, lineStyle: it.dash ? LW.LineStyle.Dashed : LW.LineStyle.Solid, priceLineVisible: false,
-        lastValueVisible: !!it.axis, title: it.axis ? (it.label || '') : '', crosshairMarkerVisible: false, pointMarkersVisible: false,
+        lastValueVisible: false, title: '', crosshairMarkerVisible: false, pointMarkersVisible: false,
         priceFormat: it.pane === 2 ? rsFmt : pxFmt,
       }, it.pane || 0);
       sr.setData(pts);
-      add({ g: g.id, item: key, kind: 'line', series: sr, color: it.color, w: it.w || 1, marks: it.marks });
+      add({ g: g.id, item: key, kind: 'line', series: sr, color: it.color, w: it.w || 1, marks: it.marks,
+        axis: !!it.axis && !(it.pane > 0), label: String(it.label || ''), pts });
     }
     const e = reg[reg.length - 1];
     if (it.marks && it.marks.length) {
@@ -601,6 +604,8 @@ function buildChart(el, s) {
       e.series.applyOptions({ color: st === 'dim' ? alpha(e.color, 0.12) : e.color, lineWidth: st === 'hi' ? Math.min(4, e.w + 2) : e.w });
     }
     if (e.mkApi) e.mkApi.setMarkers(st === 'dim' ? e.mk.map(m => ({ ...m, color: alpha(m.color, 0.15) })) : e.mk);
+    if (e.lab) e.lab.style.opacity = st === 'dim' ? 0.15 : 1;
+    if (e.axis) e.series.applyOptions({ lastValueVisible: st === 'hi', title: st === 'hi' ? e.label : '' });   // 강조한 작도만 축에
   }
   const focus = pred => reg.forEach(e => paint(e, pred(e) ? 'hi' : 'dim'));
   const unfocus = () => reg.forEach(e => paint(e, 'norm'));
@@ -608,9 +613,51 @@ function buildChart(el, s) {
     reg.filter(e => e.g === g).forEach(e => {
       e.hidden = !on; e.series.applyOptions({ visible: on });
       if (e.mkApi) e.mkApi.setMarkers(on ? e.mk : []);
+      if (e.lab) e.lab.style.display = on ? '' : 'none';
       if (on) paint(e, 'norm');
     });
+    sched();
   }
+
+  // 작도 이름표: 축 대신 선 위에 작게 (피보나치는 선 왼쪽, 나머지는 선 오른쪽 끝)
+  const ovl = document.createElement('div'); ovl.className = 'ovl'; box.appendChild(ovl);
+  const labs = reg.filter(e => e.axis && e.pts && e.pts.length);
+  labs.forEach(e => {
+    e.side = e.g === 'fib' ? 'l' : 'r';
+    const v = e.pts[e.pts.length - 1].value;
+    e.lab = document.createElement('span'); e.lab.className = e.side;
+    e.lab.style.color = e.color; e.lab.textContent = `${e.label} ${fmt(Math.round(v))}`;
+    ovl.appendChild(e.lab);
+  });
+  ovl.style.setProperty('--halo', TH.bg);
+  let rafP = 0;
+  function sched() { if (!rafP) rafP = requestAnimationFrame(() => { rafP = 0; place(); }); }
+  function place() {
+    const ts = chart.timeScale(), W = ts.width();
+    let H = box.clientHeight; try { H = chart.panes()[0].getHeight(); } catch (e) { /* 이전 버전 */ }
+    ovl.style.width = W + 'px'; ovl.style.height = H + 'px';
+    const side = { l: [], r: [] };
+    labs.forEach(e => {
+      if (e.hidden) return;
+      const p = e.side === 'l' ? e.pts[0] : e.pts[e.pts.length - 1];
+      const y = e.series.priceToCoordinate(p.value);
+      let x = ts.timeToCoordinate(p.time);
+      if (x == null) x = e.side === 'l' ? 0 : W;
+      x = e.side === 'l' ? Math.max(4, x + 2) : Math.min(W - 4, x - 2);
+      if (y == null || y < 0 || y > H) { e.lab.style.visibility = 'hidden'; return; }
+      e.lab.style.visibility = ''; side[e.side].push({ e, x, y });
+    });
+    for (const a of Object.values(side)) {      // 같은 쪽끼리 겹치면 살짝 아래로
+      a.sort((p, q) => p.y - q.y);
+      a.forEach((o, i) => { if (i && o.y < a[i - 1].y + 12) o.y = a[i - 1].y + 12; o.e.lab.style.left = o.x + 'px'; o.e.lab.style.top = o.y + 'px'; });
+    }
+  }
+  chart.timeScale().subscribeVisibleLogicalRangeChange(sched);
+  chart.timeScale().subscribeSizeChange(sched);
+  box.addEventListener('wheel', sched, { passive: true });
+  box.addEventListener('pointermove', ev => { if (ev.buttons) sched(); });
+  ['pointerup', 'dblclick'].forEach(t => box.addEventListener(t, () => setTimeout(sched, 30)));
+  if (window.ResizeObserver) new ResizeObserver(sched).observe(box);
 
   // 옆 패널 (토글 + 강조)
   const subsHtml = g => (g.items || []).length > 1 ? `<div class="subs">${g.items.map((it, k) => `<span class="sub" data-i="${g.id}:${k}" style="border-color:${it.color}">${esc(it.sub || it.label || '')}</span>`).join('')}</div>` : '';
@@ -650,7 +697,7 @@ function buildChart(el, s) {
   let allPL = [], hovPL = null;
   side.querySelector('input[data-lv]').onchange = ev => {
     allPL.forEach(p => candle.removePriceLine(p)); allPL = [];
-    if (ev.target.checked) allPL = lv.filter(l => l.kind !== '현재가' && l.kind !== '기준가').map(l => candle.createPriceLine({ price: l.price, color: lvColor(l.kind), lineWidth: 1, lineStyle: LW.LineStyle.SparseDotted, axisLabelVisible: true, title: l.kind }));
+    if (ev.target.checked) allPL = lv.filter(l => l.kind !== '현재가' && l.kind !== '기준가' && l.kind !== '손절').map(l => candle.createPriceLine({ price: l.price, color: lvColor(l.kind), lineWidth: 1, lineStyle: LW.LineStyle.SparseDotted, axisLabelVisible: true, title: l.kind }));
   };
   if (tbl) tbl.querySelectorAll('tr[data-j]').forEach(tr => {
     tr.onmouseenter = () => {
@@ -710,7 +757,7 @@ function buildChart(el, s) {
   }
   legend(N - 1);
   chart.subscribeCrosshairMove(p => { const i = p && p.time ? idx.get(typeof p.time === 'string' ? p.time : `${p.time.year}-${String(p.time.month).padStart(2, '0')}-${String(p.time.day).padStart(2, '0')}`) : null; legend(i == null ? N - 1 : i); });
-  range(130);
+  range(130); sched();
   return chart;
 }
 function dedupe(pts) {
