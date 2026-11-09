@@ -500,6 +500,7 @@ const POS = { above: 'aboveBar', below: 'belowBar' };
 
 function buildChart(el, s) {
   const box = el.querySelector('.chart'), side = el.querySelector('.side'), ohlc = el.querySelector('.ohlc');
+  (s.groups || []).forEach(g => { if (g.id === 'vol') g.id = 'volx'; });      // 작도 '거래량 급증'과 지표 '거래량' 분리
   if (DARK) (s.groups || []).forEach(g => { g.color = fixC(g.color); (g.items || []).forEach(it => { it.color = fixC(it.color); (it.marks || []).forEach(m => m.color = fixC(m.color)); }); });
   const pickI = s.rows.length - 1;
   const rows = s.rows.concat((s.after || []).filter(r => r.d > s.rows[pickI].d));
@@ -548,18 +549,18 @@ function buildChart(el, s) {
   const vol = chart.addSeries(LW.HistogramSeries, { priceFormat: volFmt, priceLineVisible: false, lastValueVisible: false }, 1);
   const volData = a => rows.map((r, i) => ({ time: T[i], value: r.v, color: alpha(r.c >= r.o ? UP : DN, a) }));
   vol.setData(volData(0.75));
-  add({ g: 'vol', kind: 'vol', series: vol, volData });
+  add({ g: 'vol', kind: 'vol', series: vol, volData, pane: 1 });
   const v20 = rows.map((_, i) => i >= 20 ? rows.slice(i - 20, i).reduce((a, x) => a + x.v, 0) / 20 : null);
   const vma = chart.addSeries(LW.LineSeries, { color: '#F08A00', lineWidth: 1, priceFormat: volFmt, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false }, 1);
   vma.setData(v20.map((x, i) => x == null ? { time: T[i] } : { time: T[i], value: x }));
-  add({ g: 'vol', kind: 'line', series: vma, color: '#F08A00', w: 1 });
+  add({ g: 'vol', kind: 'line', series: vma, color: '#F08A00', w: 1, pane: 1 });
   // RSI
   const rsFmt = { type: 'custom', minMove: 0.1, formatter: v => v.toFixed(1) };
   const rv = rsi(C);
   const rs = chart.addSeries(LW.LineSeries, { color: RSIC, lineWidth: 2, priceFormat: rsFmt, priceLineVisible: false, lastValueVisible: true }, 2);
   rs.setData(rv.map((x, i) => x == null ? { time: T[i] } : { time: T[i], value: x }));
   for (const y of [70, 30]) rs.createPriceLine({ price: y, color: '#9CA3AF', lineWidth: 1, lineStyle: LW.LineStyle.Dashed, axisLabelVisible: true, title: '' });
-  add({ g: 'rsi', kind: 'line', series: rs, color: RSIC, w: 2 });
+  add({ g: 'rsi', kind: 'line', series: rs, color: RSIC, w: 2, pane: 2 });
   try { const ps = chart.panes(); ps[0].setStretchFactor(4); ps[1].setStretchFactor(1); ps[2].setStretchFactor(1.1); } catch (e) { /* 이전 버전 호환 */ }
 
   // 작도
@@ -571,7 +572,7 @@ function buildChart(el, s) {
     if (it.k === 'hist') {
       sr = chart.addSeries(LW.HistogramSeries, { color: it.color, priceFormat: volFmt, priceLineVisible: false, lastValueVisible: false }, it.pane || 1);
       sr.setData(pts);
-      add({ g: g.id, item: key, kind: 'hist', series: sr, color: it.color, marks: it.marks });
+      add({ g: g.id, item: key, kind: 'hist', series: sr, color: it.color, marks: it.marks, pane: it.pane || 1 });
     } else {
       sr = chart.addSeries(LW.LineSeries, {
         color: it.color, lineWidth: it.w || 1, lineStyle: it.dash ? LW.LineStyle.Dashed : LW.LineStyle.Solid, priceLineVisible: false,
@@ -579,7 +580,7 @@ function buildChart(el, s) {
         priceFormat: it.pane === 2 ? rsFmt : pxFmt,
       }, it.pane || 0);
       sr.setData(pts);
-      add({ g: g.id, item: key, kind: 'line', series: sr, color: it.color, w: it.w || 1, marks: it.marks,
+      add({ g: g.id, item: key, kind: 'line', series: sr, color: it.color, w: it.w || 1, marks: it.marks, pane: it.pane || 0,
         axis: !!it.axis && !(it.pane > 0), label: String(it.label || ''), pts });
     }
     const e = reg[reg.length - 1];
@@ -616,7 +617,14 @@ function buildChart(el, s) {
       if (e.lab) e.lab.style.display = on ? '' : 'none';
       if (on) paint(e, 'norm');
     });
-    sched();
+    fitPanes(); sched();
+  }
+  // 지표(거래량·RSI)를 끄면 그 칸을 통째로 접어 캔들 칸을 넓힘 (급증·다이버전스 작도만으로는 칸을 남기지 않음)
+  const PSF = [4, 1, 1.1];
+  function fitPanes() {
+    try {
+      chart.panes().forEach((p, i) => { if (i) p.setStretchFactor(reg.some(e => e.pane === i && !e.item && !e.hidden) ? PSF[i] : 0.0001); });
+    } catch (e) { /* 이전 버전 */ }
   }
 
   // 작도 이름표: 축 대신 선 위에 작게 (피보나치는 선 왼쪽, 나머지는 선 오른쪽 끝)
@@ -731,7 +739,7 @@ function buildChart(el, s) {
     if (/이중바닥|쌍바닥|W자|넥라인|바닥/.test(txt) && has('dbottom')) g.add('dbottom');
     if (/다이버전스/.test(txt) && has('div')) g.add('div');
     if (/RSI|과매도|과열/.test(txt)) g.add('rsi');
-    if (/거래량/.test(txt)) { g.add('vol'); if (has('vol')) g.add('vol'); }
+    if (/거래량/.test(txt)) { g.add('vol'); if (has('volx')) g.add('volx'); }
     for (const m of txt.matchAll(/(5|20|60|120)일선/g)) { g.add('ma' + m[1]); if (m[1] === '60' && has('ma60')) g.add('ma60'); }
     if (/정배열/.test(txt)) ['ma5', 'ma20', 'ma60'].forEach(x => g.add(x));
     if (/20일 고점/.test(txt)) prices.push([hiN, '20일 고점']);
