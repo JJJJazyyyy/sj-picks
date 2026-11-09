@@ -68,7 +68,7 @@ async function init() {
   sel.onchange = () => { location.hash = sel.value; };
   window.addEventListener('hashchange', route);
   try { LIVE = await getJSON('data/live.json'); } catch (e) { LIVE = null; }
-  setInterval(async () => { try { const L = await getJSON('data/live.json'); if (!LIVE || L.date !== LIVE.date || L.time !== LIVE.time) { LIVE = L; applyLive(); } } catch (e) { } }, 5 * 60 * 1000);
+  setInterval(async () => { try { const L = await getJSON('data/live.json'); if (!LIVE || L.date !== LIVE.date || L.time !== LIVE.time) { LIVE = L; applyLive(); perfMini(); } } catch (e) { } }, 5 * 60 * 1000);
   renderPerf();
   route();
   if (SHOT) setTimeout(() => {   // 설명 이미지 캡처용: 첫 종목 + 점수표 열기
@@ -840,6 +840,47 @@ function renderPerf() {
       return `<tr class="${p.stop_hit ? 'hit' : ''}"><td class="l"><a href="#${p.day}">${dname(p.day)}</a></td><td class="l nmcell">${logo(p.code, p.name, 18)}<b>${esc(p.name)}</b></td><td>${fmt(p.base)}</td>${c(pf['1'])}${c(pf['3'])}${c(pf['5'])}${c(pf['10'])}${c(p.max_up)}${c(p.max_dn)}
         <td>${p.last ? `${fmt(p.last.c)} <small class="${cls(p.last.ret)}">${pct(p.last.ret, 1)}</small>` : '-'}</td><td>${fmt(p.stop)}</td><td class="l">${st}${hot}</td></tr>`;
     }).join('') : '<tr><td class="l" colspan="12">아직 기록 없음</td></tr>');
+  perfMini();
+}
+// 성과 칸 미니 차트: 진입 뒤 경로 (30분봉 있으면 30분봉, 없으면 일봉 종가) + 진입가·손절선·최고점
+async function perfPath(p) {
+  const end = Date.UTC(+p.day.slice(0, 4), +p.day.slice(4, 6) - 1, +p.day.slice(6, 8), 23) / 1000;
+  const m = await minRows(p.code, '30');
+  if (m) { const b = m.filter(x => x.t > end); if (b.length) return { src: '30분봉', pts: b.map(x => ({ d: new Date(x.t * 1000).getUTCDate(), c: x.c, h: x.h, l: x.l })) }; }
+  const pts = (p.path || []).map(([d, o, h, l, c]) => ({ d: d, c, h, l }));
+  const lv = LIVE && LIVE.prices && LIVE.prices[p.code], last = pts.length ? pts[pts.length - 1].d : p.day;
+  if (lv && LIVE.date && LIVE.date.replace(/-/g, '') > last) pts.push({ d: LIVE.date, c: lv.p, h: lv.h, l: lv.l });
+  return pts.length ? { src: '일봉', pts } : null;
+}
+function miniSVG(p, P) {
+  const W = 240, H = 100, R = 44, b = p.base, r = v => (v / b - 1) * 100;
+  const cs = [0, ...P.pts.map(x => r(x.c))], hs = P.pts.map(x => r(x.h)), st = p.stop ? r(p.stop) : null;
+  const lo = Math.min(...cs, ...P.pts.map(x => r(x.l)), st ?? 0) - 1, hi0 = Math.max(...hs, 0), hi = hi0 + Math.max(2.5, (hi0 - lo) * .22);
+  const y = v => (H - 5 - (v - lo) / (hi - lo) * (H - 12)).toFixed(1), n = cs.length - 1, x = i => (3 + i * (W - R - 6) / Math.max(n, 1)).toFixed(1);
+  let g = '';
+  if (P.src === '30분봉') P.pts.forEach((q, i) => { if (i && q.d !== P.pts[i - 1].d) g += `<line x1="${x(i + .5)}" x2="${x(i + .5)}" y1="0" y2="${H}" class="ms-d"/>`; });
+  g += `<line x1="0" x2="${W - R}" y1="${y(0)}" y2="${y(0)}" class="ms-0"/>`;
+  if (st != null && st > lo) g += `<line x1="0" x2="${W - R}" y1="${y(st)}" y2="${y(st)}" class="ms-st"/>`;
+  const now = cs[n], up = now >= 0;
+  g += `<polyline points="${cs.map((v, i) => x(i) + ',' + y(v)).join(' ')}" class="ms-l ${up ? 'u' : 'd'}"/>`;
+  const mx = Math.max(...hs), k = hs.indexOf(mx);
+  if (mx > 0) { const X = +x(k + 1), lab = pct(mx, 1); const an = X < 34 ? 'start' : X > W - R - 34 ? 'end' : 'middle'; g += `<circle cx="${X}" cy="${y(mx)}" r="3.5" class="ms-pk"/><text x="${an === 'start' ? X - 3 : an === 'end' ? X + 3 : X}" y="${+y(mx) - 7}" text-anchor="${an}" class="ms-pt">최고 ${lab}</text>`; }
+  g += `<circle cx="${x(n)}" cy="${y(now)}" r="3" class="ms-e ${up ? 'u' : 'd'}"/><text x="${+x(n) + 6}" y="${+y(now) + 4}" class="ms-nt ${up ? 'u' : 'd'}">${pct(now, 1)}</text>`;
+  return { svg: `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${esc(p.name)} 진입 뒤 경로">${g}</svg>`, now, mx };
+}
+let PMQ = 0;
+async function perfMini() {
+  const el = $('#perfMini'); if (!el) return; const P = INDEX.perf || [], q = ++PMQ;
+  if (!P.length) { el.innerHTML = ''; return; }
+  const cards = await Promise.all(P.map(async p => {
+    const path = await perfPath(p);
+    const st = p.stop_hit ? `<span class="tag stop">손절 이탈 ${md(p.stop_hit)}</span>` : p.done ? '<span class="tag end">10일 완료</span>' : '<span class="tag run">진행 중</span>';
+    const head = `<div class="pm-h">${logo(p.code, p.name, 18)}<b>${esc(p.name)}</b><span class="pm-s" title="진입가">${md(p.day)} · ${fmt(p.base)}</span></div>`;
+    if (!path) return `<a class="pm-c" href="#${p.day}">${head}<div class="pm-none">아직 진입 뒤 시세 없음</div><div class="pm-f">${st}</div></a>`;
+    const S = miniSVG(p, path), days = new Set(path.pts.map(x => x.d)).size;
+    return `<a class="pm-c" href="#${p.day}" title="${esc(p.name)} · ${path.src} 기준 · 점선 = 진입가, 파란 점선 = 손절 ${fmt(p.stop)}">${head}${S.svg}<div class="pm-f">${st}${S.mx >= 10 ? ' <span class="tag hot">+10% 터치</span>' : ''}<span class="pm-s">${days}일 · ${path.src}</span></div></a>`;
+  }));
+  if (q === PMQ) el.innerHTML = cards.join('');
 }
 function renderArchive(day) {
   $('#archList').innerHTML = INDEX.days.map(d => `<a href="#${d.day}" class="${d.day === day ? 'cur' : ''}"><span class="d">${dname(d.day)} 마감</span><br>${d.stocks.map(s => { const pf = (INDEX.perf || []).find(p => p.day === d.day && p.code === s.code), x = pf ? retNow(s.code, d.day, pf.base) : null;

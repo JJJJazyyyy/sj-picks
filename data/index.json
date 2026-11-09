@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-09 04:39",
+ "updated": "2026-11-09 15:20",
  "latest": "20261106",
  "days": [
   {
@@ -56,7 +56,8 @@
    "max_dn": null,
    "last": null,
    "stop_hit": null,
-   "done": false
+   "done": false,
+   "path": []
   },
   {
    "day": "20261106",
@@ -70,7 +71,8 @@
    "max_dn": null,
    "last": null,
    "stop_hit": null,
-   "done": false
+   "done": false,
+   "path": []
   },
   {
    "day": "20261106",
@@ -84,7 +86,8 @@
    "max_dn": null,
    "last": null,
    "stop_hit": null,
-   "done": false
+   "done": false,
+   "path": []
   },
   {
    "day": "20261105",
@@ -105,7 +108,16 @@
     "n": 1
    },
    "stop_hit": null,
-   "done": false
+   "done": false,
+   "path": [
+    [
+     "20261106",
+     205000,
+     214500,
+     203500,
+     208500
+    ]
+   ]
   },
   {
    "day": "20261105",
@@ -126,7 +138,16 @@
     "n": 1
    },
    "stop_hit": null,
-   "done": false
+   "done": false,
+   "path": [
+    [
+     "20261106",
+     30650,
+     33000,
+     30500,
+     32000
+    ]
+   ]
   },
   {
    "day": "20261105",
@@ -147,7 +168,16 @@
     "n": 1
    },
    "stop_hit": null,
-   "done": false
+   "done": false,
+   "path": [
+    [
+     "20261106",
+     44250,
+     50600,
+     43350,
+     48800
+    ]
+   ]
   }
  ]
 }

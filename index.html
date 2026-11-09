@@ -6,7 +6,7 @@
 <link rel="icon" href="logo.png">
 <meta name="robots" content="noindex,nofollow,noarchive">
 <title>종목 Pick</title>
-<link rel="stylesheet" href="style.css?v=26">
+<link rel="stylesheet" href="style.css?v=27">
 <script src="https://unpkg.com/lightweight-charts@5.0.9/dist/lightweight-charts.standalone.production.js"></script>
 </head>
 <body>
@@ -30,9 +30,10 @@
   <div id="stocks"></div>
   <section class="box" id="method"></section>
   <section class="box" id="perf">
-    <h2>지난 관심종목 성과 <small>진입가 = 선정일 종가 · N거래일 뒤 종가 등락률 · 손절선은 종가 기준</small></h2>
+    <h2>지난 관심종목 성과 <small>진입가 = 선정일 종가 · 선 = 진입 뒤 흐름 · 점선 = 진입가 · 파란 점선 = 손절 · 빨간 점 = 최고</small></h2>
     <div id="perfStats" class="stats"></div>
-    <div class="tblwrap"><table class="perf" id="perfTbl"></table></div>
+    <div id="perfMini" class="pmini"></div>
+    <details class="pdet"><summary>숫자 표로 보기 <small>N거래일 뒤 종가 등락률 · 손절선은 종가 기준</small></summary><div class="tblwrap"><table class="perf" id="perfTbl"></table></div></details>
   </section>
   <section class="box" id="archive">
     <h2>아카이브</h2>
@@ -40,6 +41,6 @@
   </section>
 </main>
 <footer>개인 참고용 · 시세 한국투자증권 Open API · 작도는 일봉에서 자동 계산(해석에 따라 다를 수 있음) · <span id="updated"></span></footer>
-<script src="app.js?v=29"></script>
+<script src="app.js?v=30"></script>
 </body>
 </html>
