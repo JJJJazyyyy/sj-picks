@@ -982,6 +982,7 @@ const WIC = {      // 날씨 그림 (맑음·흐림·비·폭풍 · 밤엔 초�
   storm: '<path d="M7 14h10a4 4 0 0 0 .6-8A5.5 5.5 0 0 0 7 5.5 4.3 4.3 0 0 0 7 14z"/><path d="M12.5 14.5l-2 3.5h3l-2 3.5"/>',
   moon: '<path d="M19.5 14.5A8 8 0 0 1 9.5 4.5a8 8 0 1 0 10 10z"/>',
 };
+const WEM = { sun: '☀️', cloud: '☁️', rain: '🌧️', storm: '⛈️' };      // 날씨는 이모지 (11/10 사용자)
 const wic = (k, c = '') => `<svg class="wi ${c}" viewBox="0 0 24 24" aria-hidden="true">${WIC[k]}</svg>`;
 function renderMkt() {
   const el = $('#mkt'); if (!el) return;
@@ -998,14 +999,29 @@ function renderMkt() {
   const word = { sun: '맑음', cloud: '흐림', rain: '비', storm: '폭풍' }[lv];
   const msg = pre ? { sun: '야간·미국 선물 강세 → 갭 상승 출발 가능', cloud: '보합 출발 예상', rain: '약세 출발 예상 — 장전 시간외는 시가 보고', storm: '갭 하락 예상 — 진입은 시가 확인 후' }[lv]
     : ph === 'after' ? '장 마감' : { sun: '시장 강세', cloud: '보합권', rain: '시장 약세 — 손절선 확인', storm: '시장 급락 — 손절선 확인' }[lv];      // 코스피 수치는 오른쪽에 있으니 중복 안 함
-  const it = (x, flag, name, dig, tip) => !x ? '' : `<span class="mi" title="${esc(tip)}">${FLAG[flag]}<span class="mk">${name}</span><b>${x.p.toLocaleString('ko-KR', { minimumFractionDigits: dig, maximumFractionDigits: dig })}</b><span class="${cls(x.r)}">${pct(x.r)}</span>${x.live && fresh ? `<i class="blink" title="실시간 갱신 중"></i>` : ''}</span>`;
+  // 호버 설명: 무엇인지(쉬운 말) + 지금 값이 뜻하는 것 + 출처
+  const mv = r => r >= 1.5 ? '크게 오름' : r >= 0.5 ? '오름' : r > -0.5 ? '거의 그대로' : r > -1.5 ? '내림' : '크게 내림';
+  const dayNow = ph === 'day' ? '지금' : '오늘';
+  const TIP = {
+    night: x => ['코스피 야간 (코스피200 야간선물)', '한국 장이 끝난 뒤 밤(18:00~다음 날 06:00)에도 거래되는 코스피 선물이에요. 전날 낮 장 마감보다 얼마나 움직였는지 보면 <b>다음 날 아침 코스피가 어떻게 출발할지</b> 미리 짐작할 수 있어요.',
+      `${ph === 'night' ? '지금' : '지난밤'} ${pct(x.r)} (${mv(x.r)}) → ${x.r >= 0.5 ? '아침 갭 상승 출발 쪽 신호' : x.r <= -0.5 ? '아침 갭 하락 출발 쪽 신호' : '아침 보합 출발 쪽 신호'}`, `한국투자증권 · ${x.code || ''} 최근월물`],
+    nq: x => ['나스닥 선물 (나스닥100)', '미국 기술주 100개 지수의 선물이에요. 거의 24시간 거래돼서 <b>미국 증시 분위기를 실시간으로</b> 보여 줘요. 반도체·IT 비중이 큰 코스피·코스닥이 따라가는 경우가 많아요.',
+      `지금 ${pct(x.r)} (${mv(x.r)})`, `Yahoo Finance${x.at ? ' · ' + x.at + ' 기준' : ''}`],
+    kospi: x => ['코스피', '삼성전자·SK하이닉스 같은 <b>대형주 시장 전체</b>의 움직임이에요. 한국 시장이 오늘 좋은지 나쁜지 가장 먼저 보는 숫자예요.',
+      `${dayNow} 전날보다 ${pct(x.r)} (${mv(x.r)})${ph === 'after' ? ' 마감' : ''}`, '한국투자증권'],
+    kosdaq: x => ['코스닥', '중소형·성장주 시장 지수예요. <b>급등 후보가 많이 나오는 시장</b>이라 코스닥이 약하면 급등주도 힘이 빠지기 쉬워요.',
+      `${dayNow} 전날보다 ${pct(x.r)} (${mv(x.r)})${ph === 'after' ? ' 마감' : ''}`, '한국투자증권'],
+  };
+  const it = (k, flag, name, dig, right) => { const x = M[k]; if (!x) return ''; const [t, d, n, src] = TIP[k](x);
+    return `<span class="mi" tabindex="0">${FLAG[flag]}<span class="mk">${name}</span><b>${x.p.toLocaleString('ko-KR', { minimumFractionDigits: dig, maximumFractionDigits: dig })}</b><span class="${cls(x.r)}">${pct(x.r)}</span>${x.live && fresh ? '<i class="blink" aria-label="실시간 갱신 중"></i>' : ''}`
+      + `<span class="tip${right ? ' r' : ''}" role="tooltip"><b class="tt">${t}</b>${d}<span class="tn ${cls(x.r)}">${n}</span><span class="ts">${x.live && fresh ? '● 실시간 갱신 중 · ' : ''}${src}</span></span></span>`; };
   el.className = `mkt w-${lv}`; el.hidden = false;
-  el.innerHTML = `<span class="mw">${wic(lv)}<b>${word}</b><span class="mm">${esc(msg)}</span></span>`
-    + it(M.night, 'kr', `${wic('moon', 'sm')}코스피 야간`, 2, `코스피200 야간선물 ${M.night ? M.night.code : ''} · 18:00~다음 날 06:00 · 전일 정규장 대비`)
-    + it(M.nq, 'us', '나스닥 선물', 0, `나스닥100 선물(NQ) · Yahoo Finance${M.nq && M.nq.at ? ' · ' + M.nq.at : ''}`)
-    + it(M.kospi, 'kr', '코스피', 2, '코스피 지수 · 한국투자증권')
-    + it(M.kosdaq, 'kr', '코스닥', 2, '코스닥 지수 · 한국투자증권')
-    + `<span class="mt">${MKT.date === today ? '' : md(MKT.date) + ' '}${MKT.time}${fresh ? '' : ' · 지난 값'}</span>`;
+  el.innerHTML = `<span class="mw"><span class="we" aria-hidden="true">${WEM[lv]}</span><b>${word}</b><span class="mm">(${esc(msg)})</span></span>`
+    + it('night', 'kr', `${wic('moon', 'sm')}코스피 야간`, 2)
+    + it('nq', 'us', '나스닥 선물', 0)
+    + it('kospi', 'kr', '코스피', 2, 1)
+    + it('kosdaq', 'kr', '코스닥', 2, 1)
+    + `<span class="mt">업데이트 시간: ${MKT.date === today ? '' : md(MKT.date) + ' '}${MKT.time}${fresh ? '' : ' (지난 값)'}</span>`;
 }
 setInterval(renderMkt, 60 * 1000);      // 시간이 지나면 깜빡임 끄기
 
