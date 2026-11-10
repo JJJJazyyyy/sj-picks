@@ -561,12 +561,12 @@ body.resizing .hspl,body.resizing:has(.hspl.on) *{cursor:row-resize !important}
 .mkt .mt{font-size:12px;color:#6B7280;white-space:nowrap}
 .mkt .blink{width:7px;height:7px;border-radius:50%;background:#16A34A;box-shadow:0 0 0 2px rgba(22,163,74,.18);display:inline-block;margin-left:1px;animation:mblink 1.4s ease-in-out infinite}
 @keyframes mblink{0%,100%{opacity:1}50%{opacity:.2}}
-.mkt.w-sun{background:#FFF1F2;border-color:#FECDD3}.mkt.w-sun .mw{color:#BE123C}
+.mkt.w-sun{background:#F0FDF4;border-color:#BBF7D0}.mkt.w-sun .mw{color:#15803D}
 .mkt.w-cloud .mw{color:#4B5563}
 .mkt.w-rain{background:#EFF6FF;border-color:#BFDBFE}.mkt.w-rain .mw{color:#1D4ED8}
 .mkt.w-storm{background:#DBEAFE;border-color:#93C5FD}.mkt.w-storm .mw{color:#1E3A8A}
 .dk .mkt{color:#E5E7EB;background:#1F2937;border-color:#374151}.dk .mkt .mk{color:#9CA3AF}
-.dk .mkt.w-sun{background:#3B1219;border-color:#7F1D1D}.dk .mkt.w-sun .mw{color:#FDA4AF}
+.dk .mkt.w-sun{background:#052E16;border-color:#166534}.dk .mkt.w-sun .mw{color:#86EFAC}
 .dk .mkt.w-rain{background:#172554;border-color:#1E40AF}.dk .mkt.w-rain .mw{color:#93C5FD}
 .dk .mkt.w-storm{background:#1E3A8A;border-color:#3B82F6}.dk .mkt.w-storm .mw{color:#DBEAFE}
 .dk .mkt .wi.sm{color:#FACC15}.dk .mkt .blink{background:#4ADE80}
@@ -574,7 +574,7 @@ body.resizing .hspl,body.resizing:has(.hspl.on) *{cursor:row-resize !important}
 .mkt .mm{font-weight:600;opacity:.9}
 .mkt .mi{position:relative;cursor:help;border-radius:4px;padding:1px 3px;margin:-1px -3px;outline:0}
 .mkt .mi:hover,.mkt .mi:focus{background:rgba(0,0,0,.05)}
-.mkt .tip{display:none;position:absolute;top:calc(100% + 8px);left:0;z-index:40;width:270px;white-space:normal;background:#111827;color:#E5E7EB;padding:10px 12px;border-radius:8px;font-size:12.5px;line-height:1.6;font-weight:400;box-shadow:0 8px 24px rgba(0,0,0,.22);cursor:default}
+.mkt .tip{display:none;position:absolute;top:calc(100% + 8px);left:0;z-index:40;width:310px;white-space:normal;background:#111827;color:#E5E7EB;padding:10px 12px;border-radius:8px;font-size:12.5px;line-height:1.6;font-weight:400;box-shadow:0 8px 24px rgba(0,0,0,.22);cursor:default}
 .mkt .tip.r{left:auto;right:0}
 .mkt .tip::before{content:'';position:absolute;top:-5px;left:14px;width:10px;height:10px;background:#111827;transform:rotate(45deg)}
 .mkt .tip.r::before{left:auto;right:14px}
@@ -584,3 +584,8 @@ body.resizing .hspl,body.resizing:has(.hspl.on) *{cursor:row-resize !important}
 .mkt .tip .tn.up{color:#FCA5A5}.mkt .tip .tn.dn{color:#93C5FD}.mkt .tip .tn:not(.up):not(.dn){color:#E5E7EB}
 .mkt .tip .ts{display:block;margin-top:4px;font-size:11px;color:#9CA3AF}
 .mkt .mi:hover .tip,.mkt .mi:focus .tip{display:block}
+.mkt .tip .tr{display:grid;grid-template-columns:70px minmax(0,1fr);gap:8px;padding:2px 0;border-top:1px solid rgba(255,255,255,.07)}
+.mkt .tip .tr i{font-style:normal;color:#9CA3AF;white-space:nowrap}
+.mkt .tip .tr.tn{margin-top:4px;padding-top:5px;border-top:1px solid rgba(255,255,255,.18)}
+.mkt .tip .tr.tn i{color:inherit}
+.mkt .tip .tt{margin-bottom:6px}
