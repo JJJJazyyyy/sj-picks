@@ -969,7 +969,7 @@ function dedupe(pts) {
 }
 
 // ───────────────────────── 시장 날씨 (종목 탭 아래 독립된 한 줄 박스, 11/10 사용자 선택: 디자인 2) ─────────────────────────
-let MKT = null;
+let MKT = null, SPK = 0;
 async function loadMkt() { try { MKT = await getJSON('data/mkt.json?t=' + Math.floor(Date.now() / 6e4)); } catch (e) { } renderMkt(); }
 const FLAG = {      // 국기 이모지는 윈도 크롬에서 'KR'·'US' 글자로만 나와서 작은 그림으로
   kr: '<svg class="flag" viewBox="0 0 30 20" role="img" aria-label="한국"><rect width="30" height="20" fill="#fff"/><path d="M11.3 8.1a4.2 4.2 0 0 1 7.4 3.8 2.1 2.1 0 0 0-3.7-1.9 2.1 2.1 0 0 1-3.7-1.9z" fill="#CD2E3A"/><path d="M11.3 8.1a2.1 2.1 0 0 0 3.7 1.9 2.1 2.1 0 0 1 3.7 1.9 4.2 4.2 0 0 1-7.4-3.8z" fill="#0047A0"/><g fill="#111"><rect x="3.5" y="3" width="4.5" height="1" transform="rotate(34 5.7 3.5)"/><rect x="3.5" y="4.6" width="4.5" height="1" transform="rotate(34 5.7 5.1)"/><rect x="22" y="3" width="4.5" height="1" transform="rotate(-34 24.3 3.5)"/><rect x="22" y="4.6" width="4.5" height="1" transform="rotate(-34 24.3 5.1)"/><rect x="3.5" y="14.4" width="4.5" height="1" transform="rotate(-34 5.7 14.9)"/><rect x="3.5" y="16" width="4.5" height="1" transform="rotate(-34 5.7 16.5)"/><rect x="22" y="14.4" width="4.5" height="1" transform="rotate(34 24.3 14.9)"/><rect x="22" y="16" width="4.5" height="1" transform="rotate(34 24.3 16.5)"/></g></svg>',
@@ -1016,8 +1016,16 @@ function renderMkt() {
     kosdaq: x => ['코스닥', [['대상', '중소형·성장주 시장'], ['연관', '급등 후보 다수 · 약세 땐 급등주도 약화'], ['상·하한가', '종목별 ±30%'], CB],
       `${ph === 'day' ? '지금' : '오늘'} ${now1(x)}${ph === 'after' ? ' · 마감' : ''}`, '한국투자증권'],
   };
+  const spark = x => {      // 하루 흐름 미니차트 (11/10 사용자 선택 B: 선 + 전일 종가 점선 + 연한 면적)
+    const c = x.s, pc = x.pc; if (!c || c.length < 2 || !pc) return '';
+    const W = 52, H = 18, lo = Math.min(pc, ...c), hi = Math.max(pc, ...c), y = v => (H - 2 - (v - lo) / (hi - lo || 1) * (H - 4)).toFixed(1), X = i => (1 + i * (W - 2) / (c.length - 1)).toFixed(1);
+    const last = c[c.length - 1], col = last >= pc ? UP : DN, pts = c.map((v, i) => X(i) + ',' + y(v)).join(' '), id = 'msg' + (++SPK);
+    return `<svg class="spk" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" aria-hidden="true"><defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${col}" stop-opacity=".18"/><stop offset="1" stop-color="${col}" stop-opacity="0"/></linearGradient></defs>`
+      + `<polygon points="${X(0)},${H} ${pts} ${X(c.length - 1)},${H}" fill="url(#${id})"/><line x1="0" x2="${W}" y1="${y(pc)}" y2="${y(pc)}" class="spb"/>`
+      + `<polyline points="${pts}" fill="none" stroke="${col}" stroke-width="1.4" stroke-linejoin="round"/><circle cx="${X(c.length - 1)}" cy="${y(last)}" r="1.8" fill="${col}"/></svg>`;
+  };
   const it = (k, flag, name, dig, right) => { const x = M[k]; if (!x) return ''; const [t, rows, n, src] = TIP[k](x);
-    return `<span class="mi" tabindex="0">${flag ? FLAG[flag] : ''}<span class="mk">${name}</span><b>${x.p.toLocaleString('ko-KR', { minimumFractionDigits: dig, maximumFractionDigits: dig })}</b><span class="${cls(x.r)}">${pct(x.r)}</span>${x.live && fresh ? '<i class="blink" aria-label="실시간 갱신 중"></i>' : ''}`
+    return `<span class="mi" tabindex="0">${flag ? FLAG[flag] : ''}<span class="mk">${name}</span><b>${x.p.toLocaleString('ko-KR', { minimumFractionDigits: dig, maximumFractionDigits: dig })}</b><span class="${cls(x.r)}">${pct(x.r)}</span>${spark(x)}${x.live && fresh ? '<i class="blink" aria-label="실시간 갱신 중"></i>' : ''}`
       + `<span class="tip${right ? ' r' : ''}" role="tooltip"><b class="tt">${t}</b>${rows.map(([a, b]) => `<span class="tr"><i>${a}</i><span>${b}</span></span>`).join('')}`
       + `<span class="tr tn ${cls(x.r)}"><i>${n.split(' ')[0]}</i><span>${n.slice(n.indexOf(' ') + 1)}</span></span><span class="ts">${x.live && fresh ? '● 실시간 갱신 중 · ' : ''}${src}</span></span></span>`; };
   el.className = `mkt w-${lv}`; el.hidden = false;

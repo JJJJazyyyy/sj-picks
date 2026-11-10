@@ -594,3 +594,5 @@ body.resizing .hspl,body.resizing:has(.hspl.on) *{cursor:row-resize !important}
 .mkt .tip .lim b{display:block;height:8px;border-radius:4px;background:linear-gradient(90deg,#2563EB,#4B5563 50%,#DC2626)}
 .mkt .tip .lim span{display:flex;justify-content:space-between;font-size:10.5px;color:#9CA3AF;margin-top:2px}
 .mkt .tip .lim em{font-style:normal}
+.mkt .spk{flex:none;margin-left:2px;vertical-align:middle;overflow:visible}
+.mkt .spk .spb{stroke:#9CA3AF;stroke-width:1;stroke-dasharray:2 2}
