@@ -775,10 +775,14 @@ function buildChart(el, s, tf = 'D', mrows = null) {
   if (tbl) tbl.querySelectorAll('tr[data-j]').forEach(tr => {
     tr.onmouseenter = () => {
       const l = lv[+tr.dataset.j];
-      hovPL = candle.createPriceLine({ price: l.price, color: lvColor(l.kind), lineWidth: 2, lineStyle: LW.LineStyle.Dashed, axisLabelVisible: true, title: `${l.kind} ${l.basis}`.slice(0, 22) });
+      hovPL = candle.createPriceLine({ price: l.price, color: lvColor(l.kind), lineWidth: 2, lineStyle: LW.LineStyle.Dashed, axisLabelVisible: !ZM, title: ZM ? '' : `${l.kind} ${l.basis}`.slice(0, 22) });
+      if (ZM) {      // 왜 주목하나와 같게: 확대 + 말풍선 + 가격축 큰 가격표 (11/10 사용자)
+        const z = zoneOf({ g: new Set(), items: new Set(), prices: [[l.price, l.kind]], wick: null }, '');
+        if (z) { z.tags = [[l.price, lvColor(l.kind), l.kind]]; z.note = `${l.kind} ${fmt(l.price)}${l.basis ? ' · ' + l.basis : ''}`; zoomIn(z); }
+      }
       focus(e => e.g === 'candle');
     };
-    tr.onmouseleave = () => { if (hovPL) candle.removePriceLine(hovPL); hovPL = null; unfocus(); };
+    tr.onmouseleave = () => { if (hovPL) candle.removePriceLine(hovPL); hovPL = null; if (ZM) zoomOut(); unfocus(); };
   });
 
   // 왜 주목하나 · 체크 포인트 → 문장이 가리키는 작도·가격을 강조
