@@ -12,6 +12,13 @@ function pick(key, all, def) {
 }
 const MODE = pick('mode', MODES, 'light'), LAY = pick('lay', LAYS, 'basic');
 const DARK = MODE === 'dark';
+// 근거(왜 주목하나) 호버 확대 시안 — ?zm=a|b|c|off (기억함). a 확대만 · b 확대+말풍선 · c 확대+말풍선+바깥 어둡게
+const ZMS = { a: 'A 확대', b: 'B 말풍선', c: 'C 스포트라이트', off: '끔' }, ZMV = pick('zm', ZMS, 'off'), ZM = ZMV === 'off' ? '' : ZMV;
+if (ZM) addEventListener('DOMContentLoaded', () => {
+  const d = document.createElement('div'); d.className = 'zmsw';
+  d.innerHTML = '근거 확대 시안 ' + Object.entries(ZMS).map(([k, t]) => { const q = new URLSearchParams(location.search); q.set('zm', k); return `<a href="?${q}${location.hash}" class="${k === ZMV ? 'on' : ''}">${t}</a>`; }).join('');
+  document.body.appendChild(d);
+});
 document.body.classList.add('mode-' + MODE, 'lay-' + LAY);
 if (DARK) document.body.classList.add('dk');
 if (['tab', 'dash', 'f1', 'f2', 'f3'].includes(LAY)) document.body.classList.add('tb');
@@ -686,7 +693,7 @@ function buildChart(el, s, tf = 'D', mrows = null) {
   });
   ovl.style.setProperty('--halo', TH.bg);
   if (labs.some(e => e.side === 'r')) chart.timeScale().applyOptions({ rightOffset: 16 });   // 오른쪽 이름표 자리
-  let rafP = 0;
+  let rafP = 0, zoomDraw = null;
   function sched() { if (!rafP) rafP = requestAnimationFrame(() => { rafP = 0; place(); }); }
   function place() {
     const ts = chart.timeScale(), W = ts.width();
@@ -710,6 +717,7 @@ function buildChart(el, s, tf = 'D', mrows = null) {
       a.sort((p, q) => p.y - q.y);
       a.forEach((o, i) => { if (i && o.y < a[i - 1].y + 12) o.y = a[i - 1].y + 12; o.e.lab.style.left = o.x + 'px'; o.e.lab.style.top = o.y + 'px'; });
     }
+    if (zoomDraw) zoomDraw(ts, W, H);
   }
   chart.timeScale().subscribeVisibleLogicalRangeChange(sched);
   chart.timeScale().subscribeSizeChange(sched);
@@ -826,11 +834,105 @@ function buildChart(el, s, tf = 'D', mrows = null) {
   };
   const CDL = DARK ? '#F472B6' : '#BE185D';      // 캔들 칩 색
   const invPn = el.querySelector('.p-inv');
+
+  // ── 근거 확대 시안 (?zm=a 확대만 · b 확대+말풍선 · c 확대+말풍선+바깥 어둡게) ──
+  function zoneOf(tg, txt) {
+    let a = Infinity, b = -Infinity, c0 = Infinity, c1 = -Infinity, anchor = null, note = '';
+    const ps = [], P = pickI >= 0 ? pickI : N - 1;
+    const span = (i, j, k0 = i, k1 = j) => { a = Math.min(a, i); b = Math.max(b, j); c0 = Math.min(c0, k0); c1 = Math.max(c1, k1); };   // 보여 줄 구간 · 핵심 구간
+    if (tg.wick) {
+      const i = pdBar(tg.wick), hi = tg.wick === 'hi', wv = (s.items || []).find(x => x.k === 'wick');
+      span(i - 16, i + 3, i, i); ps.push(pd.h, pd.l);
+      anchor = [i, hi ? pd.h : pd.l];
+      note = `${hi ? '윗' : '아랫'}꼬리 ${fmt(hi ? pd.h - pdBody[0] : pdBody[1] - pd.l)}원${hi && wv ? ` · 하루 폭의 ${wv.val}` : ''}`;
+    }
+    reg.forEach(e => {
+      if (!e.pts || !(tg.g.has(e.g) || tg.items.has(e.item))) return;
+      const is = e.pts.map(p => idx.get(p.time)).filter(i => i != null); if (!is.length) return;
+      span(Math.min(...is), Math.max(P, ...is));
+      if (!anchor && !(e.pane > 0) && e.label) { const p = e.pts[e.pts.length - 1]; anchor = [Math.min(N - 1, idx.get(p.time) ?? P), p.value]; note = `${e.label} ${fmt(Math.round(p.value))}${e.g === 'channel' ? ` · 종가 ${fmt(rows[P].c)}` : ''}`; }
+    });
+    for (const gk of tg.g) {
+      const m = /^ma(\d+)$/.exec(gk);
+      if (m) { const v = maVal[m[1]][P]; if (v == null) continue; span(P - 40, P + 2, P - 2, P); ps.push(v); if (!anchor) { anchor = [P, v]; note = `${ml(m[1])} ${fmt(Math.round(v))} → 종가 ${fmt(rows[P].c)}`; } }
+      else if (gk === 'vol' || gk === 'rsi') span(P - 40, P + 2, P - 1, P);
+    }
+    tg.prices.forEach(([v, t]) => { span(P - 30, N - 1, P - 30, N - 1); ps.push(v); if (!anchor) { anchor = [N - 1, v]; note = `${t} ${fmt(v)}`; } });
+    if (a === Infinity) return null;
+    const MIN = ID ? 26 : 24;
+    if (b - a < MIN) { const c = (a + b) / 2; a = c - MIN / 2; b = c + MIN / 2; }
+    a = Math.max(0, Math.round(a)); b = Math.min(N - 1, Math.round(b));
+    if (!anchor) anchor = [P, rows[P].h];
+    // 세로: 보여 줄 구간의 봉 + 꼭 넣을 가격, 위아래 여유
+    let lo = Math.min(...ps, anchor[1]), hi = Math.max(...ps, anchor[1]);
+    for (let i = a; i <= b; i++) { lo = Math.min(lo, rows[i].l); hi = Math.max(hi, rows[i].h); }
+    const pv = (hi - lo) || hi * .02;
+    return { a, b, c0: Math.max(a, c0), c1: Math.min(b, c1), lo: lo - pv * .1, hi: hi + pv * .22, anchor, note: note || chipOf(txt).body };
+  }
+  let tw = 0, saved = null, enterT = 0, leaveT = 0, ZON = null;
+  const ease = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  const PS = chart.priceScale('right');
+  function tween(to, py, ms = 450, done) {      // 가로(봉 구간)·세로(가격 범위)를 같이 부드럽게
+    cancelAnimationFrame(tw);
+    const ts = chart.timeScale(), fr = ts.getVisibleLogicalRange(); if (!fr) return;
+    const fp = py && PS.getVisibleRange ? PS.getVisibleRange() : null;
+    if (fp) PS.setAutoScale(false);
+    const t0 = performance.now();
+    const step = now => { const k = Math.min(1, (now - t0) / ms), q = ease(k);
+      ts.setVisibleLogicalRange({ from: fr.from + (to.from - fr.from) * q, to: fr.to + (to.to - fr.to) * q });
+      if (fp) PS.setVisibleRange({ from: fp.from + (py.from - fp.from) * q, to: fp.to + (py.to - fp.to) * q });
+      if (k < 1) tw = requestAnimationFrame(step); else if (done) done(); };
+    tw = requestAnimationFrame(step);
+  }
+  const zd = document.createElement('div'), zc = document.createElement('div'), zl = document.createElement('div'), zr = document.createElement('div');
+  zd.className = 'zd'; zc.className = 'zc'; zl.className = zr.className = 'zsh';
+  if (ZM) ovl.prepend(zl, zr), ovl.append(zd, zc);
+  zoomDraw = (ts, W, H) => {
+    const on = !!ZON;
+    zd.classList.toggle('on', on && ZM !== 'a'); zc.classList.toggle('on', on && ZM !== 'a');
+    zl.classList.toggle('on', on && ZM === 'c'); zr.classList.toggle('on', on && ZM === 'c');
+    if (!on) return;
+    if (ZM !== 'a') {
+      const x = ts.logicalToCoordinate(ZON.anchor[0]), y = candle.priceToCoordinate(ZON.anchor[1]);
+      if (x == null || y == null || y < 0 || y > H) { zd.classList.remove('on'); zc.classList.remove('on'); }
+      else {
+        zd.style.left = zc.style.left = x + 'px'; zd.style.top = zc.style.top = y + 'px';
+        zc.style.setProperty('--tx', x > W * .6 ? 'calc(-100% - 14px)' : '14px');
+        zc.style.setProperty('--ty', y < 56 ? '10px' : 'calc(-100% - 10px)');
+      }
+    }
+    if (ZM === 'c') {
+      const x0 = ts.logicalToCoordinate(ZON.c0), x1 = ts.logicalToCoordinate(ZON.c1), sp = ts.logicalToCoordinate(ZON.c0 + 1) - x0 || 6;   // 정수 칸만 됨
+      const xa = x0 == null ? null : x0 - sp * 1.2, xb = x1 == null ? null : x1 + sp * 1.2;   // 핵심 구간 바깥만 어둡게
+      zl.style.width = Math.max(0, xa ?? 0) + 'px';
+      zr.style.left = Math.min(W, xb ?? W) + 'px'; zr.style.width = Math.max(0, W - (xb ?? W)) + 'px';
+    }
+  };
+  function zoomIn(z) {
+    clearTimeout(leaveT); clearTimeout(enterT);
+    enterT = setTimeout(() => {      // 목록을 훑고 지나갈 때 출렁이지 않게 잠깐 머문 뒤
+      if (!saved) saved = { t: chart.timeScale().getVisibleLogicalRange(), p: PS.getVisibleRange ? PS.getVisibleRange() : null };
+      const w = z.b - z.a, pad = Math.max(3, w * .12);
+      ZON = z; zc.innerHTML = `<b>${esc(z.note)}</b>`;
+      tween({ from: z.a - pad, to: z.b + pad + (RLAB ? Math.max(6, w * .14) : 3) }, { from: z.lo, to: z.hi }); sched();
+    }, 90);
+  }
+  function zoomOut() {
+    clearTimeout(enterT); ZON = null; sched();
+    leaveT = setTimeout(() => {
+      if (!saved) return; const sv = saved; saved = null;
+      tween(sv.t, sv.p, 380, () => { if (!saved) PS.setAutoScale(true); });
+    }, 160);
+  }
+
   let hlPL = [];
   el.querySelectorAll('[data-hl]').forEach(li => {
     const tg = targets(li.dataset.hl);
     if (!tg.g.size && !tg.items.size && !tg.prices.length && !tg.wick && !(tg.inv && invPn)) return;
     li.classList.add('can');
+    const zn = ZM ? zoneOf(tg, li.dataset.hl) : null;
+    li._zm = zn ? [() => zoomIn(zn), zoomOut] : null;      // 차트를 다시 그리면(30M↔1D) 새 차트 것으로 바뀜
+    if (!li._zb) { li._zb = 1; li.addEventListener('mouseenter', () => li._zm && li._zm[0]()); li.addEventListener('mouseleave', () => li._zm && li._zm[1]()); }
     li.onmouseenter = () => {
       hlPL = tg.prices.map(([v, t]) => candle.createPriceLine({ price: v, color: ORG, lineWidth: 2, lineStyle: LW.LineStyle.Dashed, axisLabelVisible: true, title: t }));
       if (tg.wick) {      // 꼬리 끝 ~ 몸통 사이를 두 선으로 + 그 봉에 표시

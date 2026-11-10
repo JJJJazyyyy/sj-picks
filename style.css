@@ -535,3 +535,15 @@ body.resizing .hspl,body.resizing:has(.hspl.on) *{cursor:row-resize !important}
 .pn.p-inv{transition:box-shadow .15s,background .15s}
 .pn.p-inv.flash{box-shadow:inset 0 0 0 2px #EA580C;background:#FFF7ED}
 .dk .pn.p-inv.flash{box-shadow:inset 0 0 0 2px #FB923C;background:rgba(251,146,60,.08)}
+/* 근거 호버 확대 시안 (?zm=a|b|c) */
+.ovl .zd{position:absolute;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;border:2px solid #EA580C;background:rgba(234,88,12,.12);opacity:0;transition:opacity .2s}
+.ovl .zd.on{opacity:1;animation:zpulse 1.3s ease-out infinite}
+@keyframes zpulse{0%{box-shadow:0 0 0 0 rgba(234,88,12,.45)}100%{box-shadow:0 0 0 12px rgba(234,88,12,0)}}
+.ovl .zc{position:absolute;opacity:0;transform:translate(var(--tx,14px),var(--ty,-100%)) scale(.9);transition:opacity .22s,transform .22s;background:#fff;color:#1F2937;border:1.5px solid #EA580C;border-radius:8px;padding:5px 10px;font-size:12.5px;line-height:1.35;white-space:nowrap;box-shadow:0 4px 14px rgba(15,23,42,.14)}
+.ovl .zc.on{opacity:1;transform:translate(var(--tx,14px),var(--ty,-100%)) scale(1)}
+.ovl .zsh{position:absolute;top:0;bottom:0;left:0;width:0;background:rgba(15,23,42,.24);opacity:0;transition:opacity .25s}
+.ovl .zsh.on{opacity:1}
+.dk .ovl .zc{background:#1F2937;color:#F9FAFB;border-color:#FB923C}.dk .ovl .zsh{background:rgba(0,0,0,.42)}
+.zmsw{position:fixed;right:14px;bottom:14px;z-index:50;background:#111827;color:#E5E7EB;font-size:12px;border-radius:999px;padding:6px 8px 6px 14px;box-shadow:0 6px 18px rgba(0,0,0,.25);display:flex;gap:4px;align-items:center}
+.zmsw a{color:#E5E7EB;text-decoration:none;padding:3px 9px;border-radius:999px}
+.zmsw a.on{background:#EA580C;color:#fff;font-weight:700}
