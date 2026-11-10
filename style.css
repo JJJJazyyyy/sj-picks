@@ -531,3 +531,7 @@ body.resizing .hspl,body.resizing:has(.hspl.on) *{cursor:row-resize !important}
 .sumt td.nmtd,.sumt td.kc{width:1%;white-space:nowrap}.sumt td.kc{text-align:right;padding-left:20px}   /* 표: 칩은 따로 칸 — 가장 긴 종목명에서 약 5칸 띄우고 칩끼리 오른쪽 끝 맞춤 */
 .jump a .kind{margin-left:10px}
 .jump a .pv,.jump a .jl{align-self:baseline}   /* '진입 후'를 등락률 글자와 같은 줄 높이에 */
+/* 왜 주목하나 수급 문장에 마우스 → 수급 칸 강조 */
+.pn.p-inv{transition:box-shadow .15s,background .15s}
+.pn.p-inv.flash{box-shadow:inset 0 0 0 2px #EA580C;background:#FFF7ED}
+.dk .pn.p-inv.flash{box-shadow:inset 0 0 0 2px #FB923C;background:rgba(251,146,60,.08)}

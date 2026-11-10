@@ -357,7 +357,8 @@ function methodHTML(D) {
     <li><b>최종 3종목</b> — 점수 순으로, 상한가(+29.5% 이상)는 다음 날 진입이 어려워 빼고, 업종이 겹치면 다음 순위</li></ol>`;
   if (!base) return `<h2>선정 방식</h2>${steps}`;
   const head = st.map(x => `<th>${logo(x.code, x.name, 16)}${esc(x.name)}</th>`).join('');
-  const rows = base.map((it, k) => `<tr><td class="l"><b>${esc(it.label)}</b></td><td class="l rl">${esc(it.rule)}</td>${st.map(x => { const v = x.items[k];
+  const rows = base.map((it, k) => `<tr><td class="l"><b>${esc(it.label)}</b></td><td class="l rl">${esc(it.rule)}</td>${st.map(x => { const v = (x.items || []).find(y => y.k === it.k);      // 추세형(미리 담을 종목)은 항목이 달라 빈칸
+    if (!v) return '<td class="zz">-</td>';
     return `<td class="${v.pts > 0 ? 'up' : v.pts < 0 ? 'dn' : 'zz'}">${v.pts > 0 ? '+' : ''}${v.pts} <small>${esc(v.val)}</small></td>`; }).join('')}</tr>`).join('');
   const tot = `<tr class="tot"><td class="l" colspan="2"><b>합계</b></td>${st.map(x => `<td><b>${x.score}</b>${x.rank ? ` <small>${x.ncand}개 중 ${x.rank}위</small>` : ''}</td>`).join('')}</tr>`;
   const note = st.find(x => x.pickNote);
@@ -454,7 +455,7 @@ function invRead(inv, rows) {
 }
 // 항목 앞 색깔 칩: 문장 종류(엘리엇·피보나치·RSI·수급…)를 칩으로, 뒤에 내용
 const CAT = [
-  [/다이버전스/, '다이버전스', '#16A085'], [/A-B-C|ABC 조정/, 'A-B-C', '#7C3AED'], [/엘리엇|[0-9]파(?![가-힣])|파동/, '엘리엇', '#2156E8'],
+  [/다이버전스/, '다이버전스', '#16A085'], [/평행채널|채널/, '채널', '#0E7490'], [/A-B-C|ABC 조정/, 'A-B-C', '#7C3AED'], [/엘리엇|[0-9]파(?![가-힣])|파동/, '엘리엇', '#2156E8'],
   [/피보나치|되돌림/, '피보나치', '#2980B9'], [/추세선/, '추세선', '#1E2329'], [/큰 추세|추세는|하락 추세|상승 추세/, '추세', '#374151'], [/52주|신고가|신저가/, '52주', '#6B7280'], [/이중바닥|쌍바닥|W자|넥라인/, '이중바닥', '#7C3AED'],
   [/RSI|과매도|과열/, 'RSI', '#8E44AD'], [/외국인|기관|순매수|순매도|수급/, '수급', '#0E9F6E'], [/거래량/, '거래량', '#F08A00'],
   [/\d+일선|정배열|이평/, '이평선', '#13A35B'], [/돌파/, '돌파', '#E5202B'], [/공시|공급계약|수주/, '공시', '#475569'],
@@ -466,7 +467,7 @@ function cats(t, n = 2) { const out = []; for (const [re, lab, col] of CAT) { if
 function chipOf(text) {
   const m = String(text).match(/^([^:：]{2,14})[:：]\s*(.+)$/);
   if (m) { const c = cats(m[1], 1)[0] || cats(m[2], 1)[0] || ['', '#6B7280']; return { chips: [[m[1].trim(), c[1]]], body: m[2] }; }
-  const cs = cats(text); return { chips: cs.length ? cs : [['메모', '#9CA3AF']], body: text };
+  const cs = cats(text, 1); return { chips: cs.length ? cs : [['메모', '#9CA3AF']], body: text };   // 칩은 하나만 (두 개면 줄바꿈돼서)
 }
 function chipList(items, hl) {
   if (!items || !items.length) return '<div class="hint">없음</div>';
@@ -574,7 +575,8 @@ function buildChart(el, s, tf = 'D', mrows = null) {
   }
   const candle = chart.addSeries(LW.CandlestickSeries, { upColor: UP, downColor: DN, borderUpColor: UP, borderDownColor: DN, wickUpColor: UP, wickDownColor: DN, priceLineColor: UP, priceFormat: pxFmt }, 0);
   candle.setData(rows.map((r, i) => ({ time: T[i], open: r.o, high: r.h, low: r.l, close: r.c })));
-  if (pickI >= 0) LW.createSeriesMarkers(candle, [{ time: T[pickI], position: 'aboveBar', shape: 'arrowDown', color: ORG, text: '선정', size: 1.6 }]);
+  const baseMk = pickI >= 0 ? [{ time: T[pickI], position: 'aboveBar', shape: 'arrowDown', color: ORG, text: '선정', size: 1.6 }] : [];
+  const candleMk = LW.createSeriesMarkers(candle, baseMk);
   candle.createPriceLine({ price: s.close, color: ENT, lineWidth: 2, lineStyle: LW.LineStyle.Solid, axisLabelVisible: true, title: '진입가' });
   const stopLv = levelOf(s, '손절');      // 축에는 현재가·진입가·손절만 상시 표시
   if (stopLv) candle.createPriceLine({ price: stopLv.price, color: DARK ? '#E5E7EB' : '#111111', lineWidth: 1, lineStyle: LW.LineStyle.SparseDotted, axisLabelVisible: true, title: '손절' });
@@ -780,7 +782,7 @@ function buildChart(el, s, tf = 'D', mrows = null) {
   const hiN = Math.max(...RR.slice(NR - 21, NR - 1).map(r => r.h)), loAll = Math.min(...RR.map(r => r.l)), hiAll = Math.max(...RR.map(r => r.h));
   const has = g => reg.some(e => e.g === g);
   function targets(txt) {
-    const g = new Set(), items = new Set(), prices = [];
+    const g = new Set(), items = new Set(), prices = []; let wick = null, inv = false;
     const fibItems = reg.filter(e => e.g === 'fib' && e.item);
     const lvs = [...txt.matchAll(/(?<![\d.])(0\.236|0\.382|0\.5|0\.618|0\.786)(?!\d)/g)].map(m => m[1]);
     if (/피보나치|되돌림/.test(txt) || lvs.length) {
@@ -789,6 +791,15 @@ function buildChart(el, s, tf = 'D', mrows = null) {
       else if (fibItems.length) g.add('fib');
     }
     if (/엘리엇|[0-9]파|A-B-C|ABC|조정/.test(txt) && has('elliott')) g.add('elliott');
+    if (/채널/.test(txt) && has('channel')) {      // 상단·중단·하단 중 문장이 말하는 선만
+      const cg = groups.find(x => x.id === 'channel'), w = (txt.match(/상단|중단|하단/) || [])[0];
+      const k = w && cg ? cg.items.findIndex(it => String(it.label).includes(w)) : -1;
+      if (k >= 0) items.add('channel:' + k); else g.add('channel');
+    }
+    if (/윗꼬리|아랫꼬리/.test(txt) && pickI >= 0) wick = /아랫꼬리/.test(txt) ? 'lo' : 'hi';
+    const room = (s.items || []).find(i => i.k === 'room');
+    if (/저항/.test(txt) && room && parseFloat(room.val)) prices.push([Math.round(s.close * (1 + parseFloat(room.val) / 100)), `위 저항 ${room.val}`]);
+    if (/외국인|기관|순매수|순매도|수급/.test(txt)) inv = true;
     if (/추세선/.test(txt) && has('trend')) g.add('trend');
     if (/이중바닥|쌍바닥|W자|넥라인|바닥/.test(txt) && has('dbottom')) g.add('dbottom');
     if (/다이버전스/.test(txt) && has('div')) g.add('div');
@@ -803,18 +814,35 @@ function buildChart(el, s, tf = 'D', mrows = null) {
       const v = +m[1].replace(/,/g, '');
       if (v >= loAll * 0.6 && v <= hiAll * 1.4 && !/^20[0-9]{2}$/.test(m[1])) prices.push([v, m[1]]);
     }
-    return { g, items, prices };
+    return { g, items, prices, wick, inv };
   }
+  // 선정일 캔들(분봉이면 그날 고가·저가가 나온 봉)과 꼬리 가격
+  const pd = s.rows[s.rows.length - 1], pdBody = [Math.max(pd.o, pd.c), Math.min(pd.o, pd.c)];
+  const pdBar = w => {
+    if (!ID) return pickI;
+    const d0 = Date.UTC(+pd.d.slice(0, 4), +pd.d.slice(4, 6) - 1, +pd.d.slice(6, 8)) / 1000;
+    let b = pickI; rows.forEach((r, i) => { if (r.t >= d0 && i <= pickI && (w === 'lo' ? r.l < rows[b].l : r.h > rows[b].h)) b = i; });
+    return b;
+  };
+  const CDL = DARK ? '#F472B6' : '#BE185D';      // 캔들 칩 색
+  const invPn = el.querySelector('.p-inv');
   let hlPL = [];
   el.querySelectorAll('[data-hl]').forEach(li => {
     const tg = targets(li.dataset.hl);
-    if (!tg.g.size && !tg.items.size && !tg.prices.length) return;
+    if (!tg.g.size && !tg.items.size && !tg.prices.length && !tg.wick && !(tg.inv && invPn)) return;
     li.classList.add('can');
     li.onmouseenter = () => {
       hlPL = tg.prices.map(([v, t]) => candle.createPriceLine({ price: v, color: ORG, lineWidth: 2, lineStyle: LW.LineStyle.Dashed, axisLabelVisible: true, title: t }));
+      if (tg.wick) {      // 꼬리 끝 ~ 몸통 사이를 두 선으로 + 그 봉에 표시
+        const hi = tg.wick === 'hi';
+        hlPL.push(candle.createPriceLine({ price: hi ? pd.h : pd.l, color: CDL, lineWidth: 2, lineStyle: LW.LineStyle.Dashed, axisLabelVisible: true, title: hi ? '고가(꼬리 끝)' : '저가(꼬리 끝)' }));
+        hlPL.push(candle.createPriceLine({ price: hi ? pdBody[0] : pdBody[1], color: CDL, lineWidth: 1, lineStyle: LW.LineStyle.Dotted, axisLabelVisible: true, title: '몸통' }));
+        candleMk.setMarkers(baseMk.concat({ time: T[pdBar(tg.wick)], position: hi ? 'aboveBar' : 'belowBar', shape: 'circle', color: CDL, text: hi ? '윗꼬리' : '아랫꼬리', size: 1.3 }).sort((a, b) => a.time < b.time ? -1 : a.time > b.time ? 1 : 0));
+      }
+      if (tg.inv && invPn) invPn.classList.add('flash');
       focus(e => e.g === 'candle' || tg.g.has(e.g) || tg.items.has(e.item));
     };
-    li.onmouseleave = () => { hlPL.forEach(p => candle.removePriceLine(p)); hlPL = []; unfocus(); };
+    li.onmouseleave = () => { hlPL.forEach(p => candle.removePriceLine(p)); hlPL = []; candleMk.setMarkers(baseMk); if (invPn) invPn.classList.remove('flash'); unfocus(); };
   });
 
   // 시고저종 표시
