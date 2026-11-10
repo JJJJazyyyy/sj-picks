@@ -589,3 +589,8 @@ body.resizing .hspl,body.resizing:has(.hspl.on) *{cursor:row-resize !important}
 .mkt .tip .tr.tn{margin-top:4px;padding-top:5px;border-top:1px solid rgba(255,255,255,.18)}
 .mkt .tip .tr.tn i{color:inherit}
 .mkt .tip .tt{margin-bottom:6px}
+.mkt .tip .lim{display:block;position:relative;padding-top:9px;margin:3px 0 1px}
+.mkt .tip .lim i{position:absolute;top:0;transform:translateX(-50%);width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid #fff}
+.mkt .tip .lim b{display:block;height:8px;border-radius:4px;background:linear-gradient(90deg,#2563EB,#4B5563 50%,#DC2626)}
+.mkt .tip .lim span{display:flex;justify-content:space-between;font-size:10.5px;color:#9CA3AF;margin-top:2px}
+.mkt .tip .lim em{font-style:normal}
