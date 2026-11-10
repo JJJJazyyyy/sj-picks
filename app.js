@@ -72,6 +72,7 @@ async function init() {
   sel.onchange = () => { location.hash = sel.value; };
   window.addEventListener('hashchange', route);
   try { LIVE = await getJSON('data/live.json'); } catch (e) { LIVE = null; }
+  loadMkt(); setInterval(loadMkt, 3 * 60 * 1000);      // 시장 날씨 (장중 10분 · 장전 10분 · 저녁 30분 갱신)
   setInterval(async () => { try { const L = await getJSON('data/live.json'); if (!LIVE || L.date !== LIVE.date || L.time !== LIVE.time) { LIVE = L; applyLive(); perfMini(); } } catch (e) { } }, 5 * 60 * 1000);
   renderPerf();
   route();
@@ -966,6 +967,49 @@ function dedupe(pts) {
   const m = new Map(); pts.forEach(p => m.set(p.time, p));
   return [...m.values()].sort((a, b) => a.time < b.time ? -1 : 1);
 }
+
+// ───────────────────────── 시장 날씨 (종목 탭 아래 독립된 한 줄 박스, 11/10 사용자 선택: 디자인 2) ─────────────────────────
+let MKT = null;
+async function loadMkt() { try { MKT = await getJSON('data/mkt.json?t=' + Math.floor(Date.now() / 6e4)); } catch (e) { } renderMkt(); }
+const FLAG = {      // 국기 이모지는 윈도 크롬에서 'KR'·'US' 글자로만 나와서 작은 그림으로
+  kr: '<svg class="flag" viewBox="0 0 30 20" role="img" aria-label="한국"><rect width="30" height="20" fill="#fff"/><path d="M11.3 8.1a4.2 4.2 0 0 1 7.4 3.8 2.1 2.1 0 0 0-3.7-1.9 2.1 2.1 0 0 1-3.7-1.9z" fill="#CD2E3A"/><path d="M11.3 8.1a2.1 2.1 0 0 0 3.7 1.9 2.1 2.1 0 0 1 3.7 1.9 4.2 4.2 0 0 1-7.4-3.8z" fill="#0047A0"/><g fill="#111"><rect x="3.5" y="3" width="4.5" height="1" transform="rotate(34 5.7 3.5)"/><rect x="3.5" y="4.6" width="4.5" height="1" transform="rotate(34 5.7 5.1)"/><rect x="22" y="3" width="4.5" height="1" transform="rotate(-34 24.3 3.5)"/><rect x="22" y="4.6" width="4.5" height="1" transform="rotate(-34 24.3 5.1)"/><rect x="3.5" y="14.4" width="4.5" height="1" transform="rotate(-34 5.7 14.9)"/><rect x="3.5" y="16" width="4.5" height="1" transform="rotate(-34 5.7 16.5)"/><rect x="22" y="14.4" width="4.5" height="1" transform="rotate(34 24.3 14.9)"/><rect x="22" y="16" width="4.5" height="1" transform="rotate(34 24.3 16.5)"/></g></svg>',
+  us: '<svg class="flag" viewBox="0 0 30 20" role="img" aria-label="미국"><rect width="30" height="20" fill="#fff"/><g fill="#B22234">' + [0, 1, 2, 3, 4, 5, 6].map(i => `<rect y="${(i * 3.08).toFixed(2)}" width="30" height="1.54"/>`).join('') + '</g><rect width="13" height="10.8" fill="#3C3B6E"/><g fill="#fff">' + [[2, 2], [5, 2], [8, 2], [11, 2], [3.5, 4.2], [6.5, 4.2], [9.5, 4.2], [2, 6.4], [5, 6.4], [8, 6.4], [11, 6.4], [3.5, 8.6], [6.5, 8.6], [9.5, 8.6]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r=".55"/>`).join('') + '</g></svg>',
+};
+const WIC = {      // 날씨 그림 (맑음·흐림·비·폭풍 · 밤엔 초승달)
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/>',
+  cloud: '<path d="M7 18h10a4 4 0 0 0 .6-8A5.5 5.5 0 0 0 7 9.5 4.3 4.3 0 0 0 7 18z"/>',
+  rain: '<path d="M7 15h10a4 4 0 0 0 .6-8A5.5 5.5 0 0 0 7 6.5 4.3 4.3 0 0 0 7 15z"/><path d="M9 18l-1 2.5M13 18l-1 2.5M17 18l-1 2.5"/>',
+  storm: '<path d="M7 14h10a4 4 0 0 0 .6-8A5.5 5.5 0 0 0 7 5.5 4.3 4.3 0 0 0 7 14z"/><path d="M12.5 14.5l-2 3.5h3l-2 3.5"/>',
+  moon: '<path d="M19.5 14.5A8 8 0 0 1 9.5 4.5a8 8 0 1 0 10 10z"/>',
+};
+const wic = (k, c = '') => `<svg class="wi ${c}" viewBox="0 0 24 24" aria-hidden="true">${WIC[k]}</svg>`;
+function renderMkt() {
+  const el = $('#mkt'); if (!el) return;
+  const M = MKT && MKT.items; if (!M || !Object.keys(M).length) { el.hidden = true; return; }
+  const now = new Date(), hm = now.getHours() * 60 + now.getMinutes();
+  const [hh, mm] = String(MKT.time || '0:0').split(':').map(Number), today = `${now.getFullYear()}${pad2(now.getMonth() + 1)}${pad2(now.getDate())}`;
+  let age = MKT.date === today ? hm - (hh * 60 + mm) : 9999; if (age < 0) age += 1440;
+  const fresh = age <= 35;      // 마지막 갱신이 35분 안일 때만 '실시간' 깜빡임
+  const ph = MKT.phase, pre = ph === 'pre' || ph === 'night';
+  const base = (pre ? [M.night, M.nq] : [M.kospi, M.kosdaq]).filter(Boolean).map(x => x.r);
+  if (!base.length) { el.hidden = true; return; }
+  const w = Math.min(...base);      // 둘 중 나쁜 쪽 기준
+  const lv = w >= 0.5 ? 'sun' : w > -0.5 ? 'cloud' : w > -1.5 ? 'rain' : 'storm';
+  const word = { sun: '맑음', cloud: '흐림', rain: '비', storm: '폭풍' }[lv];
+  const k1 = M.kospi ? `코스피 ${pct(M.kospi.r)}` : '';
+  const msg = pre ? { sun: '야간·미국 선물 강세 → 갭 상승 출발 가능', cloud: '보합 출발 예상', rain: '약세 출발 예상 — 장전 시간외는 시가 보고', storm: '갭 하락 예상 — 진입은 시가 확인 후' }[lv]
+    : ph === 'after' ? `장 마감 · ${k1}` : { sun: `시장 강세 · ${k1}`, cloud: `보합권 · ${k1}`, rain: `시장 약세 · ${k1} — 손절선 확인`, storm: `시장 급락 · ${k1} — 손절선 확인` }[lv];
+  const night = hm >= 18 * 60 || hm < 6 * 60;
+  const it = (x, flag, name, dig, tip) => !x ? '' : `<span class="mi" title="${esc(tip)}">${FLAG[flag]}<span class="mk">${name}</span><b>${x.p.toLocaleString('ko-KR', { minimumFractionDigits: dig, maximumFractionDigits: dig })}</b><span class="${cls(x.r)}">${pct(x.r)}</span>${x.live && fresh ? `<i class="blink ${cls(x.r)}" title="실시간 갱신 중"></i>` : ''}</span>`;
+  el.className = `mkt w-${lv}${night ? ' nt' : ''}`; el.hidden = false;
+  el.innerHTML = `<span class="mw">${wic(night ? 'moon' : lv)}<b>${word}</b><span class="mm">${esc(msg)}</span></span>`
+    + it(M.night, 'kr', `${night ? wic('moon', 'sm') : ''}코스피 야간`, 2, `코스피200 야간선물 ${M.night ? M.night.code : ''} · 18:00~다음 날 06:00 · 전일 정규장 대비`)
+    + it(M.nq, 'us', '나스닥 선물', 0, `나스닥100 선물(NQ) · Yahoo Finance${M.nq && M.nq.at ? ' · ' + M.nq.at : ''}`)
+    + it(M.kospi, 'kr', '코스피', 2, '코스피 지수 · 한국투자증권')
+    + it(M.kosdaq, 'kr', '코스닥', 2, '코스닥 지수 · 한국투자증권')
+    + `<span class="mt">${MKT.date === today ? '' : md(MKT.date) + ' '}${MKT.time}${fresh ? '' : ' · 지난 값'}</span>`;
+}
+setInterval(renderMkt, 60 * 1000);      // 시간이 지나면 깜빡임 끄기
 
 // ───────────────────────── 성과 · 아카이브 ─────────────────────────
 function renderPerf() {
