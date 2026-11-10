@@ -539,7 +539,7 @@ body.resizing .hspl,body.resizing:has(.hspl.on) *{cursor:row-resize !important}
 .ovl .zd{position:absolute;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;border:2px solid #EA580C;background:rgba(234,88,12,.12);opacity:0;transition:opacity .2s}
 .ovl .zd.on{opacity:1;animation:zpulse 1.3s ease-out infinite}
 @keyframes zpulse{0%{box-shadow:0 0 0 0 rgba(234,88,12,.45)}100%{box-shadow:0 0 0 12px rgba(234,88,12,0)}}
-.ovl .zc{position:absolute;opacity:0;transform:translate(var(--tx,14px),var(--ty,-100%)) scale(.9);transition:opacity .14s,transform .14s;background:#fff;color:#1F2937;border:1.5px solid #EA580C;border-radius:8px;padding:5px 10px;font-size:12.5px;line-height:1.35;white-space:nowrap;box-shadow:0 4px 14px rgba(15,23,42,.14)}
+.ovl .zc{position:absolute;opacity:0;transform:translate(var(--tx,14px),var(--ty,-100%)) scale(.9);transition:opacity .09s,transform .09s;background:#fff;color:#1F2937;border:1.5px solid #EA580C;border-radius:8px;padding:5px 10px;font-size:12.5px;line-height:1.35;white-space:nowrap;box-shadow:0 4px 14px rgba(15,23,42,.14)}
 .ovl .zc.on{opacity:1;transform:translate(var(--tx,14px),var(--ty,-100%)) scale(1)}
 .ovl .zsh{position:absolute;top:0;bottom:0;left:0;width:0;background:rgba(15,23,42,.24);opacity:0;transition:opacity .25s}
 .ovl .zsh.on{opacity:1}

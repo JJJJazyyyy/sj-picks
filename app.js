@@ -865,7 +865,7 @@ function buildChart(el, s, tf = 'D', mrows = null) {
     const pv = (hi - lo) || hi * .02;
     return { a, b, c0: Math.max(a, c0), c1: Math.min(b, c1), lo: lo - pv * .1, hi: hi + pv * .22, anchor, tags, note: note || chipOf(txt).body };
   }
-  let tw = 0, saved = null, enterT = 0, leaveT = 0, ZON = null;
+  let tw = 0, saved = null, leaveT = 0, ZON = null;
   const ease = t => 1 - Math.pow(1 - t, 3);      // 처음에 빠르게 붙고 끝에 살짝 감속 (굼뜨지 않게)
   const PS = chart.priceScale('right');
   function tween(to, py, ms = 240, done) {      // 가로(봉 구간)·세로(가격 범위)를 같이 부드럽게
@@ -908,21 +908,19 @@ function buildChart(el, s, tf = 'D', mrows = null) {
     }
   };
   function zoomIn(z) {
-    clearTimeout(leaveT); clearTimeout(enterT);
-    enterT = setTimeout(() => {      // 목록을 훑고 지나갈 때 출렁이지 않게 잠깐 머문 뒤
-      if (!saved) saved = { t: chart.timeScale().getVisibleLogicalRange(), p: PS.getVisibleRange ? PS.getVisibleRange() : null };
-      const w = z.b - z.a, pad = Math.max(3, w * .12);
-      ZON = z; zc.innerHTML = `<b>${esc(z.note)}</b>`;
-      axo.innerHTML = z.tags.map(([v, c]) => `<div data-p="${v}" style="background:${c}">${fmt(Math.round(v))}</div>`).join('');
-      tween({ from: z.a - pad, to: z.b + pad + (RLAB ? Math.max(6, w * .14) : 3) }, { from: z.lo, to: z.hi }); sched();
-    }, 35);
+    clearTimeout(leaveT);      // 바로 시작 (11/10 사용자: 대기 없이) — 다른 항목으로 옮기면 지금 화면에서 곧장 다음 구간으로
+    if (!saved) saved = { t: chart.timeScale().getVisibleLogicalRange(), p: PS.getVisibleRange ? PS.getVisibleRange() : null };
+    const w = z.b - z.a, pad = Math.max(3, w * .12);
+    ZON = z; zc.innerHTML = `<b>${esc(z.note)}</b>`;
+    axo.innerHTML = z.tags.map(([v, c]) => `<div data-p="${v}" style="background:${c}">${fmt(Math.round(v))}</div>`).join('');
+    tween({ from: z.a - pad, to: z.b + pad + (RLAB ? Math.max(6, w * .14) : 3) }, { from: z.lo, to: z.hi }, 150); place();
   }
   function zoomOut() {
-    clearTimeout(enterT); ZON = null; axo.innerHTML = ''; sched();
-    leaveT = setTimeout(() => {
+    ZON = null; axo.innerHTML = ''; sched();
+    leaveT = setTimeout(() => {      // 항목 사이를 옮겨 다닐 땐 원래 화면으로 안 돌아감
       if (!saved) return; const sv = saved; saved = null;
-      tween(sv.t, sv.p, 200, () => { if (!saved) PS.setAutoScale(true); });
-    }, 80);
+      tween(sv.t, sv.p, 160, () => { if (!saved) PS.setAutoScale(true); });
+    }, 120);
   }
 
   let hlPL = [];
