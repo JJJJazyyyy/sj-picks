@@ -913,13 +913,13 @@ function buildChart(el, s, tf = 'D', mrows = null) {
     const w = z.b - z.a, pad = Math.max(3, w * .12);
     ZON = z; zc.innerHTML = `<b>${esc(z.note)}</b>`;
     axo.innerHTML = z.tags.map(([v, c]) => `<div data-p="${v}" style="background:${c}">${fmt(Math.round(v))}</div>`).join('');
-    tween({ from: z.a - pad, to: z.b + pad + (RLAB ? Math.max(6, w * .14) : 3) }, { from: z.lo, to: z.hi }, 150); place();
+    tween({ from: z.a - pad, to: z.b + pad + (RLAB ? Math.max(6, w * .14) : 3) }, { from: z.lo, to: z.hi }, 200); place();
   }
   function zoomOut() {
     ZON = null; axo.innerHTML = ''; sched();
     leaveT = setTimeout(() => {      // 항목 사이를 옮겨 다닐 땐 원래 화면으로 안 돌아감
       if (!saved) return; const sv = saved; saved = null;
-      tween(sv.t, sv.p, 160, () => { if (!saved) PS.setAutoScale(true); });
+      tween(sv.t, sv.p, 200, () => { if (!saved) PS.setAutoScale(true); });
     }, 120);
   }
 
