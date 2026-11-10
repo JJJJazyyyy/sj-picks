@@ -996,14 +996,12 @@ function renderMkt() {
   const w = Math.min(...base);      // 둘 중 나쁜 쪽 기준
   const lv = w >= 0.5 ? 'sun' : w > -0.5 ? 'cloud' : w > -1.5 ? 'rain' : 'storm';
   const word = { sun: '맑음', cloud: '흐림', rain: '비', storm: '폭풍' }[lv];
-  const k1 = M.kospi ? `코스피 ${pct(M.kospi.r)}` : '';
   const msg = pre ? { sun: '야간·미국 선물 강세 → 갭 상승 출발 가능', cloud: '보합 출발 예상', rain: '약세 출발 예상 — 장전 시간외는 시가 보고', storm: '갭 하락 예상 — 진입은 시가 확인 후' }[lv]
-    : ph === 'after' ? `장 마감 · ${k1}` : { sun: `시장 강세 · ${k1}`, cloud: `보합권 · ${k1}`, rain: `시장 약세 · ${k1} — 손절선 확인`, storm: `시장 급락 · ${k1} — 손절선 확인` }[lv];
-  const night = hm >= 18 * 60 || hm < 6 * 60;
-  const it = (x, flag, name, dig, tip) => !x ? '' : `<span class="mi" title="${esc(tip)}">${FLAG[flag]}<span class="mk">${name}</span><b>${x.p.toLocaleString('ko-KR', { minimumFractionDigits: dig, maximumFractionDigits: dig })}</b><span class="${cls(x.r)}">${pct(x.r)}</span>${x.live && fresh ? `<i class="blink ${cls(x.r)}" title="실시간 갱신 중"></i>` : ''}</span>`;
-  el.className = `mkt w-${lv}${night ? ' nt' : ''}`; el.hidden = false;
-  el.innerHTML = `<span class="mw">${wic(night ? 'moon' : lv)}<b>${word}</b><span class="mm">${esc(msg)}</span></span>`
-    + it(M.night, 'kr', `${night ? wic('moon', 'sm') : ''}코스피 야간`, 2, `코스피200 야간선물 ${M.night ? M.night.code : ''} · 18:00~다음 날 06:00 · 전일 정규장 대비`)
+    : ph === 'after' ? '장 마감' : { sun: '시장 강세', cloud: '보합권', rain: '시장 약세 — 손절선 확인', storm: '시장 급락 — 손절선 확인' }[lv];      // 코스피 수치는 오른쪽에 있으니 중복 안 함
+  const it = (x, flag, name, dig, tip) => !x ? '' : `<span class="mi" title="${esc(tip)}">${FLAG[flag]}<span class="mk">${name}</span><b>${x.p.toLocaleString('ko-KR', { minimumFractionDigits: dig, maximumFractionDigits: dig })}</b><span class="${cls(x.r)}">${pct(x.r)}</span>${x.live && fresh ? `<i class="blink" title="실시간 갱신 중"></i>` : ''}</span>`;
+  el.className = `mkt w-${lv}`; el.hidden = false;
+  el.innerHTML = `<span class="mw">${wic(lv)}<b>${word}</b><span class="mm">${esc(msg)}</span></span>`
+    + it(M.night, 'kr', `${wic('moon', 'sm')}코스피 야간`, 2, `코스피200 야간선물 ${M.night ? M.night.code : ''} · 18:00~다음 날 06:00 · 전일 정규장 대비`)
     + it(M.nq, 'us', '나스닥 선물', 0, `나스닥100 선물(NQ) · Yahoo Finance${M.nq && M.nq.at ? ' · ' + M.nq.at : ''}`)
     + it(M.kospi, 'kr', '코스피', 2, '코스피 지수 · 한국투자증권')
     + it(M.kosdaq, 'kr', '코스닥', 2, '코스닥 지수 · 한국투자증권')
