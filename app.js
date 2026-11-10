@@ -580,9 +580,9 @@ function buildChart(el, s, tf = 'D', mrows = null) {
   candle.setData(rows.map((r, i) => ({ time: T[i], open: r.o, high: r.h, low: r.l, close: r.c })));
   const baseMk = pickI >= 0 ? [{ time: T[pickI], position: 'aboveBar', shape: 'arrowDown', color: ORG, text: '선정', size: 1.6 }] : [];
   const candleMk = LW.createSeriesMarkers(candle, baseMk);
-  candle.createPriceLine({ price: s.close, color: ENT, lineWidth: 2, lineStyle: LW.LineStyle.Solid, axisLabelVisible: true, title: '진입가' });
+  const ENTPL = candle.createPriceLine({ price: s.close, color: ENT, lineWidth: 2, lineStyle: LW.LineStyle.Solid, axisLabelVisible: true, title: '진입가' });
   const stopLv = levelOf(s, '손절');      // 축에는 현재가·진입가·손절만 상시 표시
-  if (stopLv) candle.createPriceLine({ price: stopLv.price, color: DARK ? '#E5E7EB' : '#111111', lineWidth: 1, lineStyle: LW.LineStyle.SparseDotted, axisLabelVisible: true, title: '손절' });
+  const STOPPL = stopLv ? candle.createPriceLine({ price: stopLv.price, color: DARK ? '#E5E7EB' : '#111111', lineWidth: 1, lineStyle: LW.LineStyle.SparseDotted, axisLabelVisible: true, title: '손절' }) : null;
   add({ g: 'candle', kind: 'candle', series: candle });
   // 이동평균
   const maVal = {};
@@ -778,7 +778,7 @@ function buildChart(el, s, tf = 'D', mrows = null) {
       hovPL = candle.createPriceLine({ price: l.price, color: lvColor(l.kind), lineWidth: 2, lineStyle: LW.LineStyle.Dashed, axisLabelVisible: !ZM, title: ZM ? '' : `${l.kind} ${l.basis}`.slice(0, 22) });
       if (ZM) {      // 왜 주목하나와 같게: 확대 + 말풍선 + 가격축 큰 가격표 (11/10 사용자)
         const z = zoneOf({ g: new Set(), items: new Set(), prices: [[l.price, l.kind]], wick: null }, '');
-        if (z) { z.tags = [[l.price, lvColor(l.kind), l.kind]]; z.note = `${l.kind} ${fmt(l.price)}${l.basis ? ' · ' + l.basis : ''}`; zoomIn(z); }
+        if (z) { z.tags = [[l.price, lvColor(l.kind), l.kind]]; z.note = `${l.kind} ${fmt(l.price)}${l.basis ? ' · ' + String(l.basis).split(/ = | — /)[0] : ''}`; zoomIn(z); }      // 근거는 앞부분만 (말풍선 짧게)
       }
       focus(e => e.g === 'candle');
     };
@@ -906,7 +906,8 @@ function buildChart(el, s, tf = 'D', mrows = null) {
       if (x == null || y == null || y < 0 || y > H) { zd.classList.remove('on'); zc.classList.remove('on'); }
       else {
         zd.style.left = zc.style.left = x + 'px'; zd.style.top = zc.style.top = y + 'px';
-        zc.style.setProperty('--tx', x > W * .6 ? 'calc(-100% - 14px)' : '14px');
+        const cw = zc.offsetWidth; let lf = x > W * .6; if (lf && x - cw - 14 < 0) lf = false; else if (!lf && x + cw + 14 > W) lf = x - cw - 14 >= 0;      // 차트 밖으로 안 나가게
+        zc.style.setProperty('--tx', lf ? 'calc(-100% - 14px)' : '14px');
         zc.style.setProperty('--ty', y < 56 ? '10px' : 'calc(-100% - 10px)');
       }
     }
@@ -917,16 +918,25 @@ function buildChart(el, s, tf = 'D', mrows = null) {
       zr.style.left = Math.min(W, xb ?? W) + 'px'; zr.style.width = Math.max(0, W - (xb ?? W)) + 'px';
     }
   };
+  // 큰 가격표와 같은 가격에 있는 기본 축 라벨(진입가·손절·현재가)은 잠깐 숨김 — 두 개로 겹쳐 보이지 않게
+  const near = (a, b) => Math.abs(a - b) <= Math.abs(b) * 0.002;
+  function axHide(ps) {
+    const lastC = rows[N - 1].c;
+    ENTPL.applyOptions({ axisLabelVisible: !ps.some(p => near(p, s.close)), title: ps.some(p => near(p, s.close)) ? '' : '진입가' });
+    if (STOPPL) STOPPL.applyOptions({ axisLabelVisible: !ps.some(p => near(p, stopLv.price)), title: ps.some(p => near(p, stopLv.price)) ? '' : '손절' });
+    candle.applyOptions({ lastValueVisible: !ps.some(p => near(p, lastC)) });
+  }
   function zoomIn(z) {
     clearTimeout(leaveT);      // 바로 시작 (11/10 사용자: 대기 없이) — 다른 항목으로 옮기면 지금 화면에서 곧장 다음 구간으로
     if (!saved) saved = { t: chart.timeScale().getVisibleLogicalRange(), p: PS.getVisibleRange ? PS.getVisibleRange() : null };
     const w = z.b - z.a, pad = Math.max(3, w * .12);
     ZON = z; zc.innerHTML = `<b>${esc(z.note)}</b>`;
+    axHide(z.tags.map(t => t[0]));
     axo.innerHTML = z.tags.map(([v, c, n]) => `<div data-p="${v}" style="background:${c}">${n ? `<small>${esc(n)}</small>` : ''}${fmt(Math.round(v))}</div>`).join('');
     tween({ from: z.a - pad, to: z.b + pad + (RLAB ? Math.max(6, w * .14) : 3) }, { from: z.lo, to: z.hi }, 300); place();
   }
   function zoomOut() {
-    ZON = null; axo.innerHTML = ''; sched();
+    ZON = null; axo.innerHTML = ''; axHide([]); sched();
     leaveT = setTimeout(() => {      // 항목 사이를 옮겨 다닐 땐 원래 화면으로 안 돌아감
       if (!saved) return; const sv = saved; saved = null;
       tween(sv.t, sv.p, 300, () => { if (!saved) PS.setAutoScale(true); });
