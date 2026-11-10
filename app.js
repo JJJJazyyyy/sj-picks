@@ -350,25 +350,46 @@ document.addEventListener('click', unpin);
 document.addEventListener('keydown', e => { if (e.key === 'Escape') unpin(); });
 
 // ── 페이지 아래 '선정 방식': 단계 + 점수표(그날 세 종목 점수를 열로) ──
-function methodHTML(D) {
+function methodHTML(D) {      // 11/10 사용자 B: 급등 후보 · 미리 담을 종목 점수표를 좌우로 나란히 (항목이 달라 한 표에 넣으면 빈칸)
   const st = D.stocks.filter(x => x.items);
-  const base = st[0] ? st[0].items : null;
+  const hot = st.filter(x => x.kind !== 'swing'), sw = st.filter(x => x.kind === 'swing');
+  const mx = g => g[0] ? +g[0].items.reduce((a, x) => a + x.max, 0).toFixed(1) : 0;
   const steps = `<ol class="msteps">
     <li><b>후보 모으기</b> — 코스피·코스닥 각각 등락률 상위 30 · 거래대금 상위 30 · 거래증가율 상위 30 (순위 조회가 모자라면 최근 후보 목록으로 보충)</li>
     <li><b>제외</b> — ETF·ETN·스팩·리츠·우선주, 일봉 130개 미만, 종가 1,000원 미만, 거래대금 50억 미만</li>
-    <li><b>점수</b> — 아래 13개 항목을 더함 (최고 ${base ? base.reduce((a, x) => a + x.max, 0) : 14.5}점)</li>
-    <li><b>최종 3종목</b> — 점수 순으로, 상한가(+29.5% 이상)는 다음 날 진입이 어려워 빼고, 업종이 겹치면 다음 순위</li></ol>`;
-  if (!base) return `<h2>선정 방식</h2>${steps}`;
-  const head = st.map(x => `<th>${logo(x.code, x.name, 16)}${esc(x.name)}</th>`).join('');
-  const rows = base.map((it, k) => `<tr><td class="l"><b>${esc(it.label)}</b></td><td class="l rl">${esc(it.rule)}</td>${st.map(x => { const v = (x.items || []).find(y => y.k === it.k);      // 추세형(미리 담을 종목)은 항목이 달라 빈칸
-    if (!v) return '<td class="zz">-</td>';
-    return `<td class="${v.pts > 0 ? 'up' : v.pts < 0 ? 'dn' : 'zz'}">${v.pts > 0 ? '+' : ''}${v.pts} <small>${esc(v.val)}</small></td>`; }).join('')}</tr>`).join('');
-  const tot = `<tr class="tot"><td class="l" colspan="2"><b>합계</b></td>${st.map(x => `<td><b>${x.score}</b>${x.rank ? ` <small>${x.ncand}개 중 ${x.rank}위</small>` : ''}</td>`).join('')}</tr>`;
+    <li><b>점수</b> — ${sw.length ? `급등 후보 ${sw.length && hot[0] ? hot[0].items.length : 13}개 항목(최고 ${mx(hot)}점) · 미리 담을 종목 ${sw[0].items.length}개 항목(최고 ${mx(sw)}점)을 따로 매김`
+      : `아래 ${hot[0] ? hot[0].items.length : 13}개 항목을 더함 (최고 ${hot[0] ? mx(hot) : 14.5}점)`}</li>
+    <li><b>최종 3종목</b> — ${sw.length ? `급등 후보 점수 순 ${hot.length}개(당일 +2% 이상, 상한가 제외) + 미리 담을 종목 점수 순 ${sw.length}개(4점 이상, 당일 +8% 이하), 업종이 겹치면 다음 순위`
+      : '점수 순으로, 상한가(+29.5% 이상)는 다음 날 진입이 어려워 빼고, 업종이 겹치면 다음 순위'}</li></ol>`;
+  if (!st.length) return `<h2>선정 방식</h2>${steps}`;
+  const tbl = (g, title) => {
+    const base = g[0].items;
+    const head = g.map(x => `<th>${logo(x.code, x.name, 16)}${esc(x.name)}</th>`).join('');
+    const rows = base.map(it => `<tr><td class="l"><span class="mlb" tabindex="0" data-tip="${esc(it.rule)}">${esc(it.label)}</span></td>${g.map(x => { const v = (x.items || []).find(y => y.k === it.k);
+      if (!v) return '<td class="zz">-</td>';
+      return `<td class="${v.pts > 0 ? 'up' : v.pts < 0 ? 'dn' : 'zz'}">${v.pts > 0 ? '+' : ''}${v.pts} <small>${esc(v.val)}</small></td>`; }).join('')}</tr>`).join('');
+    const tot = `<tr class="tot"><td class="l"><b>합계</b> <small>최고 ${mx(g)}점</small></td>${g.map(x => `<td><b>${x.score}</b>${x.rank ? ` <small>${x.ncand}개 중 ${x.rank}위</small>` : ''}</td>`).join('')}</tr>`;
+    return `<div class="mcol">${title ? `<h3 class="msec">${title} <small>${base.length}개 항목</small></h3>` : ''}<div class="tblwrap"><table class="perf mtab"><tr><th class="l">항목 <small>(마우스 → 조건)</small></th>${head}</tr>${rows}${tot}</table></div></div>`;
+  };
   const note = st.find(x => x.pickNote);
+  const body = sw.length && hot.length
+    ? `<div class="mgrid" style="grid-template-columns:minmax(0,${1.6 + hot.length}fr) minmax(0,${1.6 + sw.length}fr)">${tbl(hot, '급등 후보')}${tbl(sw, '미리 담을 종목')}</div>`
+    : tbl(st, '');
   return `<h2>선정 방식 <small>${dname(D.day)} 마감 기준 세 종목 점수를 나란히</small></h2>${steps}
-    ${note ? `<div class="spn">${esc(note.pickNote)}</div>` : ''}
-    <div class="tblwrap"><table class="perf mtab"><tr><th class="l">항목</th><th class="l">조건 · 점수</th>${head}</tr>${rows}${tot}</table></div>`;
+    ${note ? `<div class="spn">${esc(note.pickNote)}</div>` : ''}${body}`;
 }
+// 점수표 항목 조건 말풍선 (표가 가로 스크롤 박스 안이라 화면 기준으로 띄움)
+(() => { let tp = null;
+  const show = e => { const el = e.target.closest && e.target.closest('.mlb'); if (!el) return;
+    if (!tp) { tp = document.createElement('div'); tp.className = 'mtip'; tp.setAttribute('role', 'tooltip'); document.body.appendChild(tp); }
+    tp.textContent = el.dataset.tip; tp.style.display = 'block';
+    const r = el.getBoundingClientRect(), w = tp.offsetWidth;
+    tp.style.left = Math.max(8, Math.min(r.left, innerWidth - w - 8)) + 'px'; tp.style.top = (r.bottom + 6) + 'px'; };
+  const hide = e => { if (tp && e.target.closest && e.target.closest('.mlb')) tp.style.display = 'none'; };
+  document.addEventListener('mouseover', show); document.addEventListener('focusin', show);
+  document.addEventListener('mouseout', hide); document.addEventListener('focusout', hide);
+  addEventListener('scroll', () => { if (tp) tp.style.display = 'none'; }, { passive: true });
+})();
 function card(s, i) {
   const el = document.createElement('section'); el.className = 'card'; el.id = 'st' + i;
   const p = s.price || {};
