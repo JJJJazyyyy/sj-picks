@@ -1025,7 +1025,7 @@ function renderMkt() {
       + `<polyline points="${pts}" fill="none" stroke="${col}" stroke-width="1.4" stroke-linejoin="round"/><circle cx="${X(c.length - 1)}" cy="${y(last)}" r="1.8" fill="${col}"/></svg>`;
   };
   const it = (k, flag, name, dig, right) => { const x = M[k]; if (!x) return ''; const [t, rows, n, src] = TIP[k](x);
-    return `<span class="mi" tabindex="0">${flag ? FLAG[flag] : ''}<span class="mk">${name}</span><b>${x.p.toLocaleString('ko-KR', { minimumFractionDigits: dig, maximumFractionDigits: dig })}</b><span class="${cls(x.r)}">${pct(x.r)}</span>${spark(x)}${x.live && fresh ? '<i class="blink" aria-label="실시간 갱신 중"></i>' : ''}`
+    return `<span class="mi" tabindex="0">${x.live && fresh ? '<i class="blink" aria-label="실시간 갱신 중"></i>' : ''}${flag ? FLAG[flag] : ''}<span class="mk">${name}</span><b>${x.p.toLocaleString('ko-KR', { minimumFractionDigits: dig, maximumFractionDigits: dig })}</b><span class="${cls(x.r)}">${pct(x.r)}</span>${spark(x)}`
       + `<span class="tip${right ? ' r' : ''}" role="tooltip"><b class="tt">${t}</b>${rows.map(([a, b]) => `<span class="tr"><i>${a}</i><span>${b}</span></span>`).join('')}`
       + `<span class="tr tn ${cls(x.r)}"><i>${n.split(' ')[0]}</i><span>${n.slice(n.indexOf(' ') + 1)}</span></span><span class="ts">${x.live && fresh ? '● 실시간 갱신 중 · ' : ''}${src}</span></span></span>`; };
   el.className = `mkt w-${lv}`; el.hidden = false;
