@@ -1005,7 +1005,7 @@ function miniSVG(p, P) {
   const y = v => (H - 5 - (v - lo) / (hi - lo) * (H - 12)).toFixed(1), n = cs.length - 1, x = i => (3 + i * (W - R - 6) / Math.max(n, 1)).toFixed(1);
   let g = '';
   const now = cs[n], up = now >= 0, gid = `pmg${p.code}${p.day}`, pts = cs.map((v, i) => x(i) + ',' + y(v)).join(' ');
-  g += `<defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${up ? UP : DN}" stop-opacity=".24"/><stop offset="1" stop-color="${up ? UP : DN}" stop-opacity="0"/></linearGradient></defs>`;
+  g += `<defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${up ? UP : DN}" stop-opacity=".06"/><stop offset="1" stop-color="${up ? UP : DN}" stop-opacity="0"/></linearGradient></defs>`;
   g += `<polygon points="${x(0)},${H} ${pts} ${x(n)},${H}" fill="url(#${gid})" stroke="none"/>`;      // 선 아래 옅은 그라데이션
   if (P.src === '30분봉') P.pts.forEach((q, i) => { if (i && q.d !== P.pts[i - 1].d) g += `<line x1="${x(i + .5)}" x2="${x(i + .5)}" y1="0" y2="${H}" class="ms-d"/>`; });
   g += `<line x1="0" x2="${W - R}" y1="${y(0)}" y2="${y(0)}" class="ms-0"/>`;
