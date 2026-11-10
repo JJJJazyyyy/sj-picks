@@ -1004,11 +1004,13 @@ function miniSVG(p, P) {
   const lo = Math.min(...cs, ...P.pts.map(x => r(x.l)), st ?? 0) - 1, hi0 = Math.max(...hs, 0), hi = hi0 + Math.max(2.5, (hi0 - lo) * .22);
   const y = v => (H - 5 - (v - lo) / (hi - lo) * (H - 12)).toFixed(1), n = cs.length - 1, x = i => (3 + i * (W - R - 6) / Math.max(n, 1)).toFixed(1);
   let g = '';
+  const now = cs[n], up = now >= 0, gid = `pmg${p.code}${p.day}`, pts = cs.map((v, i) => x(i) + ',' + y(v)).join(' ');
+  g += `<defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${up ? UP : DN}" stop-opacity=".24"/><stop offset="1" stop-color="${up ? UP : DN}" stop-opacity="0"/></linearGradient></defs>`;
+  g += `<polygon points="${x(0)},${H} ${pts} ${x(n)},${H}" fill="url(#${gid})" stroke="none"/>`;      // 선 아래 옅은 그라데이션
   if (P.src === '30분봉') P.pts.forEach((q, i) => { if (i && q.d !== P.pts[i - 1].d) g += `<line x1="${x(i + .5)}" x2="${x(i + .5)}" y1="0" y2="${H}" class="ms-d"/>`; });
   g += `<line x1="0" x2="${W - R}" y1="${y(0)}" y2="${y(0)}" class="ms-0"/>`;
   if (st != null && st > lo) g += `<line x1="0" x2="${W - R}" y1="${y(st)}" y2="${y(st)}" class="ms-st"/>`;
-  const now = cs[n], up = now >= 0;
-  g += `<polyline points="${cs.map((v, i) => x(i) + ',' + y(v)).join(' ')}" class="ms-l ${up ? 'u' : 'd'}"/>`;
+  g += `<polyline points="${pts}" class="ms-l ${up ? 'u' : 'd'}"/>`;
   const mx = Math.max(...hs), k = hs.indexOf(mx);
   if (mx > 0) { const X = +x(k + 1), lab = pct(mx, 1); const an = X < 34 ? 'start' : X > W - R - 34 ? 'end' : 'middle'; g += `<circle cx="${X}" cy="${y(mx)}" r="3.5" class="ms-pk"/><text x="${an === 'start' ? X - 3 : an === 'end' ? X + 3 : X}" y="${+y(mx) - 7}" text-anchor="${an}" class="ms-pt">최고 ${lab}</text>`; }
   g += `<circle cx="${x(n)}" cy="${y(now)}" r="3" class="ms-e ${up ? 'u' : 'd'}"/><text x="${+x(n) + 6}" y="${+y(now) + 4}" class="ms-nt ${up ? 'u' : 'd'}">${pct(now, 1)}</text>`;
