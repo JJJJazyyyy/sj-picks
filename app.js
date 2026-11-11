@@ -1127,11 +1127,22 @@ async function perfStrat() {
   const n = P.length, man = v => `${v >= 0 ? '+' : '−'}${Math.abs(v / 1e4).toFixed(1)}만원`;
   const R = ST.map(([nm, rule, f]) => { const rs = P.map((p, i) => ({ p, ...f(p, i) })); const g = rs.reduce((a, x) => a + 1e6 * x.r / 100, 0);
     return { nm, rule, rs, g, win: rs.filter(x => x.r > 0).length }; });
-  const mx = Math.max(...R.map(x => Math.abs(x.g)), 1);
-  el.innerHTML = `<div class="sh">100만원씩 넣었다면 <small>시세 있는 ${n}종목 · 총 ${fmt(n * 100)}만원 · 지금까지 (행에 마우스 → 종목별)</small></div>`
-    + R.map(x => `<div class="sr" title="${esc(x.rule + '\n' + x.rs.map(y => `${y.p.name} ${pct(y.r, 1)} · ${y.w}`).join('\n'))}"><span class="sn">${x.nm}</span><span class="sb"><i class="${x.g >= 0 ? 'u' : 'd'}" style="width:${(Math.abs(x.g) / mx * 100).toFixed(1)}%"></i></span>`
-      + `<span class="sv ${cls(x.g)}"><b>${man(x.g)}</b> <small>(${pct(x.g / (n * 1e6) * 100, 1)}) · ${fmt(Math.round((n * 1e6 + x.g) / 1e4))}만원 · 이긴 ${x.win}/${n}</small></span></div>`).join('')
-    + `<div class="sc">공통: 선정일 종가에 삼 · 손절은 종가가 추천 손절선 아래로 마감한 날 그 종가에 팖 · 익절은 장중에 닿으면 그 가격(시가가 이미 넘었으면 시가) · 수수료·세금 제외</div>`;
+  const mx = Math.max(...R.map(x => Math.abs(x.g)), 1), tot = n * 1e6;
+  // 11/11 사용자: 왼쪽 = 통계 A(고른 전략 큰 숫자 + 버튼 + 조건), 오른쪽 = 통계 B(전략별 막대). 막대 행을 눌러도 왼쪽이 바뀜
+  let sel = 1; try { const s0 = localStorage.getItem('sjStrat'), v = +s0; if (s0 !== null && s0 !== '' && v >= 0 && v < R.length) sel = v; } catch (e) { }
+  const A = () => { const x = R[sel];
+    return `<div class="sh">100만원씩 넣었다면 <small>시세 있는 ${n}종목 · 총 ${fmt(n * 100)}만원 · 지금까지</small></div>`
+      + `<div class="sa"><span class="sx">→</span><b class="big">${fmt(Math.round((tot + x.g) / 1e4))}만원</b><b class="${cls(x.g)}">${man(x.g)} (${pct(x.g / tot * 100, 1)})</b><span class="sx">이긴 종목 ${x.win}/${n}</span></div>`
+      + `<div class="sbt">${R.map((y, j) => `<button type="button" data-j="${j}" class="${j === sel ? 'on' : ''}">${y.nm}</button>`).join('')}</div>`
+      + `<div class="scd"><b>조건</b> 선정일 종가에 삼 · ${x.rule} · 수수료·세금 제외</div>`
+      + `<div class="sst">${x.rs.map(y => `<span class="${cls(y.r)}" title="${esc(y.w)}">${esc(y.p.name)} ${pct(y.r, 1)}${y.w === '보유 중' ? '' : ` <small>${y.w}</small>`}</span>`).join('')}</div>`; };
+  const B = () => `<div class="sh">전략별 비교 <small>같은 ${n}종목 · 막대를 누르면 왼쪽에 자세히</small></div>`
+    + R.map((x, j) => `<div class="sr${j === sel ? ' on' : ''}" data-j="${j}" title="${esc(x.rule + '\n' + x.rs.map(y => `${y.p.name} ${pct(y.r, 1)} · ${y.w}`).join('\n'))}"><span class="sn">${x.nm}</span><span class="sb"><i class="${x.g >= 0 ? 'u' : 'd'}" style="width:${(Math.abs(x.g) / mx * 100).toFixed(1)}%"></i></span>`
+      + `<span class="sv ${cls(x.g)}"><b>${man(x.g)}</b> <small>(${pct(x.g / tot * 100, 1)})</small></span></div>`).join('')
+    + `<div class="sc">손절 = 종가가 추천 손절선 아래로 마감한 날 그 종가 · 익절 = 장중에 닿은 가격(시가가 이미 넘었으면 시가)</div>`;
+  const draw = () => { el.innerHTML = `<div class="pa">${A()}</div><div class="pb">${B()}</div>`; };
+  el.onclick = e => { const t = e.target.closest('[data-j]'); if (!t) return; sel = +t.dataset.j; try { localStorage.setItem('sjStrat', sel); } catch (er) { } draw(); };
+  draw();
 }
 // 성과 칸 미니 차트: 진입 뒤 경로 (30분봉 있으면 30분봉, 없으면 일봉 종가) + 진입가·손절선·최고점
 async function perfPath(p) {
