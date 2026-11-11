@@ -636,3 +636,10 @@ body.resizing .hspl,body.resizing:has(.hspl.on) *{cursor:row-resize !important}
 @media (max-width:640px){.pstrat .sr{grid-template-columns:96px minmax(40px,1fr) auto}.pstrat .sv{grid-column:auto;padding-left:0}}
 /* 성과 카드 꼬리 한 줄 유지 */
 .pm-f{flex-wrap:nowrap;min-width:0}.pm-f .tag,.pm-f .pm-s{white-space:nowrap;flex:none}
+/* 전략 막대 A: 옅은 → 진한 그라데이션, 둥근 막대, 고른 줄만 끝이 진하게 (11/11 사용자) */
+.pstrat .sb{height:10px;border-radius:5px;background:color-mix(in srgb,var(--line2) 70%,transparent)}
+.pstrat .sb i{border-radius:5px}
+.pstrat .sb i.u{background:linear-gradient(90deg,color-mix(in srgb,var(--up) 10%,transparent),color-mix(in srgb,var(--up) 55%,transparent))}
+.pstrat .sb i.d{background:linear-gradient(90deg,color-mix(in srgb,var(--dn) 10%,transparent),color-mix(in srgb,var(--dn) 55%,transparent))}
+.pstrat .sr.on .sb i.u{background:linear-gradient(90deg,color-mix(in srgb,var(--up) 22%,transparent),var(--up))}
+.pstrat .sr.on .sb i.d{background:linear-gradient(90deg,color-mix(in srgb,var(--dn) 22%,transparent),var(--dn))}
