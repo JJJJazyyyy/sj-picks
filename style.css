@@ -603,3 +603,20 @@ body.resizing .hspl,body.resizing:has(.hspl.on) *{cursor:row-resize !important}
 .mtab .mlb:hover,.mtab .mlb:focus{border-bottom-style:solid}
 .mtip{display:none;position:fixed;z-index:60;max-width:300px;background:#111827;color:#E5E7EB;padding:7px 10px;border-radius:6px;font-size:12px;line-height:1.55;box-shadow:0 6px 18px rgba(0,0,0,.2);pointer-events:none}
 @media (max-width:760px){.mgrid{grid-template-columns:minmax(0,1fr)!important}}
+/* 전략별 비교 막대 (통계 B) */
+.pstrat{border:1px solid var(--line2);background:var(--panel2);padding:8px 12px;margin:6px 0 10px;font-size:12.5px}
+.pstrat .sh{font-weight:800;margin-bottom:4px}.pstrat .sh small{font-weight:400;color:var(--sub);font-size:11.5px;margin-left:4px}
+.pstrat .sr{display:grid;grid-template-columns:120px minmax(60px,1fr) minmax(0,auto);gap:10px;align-items:center;padding:2px 0;cursor:help}
+.pstrat .sr:hover{background:rgba(0,0,0,.035)}
+.pstrat .sb{height:11px;background:var(--line2);border-radius:2px;overflow:hidden}.pstrat .sb i{display:block;height:100%}
+.pstrat .sb i.u{background:var(--up)}.pstrat .sb i.d{background:var(--dn)}
+.pstrat .sv{white-space:nowrap}.pstrat .sv small{color:var(--sub);font-size:11px}
+.pstrat .sc{margin-top:5px;font-size:11px;color:var(--sub)}
+@media (max-width:640px){.pstrat .sr{grid-template-columns:96px minmax(40px,1fr)}.pstrat .sv{grid-column:1/-1;padding-left:106px}}
+.lay-card .pstrat{border-radius:12px}
+/* 최고 상승 사다리 칩 */
+.lad{position:relative;display:inline-flex;flex:1 1 auto;min-width:64px;max-width:110px;height:15px;border:1px solid var(--line);border-radius:3px;overflow:hidden;background:var(--panel2)}
+.lad .lf{position:absolute;left:0;top:0;bottom:0;background-image:linear-gradient(90deg,color-mix(in srgb,var(--up) 22%,var(--panel)) 0 25%,color-mix(in srgb,var(--up) 45%,var(--panel)) 25% 50%,color-mix(in srgb,var(--up) 75%,var(--panel)) 50% 75%,color-mix(in srgb,var(--up) 85%,#000) 75%);background-repeat:no-repeat}
+.lad i{position:relative;flex:1;font-style:normal;font-size:9.5px;line-height:13px;text-align:right;padding-right:2px;color:var(--sub);border-right:1px solid color-mix(in srgb,var(--line) 70%,transparent)}
+.lad i:last-child{border-right:0}.lad i.on{color:#fff;font-weight:700}.lad i.on:first-of-type{color:color-mix(in srgb,var(--up) 80%,#000)}
+.pm-f .lv{font-size:11.5px;white-space:nowrap}

@@ -1093,7 +1093,45 @@ function renderPerf() {
       return `<tr class="${p.stop_hit ? 'hit' : ''}"><td class="l"><a href="#${p.day}">${dname(p.day)}</a></td><td class="l nmcell">${logo(p.code, p.name, 18)}<b>${esc(p.name)}</b></td><td>${fmt(p.base)}</td>${c(pf['1'])}${c(pf['3'])}${c(pf['5'])}${c(pf['10'])}${c(p.max_up)}${c(p.max_dn)}
         <td>${p.last ? `${fmt(p.last.c)} <small class="${cls(p.last.ret)}">${pct(p.last.ret, 1)}</small>` : '-'}</td><td>${fmt(p.stop)}</td><td class="l">${st}${hot}</td></tr>`;
     }).join('') : '<tr><td class="l" colspan="12">아직 기록 없음</td></tr>');
-  perfMini();
+  perfMini(); perfStrat();
+}
+// 전략별 비교 (11/11 사용자 통계 B): 종목마다 100만원, 선정일 종가 매수 → 규칙대로 팔았으면 지금 얼마
+const DAYC = {};
+async function perfStrat() {
+  const el = $('#perfStrat'); if (!el) return;
+  const P = (INDEX.perf || []).filter(p => p.path && p.path.length);
+  if (!P.length) { el.innerHTML = ''; return; }
+  const lvs = await Promise.all(P.map(async p => {
+    try { const D = DAYC[p.day] || (DAYC[p.day] = await getJSON(`data/days/${p.day}.json`)); const st = D.stocks.find(x => x.code === p.code) || {};
+      const o = {}; (st.levels || []).filter(l => l.price > p.base).sort((a, b) => a.price - b.price).forEach(l => { if (!o[l.kind]) o[l.kind] = l.price; }); return o; } catch (e) { return {}; }
+  }));
+  // 한 종목을 규칙대로: 익절가에 장중 닿으면 그 가격(시가가 이미 넘었으면 시가), 손절은 종가가 손절선 아래로 마감한 날 종가
+  const run = (p, tgt, useStop) => {
+    const rows = p.path.map(([d, o, h, l, c]) => ({ d, o, h, l, c, live: false }));
+    const lv = LIVE && LIVE.prices && LIVE.prices[p.code];
+    if (lv && LIVE.date && LIVE.date.replace(/-/g, '') > rows[rows.length - 1].d) rows.push({ d: LIVE.date.replace(/-/g, ''), o: lv.o || lv.p, h: lv.h || lv.p, l: lv.l || lv.p, c: lv.p, live: true });
+    for (const r of rows) {
+      if (tgt && r.h >= tgt) return { r: (Math.max(r.o, tgt) / p.base - 1) * 100, w: `익절 ${md(r.d)}` };
+      if (useStop && p.stop && !r.live && r.c < p.stop) return { r: (r.c / p.base - 1) * 100, w: `손절 ${md(r.d)}` };
+    }
+    return { r: (rows[rows.length - 1].c / p.base - 1) * 100, w: '보유 중' };
+  };
+  const ST = [
+    ['그냥 보유', '안 팔고 지금 가격으로 평가', p => run(p, 0, false)],
+    ['손절만 지킴', '추천 손절선 아래로 마감한 날 종가에 팖', p => run(p, 0, true)],
+    ['손절 + 20% 익절', '+20% 닿으면 팖', p => run(p, p.base * 1.2, true)],
+    ['손절 + 10% 익절', '+10% 닿으면 팖', p => run(p, p.base * 1.1, true)],
+    ['손절 + 저항2 익절', '추천 저항2에 닿으면 팖', (p, i) => run(p, lvs[i]['저항2'], true)],
+    ['손절 + 저항1 익절', '추천 저항1에 닿으면 팖', (p, i) => run(p, lvs[i]['저항1'], true)],
+  ];
+  const n = P.length, man = v => `${v >= 0 ? '+' : '−'}${Math.abs(v / 1e4).toFixed(1)}만원`;
+  const R = ST.map(([nm, rule, f]) => { const rs = P.map((p, i) => ({ p, ...f(p, i) })); const g = rs.reduce((a, x) => a + 1e6 * x.r / 100, 0);
+    return { nm, rule, rs, g, win: rs.filter(x => x.r > 0).length }; });
+  const mx = Math.max(...R.map(x => Math.abs(x.g)), 1);
+  el.innerHTML = `<div class="sh">100만원씩 넣었다면 <small>시세 있는 ${n}종목 · 총 ${fmt(n * 100)}만원 · 지금까지 (행에 마우스 → 종목별)</small></div>`
+    + R.map(x => `<div class="sr" title="${esc(x.rule + '\n' + x.rs.map(y => `${y.p.name} ${pct(y.r, 1)} · ${y.w}`).join('\n'))}"><span class="sn">${x.nm}</span><span class="sb"><i class="${x.g >= 0 ? 'u' : 'd'}" style="width:${(Math.abs(x.g) / mx * 100).toFixed(1)}%"></i></span>`
+      + `<span class="sv ${cls(x.g)}"><b>${man(x.g)}</b> <small>(${pct(x.g / (n * 1e6) * 100, 1)}) · ${fmt(Math.round((n * 1e6 + x.g) / 1e4))}만원 · 이긴 ${x.win}/${n}</small></span></div>`).join('')
+    + `<div class="sc">공통: 선정일 종가에 삼 · 손절은 종가가 추천 손절선 아래로 마감한 날 그 종가에 팖 · 익절은 장중에 닿으면 그 가격(시가가 이미 넘었으면 시가) · 수수료·세금 제외</div>`;
 }
 // 성과 칸 미니 차트: 진입 뒤 경로 (30분봉 있으면 30분봉, 없으면 일봉 종가) + 진입가·손절선·최고점
 async function perfPath(p) {
@@ -1123,6 +1161,13 @@ function miniSVG(p, P) {
   g += `<circle cx="${x(n)}" cy="${y(now)}" r="3" class="ms-e ${up ? 'u' : 'd'}"/><text x="${+x(n) + 6}" y="${+y(now) + 4}" class="ms-nt ${up ? 'u' : 'd'}">${pct(now, 1)}</text>`;
   return { svg: `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${esc(p.name)} 진입 뒤 경로">${g}</svg>`, now, mx };
 }
+// 최고 상승 사다리 칩: +5·+10·+20·+30 네 칸을 같은 폭으로, 칸 안에서도 비율대로 이어서 칠함 (11/11 사용자)
+const ladPos = v => v <= 0 ? 0 : v <= 5 ? v / 5 * 25 : v <= 10 ? 25 + (v - 5) / 5 * 25 : v <= 20 ? 50 + (v - 10) / 10 * 25 : v <= 30 ? 75 + (v - 20) / 10 * 25 : 100;
+function ladder(mx) {
+  const w = ladPos(mx);
+  return `<span class="lad" title="진입 뒤 최고 ${pct(mx, 1)}"><span class="lf" style="width:${w.toFixed(1)}%;background-size:${(10000 / Math.max(w, .1)).toFixed(1)}% 100%"></span>`
+    + ['+5', '+10', '+20', '+30'].map((t, j) => `<i class="${w >= (j + 1) * 25 - 7 ? 'on' : ''}">${t}</i>`).join('') + `</span><b class="lv ${cls(mx)}">${pct(mx, 1)}</b>`;
+}
 let PMQ = 0;
 async function perfMini() {
   const el = $('#perfMini'); if (!el) return; const P = INDEX.perf || [], q = ++PMQ;
@@ -1133,7 +1178,7 @@ async function perfMini() {
     const head = `<div class="pm-h">${logo(p.code, p.name, 18)}<b>${esc(p.name)}</b><span class="pm-s" title="진입가">${md(p.day)} · ${fmt(p.base)}</span></div>`;
     if (!path) return `<a class="pm-c" href="#${p.day}">${head}<div class="pm-none">아직 진입 뒤 시세 없음</div><div class="pm-f">${st}</div></a>`;
     const S = miniSVG(p, path), days = new Set(path.pts.map(x => x.d)).size;
-    return `<a class="pm-c" href="#${p.day}" title="${esc(p.name)} · ${path.src} 기준 · 남색 선 = 진입가, 파란 점선 = 손절 ${fmt(p.stop)}">${head}${S.svg}<div class="pm-f">${st}${S.mx >= 10 ? ' <span class="tag hot">+10% 터치</span>' : ''}<span class="pm-s">${days}일 · ${path.src}</span></div></a>`;
+    return `<a class="pm-c" href="#${p.day}" title="${esc(p.name)} · ${path.src} 기준 · 남색 선 = 진입가, 파란 점선 = 손절 ${fmt(p.stop)}">${head}${S.svg}<div class="pm-f">${st}${ladder(S.mx)}<span class="pm-s">${days}일</span></div></a>`;
   }));
   if (q === PMQ) el.innerHTML = cards.join('');
 }
