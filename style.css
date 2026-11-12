@@ -695,3 +695,4 @@ body.resizing .hspl,body.resizing:has(.hspl.on) *{cursor:row-resize !important}
 .gainers .gn{gap:6px;border:1px solid var(--line);border-left:3px solid var(--up);border-radius:0;padding:3px 10px 3px 7px;background:var(--panel2)}
 .gainers .gn:hover{border-color:var(--sub);border-left-color:var(--up)}
 .gainers .gn small{font-size:11px;color:var(--sub)}.gainers .gn small .dn{color:var(--dn)}
+.gainers .gn small em{font-style:normal;color:var(--up);font-weight:700}

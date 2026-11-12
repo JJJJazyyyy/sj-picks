@@ -1120,13 +1120,18 @@ const GAIN_MIN = 5;
 function renderGainers() {
   const el = $('#gainers'); if (!el || !INDEX) return;
   const pr = LIVE && LIVE.prices || {};
+  // 11/12 사용자: 최근 들어간 종목에 가중치 — 점수 = 진입 후 % × (1 + 0.5 ÷ 진입 뒤 거래일 수). 1일째 ×1.5 · 2일째 ×1.25 · 3일째 ×1.17 · 4일째 ×1.13
+  // 점수 5 이상만 → 1일째는 +3.4%, 2일째는 +4%, 오래된 종목은 +5% 가까이 올라야 들어옴
+  const ld = LIVE && LIVE.date ? LIVE.date.replace(/-/g, '') : '';
   const G = (INDEX.perf || []).map(p => { const l = pr[p.code]; if (!l || !l.p || !p.base) return null;
-      return { p, l, ent: (l.p / p.base - 1) * 100 }; })
-    .filter(x => x && x.ent >= GAIN_MIN).sort((a, b) => b.ent - a.ent);
+      const ds = new Set((p.path || []).map(r => r[0]).filter(d => d > p.day)); if (ld > p.day) ds.add(ld);
+      const n = Math.max(ds.size, 1), ent = (l.p / p.base - 1) * 100;
+      return { p, l, ent, n, sc: ent * (1 + 0.5 / n) }; })
+    .filter(x => x && x.ent > 0 && x.sc >= GAIN_MIN).sort((a, b) => b.sc - a.sc);
   if (!G.length) { el.hidden = true; el.innerHTML = ''; return; }
   el.hidden = false;
   el.innerHTML = `<span class="gn-t"><span class="gn-e" aria-hidden="true">🔥</span>진입 후 달리는 중</span><span class="gn-c">`
-    + G.map(x => `<button type="button" class="gn" data-d="${x.p.day}" data-c="${x.p.code}" title="${esc(x.p.name)} · ${md(x.p.day)} 종가 ${fmt(x.p.base)}원에 진입 → 지금 ${fmt(x.l.p)}원">${logo(x.p.code, x.p.name, 16)}${esc(x.p.name)} <b class="${cls(x.ent)}">${pct(x.ent, 1)}</b><small>${md(x.p.day)} 진입${x.l.chg != null ? ` · 오늘 <span class="${x.l.chg < 0 ? 'dn' : ''}">${pct(x.l.chg, 1)}</span>` : ''}</small></button>`).join('')
+    + G.map(x => `<button type="button" class="gn" data-d="${x.p.day}" data-c="${x.p.code}" title="${esc(x.p.name)} · ${md(x.p.day)} 종가 ${fmt(x.p.base)}원에 진입 → 지금 ${fmt(x.l.p)}원">${logo(x.p.code, x.p.name, 16)}${esc(x.p.name)} <b class="${cls(x.ent)}">${pct(x.ent, 1)}</b><small>${md(x.p.day)} 진입${x.n <= 2 ? ` · <em>${x.n}일째</em>` : ''}${x.l.chg != null ? ` · 오늘 <span class="${x.l.chg < 0 ? 'dn' : ''}">${pct(x.l.chg, 1)}</span>` : ''}</small></button>`).join('')
     + `</span>`;
   el.onclick = async e => { const b = e.target.closest('.gn'); if (!b) return; const d = b.dataset.d, c = b.dataset.c;
     if (CUR !== d) { await renderDay(d); location.hash = d; }
