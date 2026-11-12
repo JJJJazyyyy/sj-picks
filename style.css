@@ -646,3 +646,7 @@ body.resizing .hspl,body.resizing:has(.hspl.on) *{cursor:row-resize !important}
 /* 최고 종목 빼고/포함 토글 (11/12) */
 .pstrat .sh .sex{float:right;font:inherit;font-size:11px;font-weight:400;padding:1px 8px;border:1px solid var(--line);background:var(--panel);color:var(--sub);border-radius:10px;cursor:pointer}
 .pstrat .sh .sex.on{border-color:var(--navy);color:var(--navy);font-weight:700}
+/* 하루 평균 날짜 칩 (11/12) */
+.pstrat .sdy{display:flex;flex-wrap:wrap;gap:4px 6px;margin:0 0 7px;font-size:11.5px}
+.pstrat .sdy span{border:1px solid var(--line2);border-radius:4px;padding:1px 7px;color:var(--sub);white-space:nowrap}.pstrat .sdy span b{margin-left:3px}
+.pstrat .sdy .wd{border-style:dashed}.pstrat .sdy .sx{border:0;padding:1px 0}

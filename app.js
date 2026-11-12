@@ -1146,27 +1146,35 @@ async function perfStrat() {
   // 최고 종목 = 진입 뒤 최고점이 가장 높았던 종목. 그 한 종목이 평균을 끌어올리니 빼고 보는 게 기본 (11/12 사용자)
   const top = P.reduce((a, b) => ((b.max_up || 0) > (a.max_up || 0) ? b : a));
   let ex = true; try { if (localStorage.getItem('sjStratEx') === '0') ex = false; } catch (e) { }
-  let PP, n, R, mx, tot;
-  const calc = () => { const idx = P.map((p, i) => i).filter(i => !ex || P.length < 2 || P[i] !== top); PP = idx; n = idx.length; tot = n * 1e6;
+  // 11/12 사용자: 누적 합계는 날이 쌓일수록 커지기만 해서 → 선정일 하루(3종목 × 100만원) 평균 수익으로. 전략은 수익 높은 순
+  let n, R, mx, tot, nd;
+  const calc = () => { const idx = P.map((p, i) => i).filter(i => !ex || P.length < 2 || P[i] !== top); n = idx.length; tot = n * 1e6;
+    nd = new Set(idx.map(i => P[i].day)).size || 1;
     R = ST.map(([nm, rule, f]) => { const rs = idx.map(i => ({ p: P[i], ...f(P[i], i) })); const g = rs.reduce((a, x) => a + 1e6 * x.r / 100, 0);
-      return { nm, rule, rs, g, win: rs.filter(x => x.r > 0).length }; });
-    mx = Math.max(...R.map(x => Math.abs(x.g)), 1); };
+      const dm = {}; rs.forEach(x => { const d = dm[x.p.day] || (dm[x.p.day] = { d: x.p.day, g: 0, k: 0 }); d.g += 1e6 * x.r / 100; d.k++; });
+      const days = Object.values(dm).sort((a, b) => a.d < b.d ? -1 : 1);
+      return { nm, rule, rs, g, da: g / nd, days, wd: days.filter(d => d.g > 0).length, win: rs.filter(x => x.r > 0).length }; })
+      .sort((a, b) => b.g - a.g);
+    mx = Math.max(...R.map(x => Math.abs(x.da)), 1); };
   calc();
-  let sel = 1; try { const s0 = localStorage.getItem('sjStrat'), v = +s0; if (s0 !== null && s0 !== '' && v >= 0 && v < R.length) sel = v; } catch (e) { }
+  let sel = '손절만 지킴'; try { const s0 = localStorage.getItem('sjStrat'); if (s0 && ST.some(x => x[0] === s0)) sel = s0; } catch (e) { }
   const exBtn = () => `<button type="button" class="sex${ex ? ' on' : ''}" data-ex="1" title="진입 뒤 최고 ${pct(top.max_up || 0, 1)}까지 오른 ${esc(top.name)} 한 종목이 평균을 크게 끌어올려서, 빼고 보는 게 기본">${ex ? `${esc(top.name)} 빼고` : `${esc(top.name)} 포함`}</button>`;
-  const A = () => { const x = R[sel];
-    return `<div class="sh">100만원씩 넣었다면 <small>시세 있는 ${n}종목 · 총 ${fmt(n * 100)}만원 · 지금까지</small>${exBtn()}</div>`
-      + `<div class="sa"><span class="sx">→</span><b class="big">${fmt(Math.round((tot + x.g) / 1e4))}만원</b><b class="${cls(x.g)}">${man(x.g)} (${pct(x.g / tot * 100, 1)})</b><span class="sx">이긴 종목 ${x.win}/${n}</span></div>`
-      + `<div class="sbt">${R.map((y, j) => `<button type="button" data-j="${j}" class="${j === sel ? 'on' : ''}">${y.nm}</button>`).join('')}</div>`
+  const m1 = v => `${v >= 0 ? '+' : '−'}${Math.abs(v / 1e4).toFixed(1)}`;
+  const A = () => { const x = R.find(y => y.nm === sel) || R[0], dd = x.days.slice(-8);
+    return `<div class="sh">매일 3종목 × 100만원씩 샀다면 <small>선정일 ${nd}일 · ${n}종목 · 지금까지</small>${exBtn()}</div>`
+      + `<div class="sa"><span class="sx">하루 평균</span><b class="big ${cls(x.g)}">${man(x.da)}</b><b class="${cls(x.g)}">(${pct(x.g / tot * 100, 1)})</b><span class="sx">100만원당 ${man(x.g / n)} · 이긴 종목 ${x.win}/${n}</span></div>`
+      + `<div class="sdy">${x.days.length > dd.length ? '<span class="sx">최근 8일</span>' : ''}${dd.map(d => `<span title="${md(d.d)} 고른 ${d.k}종목 합계">${md(d.d)} <b class="${cls(d.g)}">${m1(d.g)}</b></span>`).join('')}<span class="wd">이긴 날 ${x.wd}/${x.days.length}</span></div>`
+      + `<div class="sbt">${R.map(y => `<button type="button" data-j="${esc(y.nm)}" class="${y.nm === x.nm ? 'on' : ''}">${y.nm}</button>`).join('')}</div>`
       + `<div class="scd"><b>조건</b> 선정일 종가에 삼 · ${x.rule} · 수수료·세금 제외</div>`
       + `<div class="sst">${x.rs.map(y => `<span class="${cls(y.r)}" title="${esc(y.w)}">${esc(y.p.name)} ${pct(y.r, 1)}${y.w === '보유 중' ? '' : ` <small>${y.w}</small>`}</span>`).join('')}</div>`; };
-  const B = () => `<div class="sh">전략별 비교 <small>같은 ${n}종목 · 막대를 누르면 왼쪽에 자세히</small></div>`
-    + R.map((x, j) => `<div class="sr${j === sel ? ' on' : ''}" data-j="${j}" title="${esc(x.rule + '\n' + x.rs.map(y => `${y.p.name} ${pct(y.r, 1)} · ${y.w}`).join('\n'))}"><span class="sn">${x.nm}</span><span class="sb"><i class="${x.g >= 0 ? 'u' : 'd'}" style="width:${(Math.abs(x.g) / mx * 100).toFixed(1)}%"></i></span>`
-      + `<span class="sv ${cls(x.g)}"><b>${man(x.g)}</b> <small>(${pct(x.g / tot * 100, 1)})</small></span></div>`).join('')
-    + `<div class="sc">손절 = 종가가 추천 손절선 아래로 마감한 날 그 종가 · 익절 = 장중에 닿은 가격(시가가 이미 넘었으면 시가) · 고점 −5% = 마감 기준</div>`;
+  const B = () => { const cur = (R.find(y => y.nm === sel) || R[0]).nm;
+    return `<div class="sh">전략별 하루 평균 <small>선정일 하루(3종목)당 · 수익 높은 순 · 누르면 왼쪽에 자세히</small></div>`
+    + R.map(x => `<div class="sr${x.nm === cur ? ' on' : ''}" data-j="${esc(x.nm)}" title="${esc(x.rule + '\n' + x.rs.map(y => `${y.p.name} ${pct(y.r, 1)} · ${y.w}`).join('\n'))}"><span class="sn">${x.nm}</span><span class="sb"><i class="${x.g >= 0 ? 'u' : 'd'}" style="width:${(Math.abs(x.da) / mx * 100).toFixed(1)}%"></i></span>`
+      + `<span class="sv ${cls(x.g)}"><b>${man(x.da)}</b> <small>(${pct(x.g / tot * 100, 1)})</small></span></div>`).join('')
+    + `<div class="sc">하루 평균 = 고른 날마다 3종목 손익을 더한 뒤 날 수로 나눔 · % = 100만원당 평균 · 손절 = 종가가 추천 손절선 아래로 마감한 날 그 종가 · 익절 = 장중에 닿은 가격(시가가 이미 넘었으면 시가)</div>`; };
   const draw = () => { el.innerHTML = `<div class="pa">${A()}</div><div class="pb">${B()}</div>`; };
   el.onclick = e => { if (e.target.closest('[data-ex]')) { ex = !ex; try { localStorage.setItem('sjStratEx', ex ? '1' : '0'); } catch (er) { } calc(); draw(); return; }
-    const t = e.target.closest('[data-j]'); if (!t) return; sel = +t.dataset.j; try { localStorage.setItem('sjStrat', sel); } catch (er) { } draw(); };
+    const t = e.target.closest('[data-j]'); if (!t) return; sel = t.dataset.j; try { localStorage.setItem('sjStrat', sel); } catch (er) { } draw(); };
   draw();
 }
 // 성과 칸 미니 차트: 진입 뒤 경로 (30분봉 있으면 30분봉, 없으면 일봉 종가) + 진입가·손절선·최고점
