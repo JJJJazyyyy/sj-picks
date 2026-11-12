@@ -690,3 +690,4 @@ body.resizing .hspl,body.resizing:has(.hspl.on) *{cursor:row-resize !important}
 .gainers .gn-d{font-size:10.5px;border:1px solid var(--line);border-radius:4px;padding:0 5px;color:var(--sub);background:var(--panel)}
 .gainers .gn small{font-size:11px;color:var(--sub)}.gainers .gn small.dn{color:var(--dn)}
 @media (max-width:640px){.gainers{flex-wrap:wrap;padding:6px 10px}.gainers .gn-c{width:100%}}
+.gainers .gn-e{font-size:15px;line-height:1}

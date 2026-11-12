@@ -1125,7 +1125,7 @@ function renderGainers() {
     .filter(x => x && x.ent >= GAIN_MIN).sort((a, b) => b.ent - a.ent);
   if (!G.length) { el.hidden = true; el.innerHTML = ''; return; }
   el.hidden = false;
-  el.innerHTML = `<span class="gn-t"><svg viewBox="0 0 24 24" class="gn-i" aria-hidden="true"><path d="M12 3c1 3.5 4.5 5 4.5 9.5A4.5 4.5 0 0 1 12 17a4.5 4.5 0 0 1-4.5-4.5c0-1.8.8-3 1.8-4 .2 1.6 1 2.5 2 2.8C11 9 11.2 6 12 3z"/><path d="M8 21h8"/></svg>진입 후 달리는 중</span><span class="gn-c">`
+  el.innerHTML = `<span class="gn-t"><span class="gn-e" aria-hidden="true">🔥</span>진입 후 달리는 중</span><span class="gn-c">`
     + G.map(x => `<button type="button" class="gn" data-d="${x.p.day}" data-c="${x.p.code}" title="${esc(x.p.name)} · ${md(x.p.day)} 종가 ${fmt(x.p.base)}원에 진입 → 지금 ${fmt(x.l.p)}원">${logo(x.p.code, x.p.name, 16)}${esc(x.p.name)} <b class="${cls(x.ent)}">${pct(x.ent, 1)}</b><span class="gn-d">${md(x.p.day)} 진입</span>${x.l.chg != null ? `<small class="${x.l.chg < 0 ? 'dn' : ''}">오늘 ${pct(x.l.chg, 1)}</small>` : ''}</button>`).join('')
     + `</span>`;
   el.onclick = async e => { const b = e.target.closest('.gn'); if (!b) return; const d = b.dataset.d, c = b.dataset.c;
