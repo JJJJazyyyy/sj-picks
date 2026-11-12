@@ -1106,6 +1106,18 @@ async function perfStrat() {
       const o = {}; (st.levels || []).filter(l => l.price > p.base).sort((a, b) => a.price - b.price).forEach(l => { if (!o[l.kind]) o[l.kind] = l.price; }); return o; } catch (e) { return {}; }
   }));
   // 한 종목을 규칙대로: 익절가에 장중 닿으면 그 가격(시가가 이미 넘었으면 시가), 손절은 종가가 손절선 아래로 마감한 날 종가
+  // 다음날 9:30 매도 (11/12 사용자: 낮았던 '반 15%·반 30%' 대신). 30분봉 시각은 한국 시각을 UTC처럼 저장 → 선정일 다음 날 9:00 봉의 종가
+  const M30 = await Promise.all(P.map(p => minRows(p.code, '30').catch(() => null)));
+  const at930 = (p, i) => {
+    const ymd = t => { const d = new Date(t * 1000); return `${d.getUTCFullYear()}${pad2(d.getUTCMonth() + 1)}${pad2(d.getUTCDate())}`; };
+    const b = (M30[i] || []).find(x => ymd(x.t) > p.day && x.t % 86400 === 9 * 3600);
+    if (b) { const now = LIVE && LIVE.date && LIVE.time ? `${LIVE.date.replace(/-/g, '')}${String(LIVE.time).replace(/\D/g, '').slice(0, 4)}` : '';
+      const done = !now || now >= ymd(b.t) + '0930';
+      return { r: (b.c / p.base - 1) * 100, w: done ? `9:30 매도 ${md(ymd(b.t))}` : '9:30 전' }; }
+    const nx = p.path.find(r => r[0] > p.day);   // 분봉이 없으면 다음날 종가로 대신
+    if (nx) return { r: (nx[4] / p.base - 1) * 100, w: `분봉 없음 · ${md(nx[0])} 종가` };
+    return run(p, 0, false);
+  };
   // half: 그 가격에 닿으면 절반만 먼저 팔고 나머지 절반은 같은 규칙으로 계속 · trail: +5% 넘은 뒤 종가가 고점보다 trail만큼 내려오면 그 종가에 팖
   const run = (p, tgt, useStop, half, trail) => {
     const rows = p.path.map(([d, o, h, l, c]) => ({ d, o, h, l, c, live: false }));
@@ -1128,7 +1140,7 @@ async function perfStrat() {
     ['손절 + 고점 −5%', '+5% 넘게 오른 뒤 종가가 최고점보다 5% 내려오면 그 종가에 팖', p => run(p, 0, true, 0, .05)],
     ['손절 + 25% 익절', '+25% 닿으면 팖', p => run(p, p.base * 1.25, true)],
     ['손절 + 30% 익절', '+30% 닿으면 팖', p => run(p, p.base * 1.3, true)],
-    ['반 15% · 반 30%', '+15% 닿으면 절반, +30% 닿으면 나머지 절반을 팖', p => run(p, p.base * 1.3, true, p.base * 1.15)],
+    ['다음날 9:30 매도', '다음날 첫 30분봉(9:00~9:30)이 끝날 때 가격에 팖 · 거래량이 하루 중 가장 몰리는 때', (p, i) => at930(p, i)],
   ];
   const man = v => `${v >= 0 ? '+' : '−'}${Math.abs(v / 1e4).toFixed(1)}만원`;
   // 최고 종목 = 진입 뒤 최고점이 가장 높았던 종목. 그 한 종목이 평균을 끌어올리니 빼고 보는 게 기본 (11/12 사용자)
