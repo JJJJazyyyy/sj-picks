@@ -73,7 +73,7 @@ async function init() {
   window.addEventListener('hashchange', route);
   try { LIVE = await getJSON('data/live.json'); } catch (e) { LIVE = null; }
   loadMkt(); setInterval(loadMkt, 3 * 60 * 1000);      // 시장 날씨 (장중 10분 · 장전 10분 · 저녁 30분 갱신)
-  setInterval(async () => { try { const L = await getJSON('data/live.json'); if (!LIVE || L.date !== LIVE.date || L.time !== LIVE.time) { LIVE = L; applyLive(); perfMini(); } } catch (e) { } }, 5 * 60 * 1000);
+  setInterval(async () => { try { const L = await getJSON('data/live.json'); if (!LIVE || L.date !== LIVE.date || L.time !== LIVE.time) { LIVE = L; applyLive(); perfMini(); renderGainers(); } } catch (e) { } }, 5 * 60 * 1000);
   renderPerf();
   route();
   newPickWatch();
@@ -1114,6 +1114,24 @@ function renderMkt() {
 setInterval(renderMkt, 60 * 1000);      // 시간이 지나면 깜빡임 끄기
 
 // ───────────────────────── 성과 · 아카이브 ─────────────────────────
+// ── 진입 후 달리는 중 (11/12 사용자 A안 1번): 시장 날씨 아래 한 줄. 지난 추천 중 진입가 대비 +5% 넘는 종목, 큰 순 ──
+// 값은 live.json 현재가 그대로 → 현재가 갱신(장중 10분)과 같이 다시 그림. 따로 조회 없음
+const GAIN_MIN = 5;
+function renderGainers() {
+  const el = $('#gainers'); if (!el || !INDEX) return;
+  const pr = LIVE && LIVE.prices || {};
+  const G = (INDEX.perf || []).map(p => { const l = pr[p.code]; if (!l || !l.p || !p.base) return null;
+      return { p, l, ent: (l.p / p.base - 1) * 100 }; })
+    .filter(x => x && x.ent >= GAIN_MIN).sort((a, b) => b.ent - a.ent);
+  if (!G.length) { el.hidden = true; el.innerHTML = ''; return; }
+  el.hidden = false;
+  el.innerHTML = `<span class="gn-t"><svg viewBox="0 0 24 24" class="gn-i" aria-hidden="true"><path d="M12 3c1 3.5 4.5 5 4.5 9.5A4.5 4.5 0 0 1 12 17a4.5 4.5 0 0 1-4.5-4.5c0-1.8.8-3 1.8-4 .2 1.6 1 2.5 2 2.8C11 9 11.2 6 12 3z"/><path d="M8 21h8"/></svg>진입 후 달리는 중</span><span class="gn-c">`
+    + G.map(x => `<button type="button" class="gn" data-d="${x.p.day}" data-c="${x.p.code}" title="${esc(x.p.name)} · ${md(x.p.day)} 종가 ${fmt(x.p.base)}원에 진입 → 지금 ${fmt(x.l.p)}원">${logo(x.p.code, x.p.name, 16)}${esc(x.p.name)} <b class="${cls(x.ent)}">${pct(x.ent, 1)}</b><span class="gn-d">${md(x.p.day)} 진입</span>${x.l.chg != null ? `<small class="${x.l.chg < 0 ? 'dn' : ''}">오늘 ${pct(x.l.chg, 1)}</small>` : ''}</button>`).join('')
+    + `</span>`;
+  el.onclick = async e => { const b = e.target.closest('.gn'); if (!b) return; const d = b.dataset.d, c = b.dataset.c;
+    if (CUR !== d) { await renderDay(d); location.hash = d; }
+    const i = CURD && CURD.stocks ? CURD.stocks.findIndex(s => s.code === c) : -1; if (i >= 0) goTo(i); };
+}
 function renderPerf() {
   const P = INDEX.perf || [];
   const H = ['1', '3', '5', '10'];
@@ -1132,7 +1150,7 @@ function renderPerf() {
       return `<tr class="${p.stop_hit ? 'hit' : ''}"><td class="l"><a href="#${p.day}">${dname(p.day)}</a></td><td class="l nmcell">${logo(p.code, p.name, 18)}<b>${esc(p.name)}</b></td><td>${fmt(p.base)}</td>${c(pf['1'])}${c(pf['3'])}${c(pf['5'])}${c(pf['10'])}${c(p.max_up)}${c(p.max_dn)}
         <td>${p.last ? `${fmt(p.last.c)} <small class="${cls(p.last.ret)}">${pct(p.last.ret, 1)}</small>` : '-'}</td><td>${fmt(p.stop)}</td><td class="l">${st}${hot}</td></tr>`;
     }).join('') : '<tr><td class="l" colspan="12">아직 기록 없음</td></tr>');
-  perfMini(); perfStrat();
+  perfMini(); perfStrat(); renderGainers();
 }
 // 전략별 비교 (11/11 사용자 통계 B): 종목마다 100만원, 선정일 종가 매수 → 규칙대로 팔았으면 지금 얼마
 const DAYC = {};
