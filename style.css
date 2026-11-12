@@ -696,3 +696,14 @@ body.resizing .hspl,body.resizing:has(.hspl.on) *{cursor:row-resize !important}
 .gainers .gn:hover{border-color:var(--sub);border-left-color:var(--up)}
 .gainers .gn small{font-size:11px;color:var(--sub)}.gainers .gn small .dn{color:var(--dn)}
 .gainers .gn small em{font-style:normal;color:var(--up);font-weight:700}
+/* 진입 후 달리는 중 A안 (11/12): 따뜻한 주황 띠 + 둥근 흰 칩 + 미니 차트 */
+.gainers{background:#FFF7ED;border-color:#FED7AA;color:#1F2937}
+.gainers .gn-e{font-family:'Segoe UI Emoji','Apple Color Emoji','Noto Color Emoji',sans-serif;font-size:16px}
+.gainers .gn-t{color:#9A3412}
+.gainers .gn{gap:7px;background:#fff;color:#1F2937;border:1px solid #FDE2C8;border-left:1px solid #FDE2C8;border-radius:10px;padding:3px 10px 3px 4px;transition:border-color .15s,box-shadow .15s}
+.gainers .gn:hover{border-color:#FDBA74;border-left-color:#FDBA74;box-shadow:0 2px 8px rgba(234,88,12,.12)}
+.gainers .gn small{font-size:10.5px;color:#9A6B4F}.gainers .gn small.nw{color:var(--up);font-weight:700}
+.gainers .gn-s{width:42px;height:16px;flex:none}.gainers .gn-s path{fill:none;stroke:var(--up);stroke-width:1.6;stroke-linejoin:round;stroke-linecap:round}
+.gainers .gn-s .b{stroke:#E5C9B5;stroke-dasharray:2 2}.gainers .gn-s circle{fill:var(--up)}
+.dk .gainers{background:#2A1609;border-color:#7C2D12;color:#E5E7EB}.dk .gainers .gn-t{color:#FDBA74}
+.dk .gainers .gn{background:#1F2937;color:#E5E7EB;border-color:#4B2A17}.dk .gainers .gn small{color:#C4A28A}.dk .gainers .gn-s .b{stroke:#6B4A36}

@@ -1117,6 +1117,16 @@ setInterval(renderMkt, 60 * 1000);      // 시간이 지나면 깜빡임 끄기
 // ── 진입 후 달리는 중 (11/12 사용자 A안 1번): 시장 날씨 아래 한 줄. 지난 추천 중 진입가 대비 +5% 넘는 종목, 큰 순 ──
 // 값은 live.json 현재가 그대로 → 현재가 갱신(장중 10분)과 같이 다시 그림. 따로 조회 없음
 const GAIN_MIN = 5;
+// 칩 속 미니 차트 (11/12 A안): 진입가 = 0 점선, 진입 뒤 종가 흐름 + 지금 값 점
+function gnSpark(x) {
+  const ld = LIVE && LIVE.date ? LIVE.date.replace(/-/g, '') : '';
+  const rows = (x.p.path || []).filter(r => r[0] > x.p.day).map(r => r[4]);
+  const last = (x.p.path || []).length ? x.p.path[x.p.path.length - 1][0] : '';
+  if (ld > last) rows.push(x.l.p); else if (rows.length) rows[rows.length - 1] = x.l.p;
+  const a = [0, ...rows.map(v => (v / x.p.base - 1) * 100)], W = 42, H = 16;
+  const mx = Math.max(...a, 1), mn = Math.min(...a, 0), X = i => a.length < 2 ? W : i / (a.length - 1) * W, Y = v => H - 1.5 - (v - mn) / ((mx - mn) || 1) * (H - 3);
+  return `<svg class="gn-s" viewBox="0 0 ${W} ${H}" aria-hidden="true"><line x1="0" x2="${W}" y1="${Y(0).toFixed(1)}" y2="${Y(0).toFixed(1)}" class="b"/><path d="${a.map((v, i) => `${i ? 'L' : 'M'}${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join('')}"/><circle cx="${X(a.length - 1).toFixed(1)}" cy="${Y(a[a.length - 1]).toFixed(1)}" r="2"/></svg>`;
+}
 function renderGainers() {
   const el = $('#gainers'); if (!el || !INDEX) return;
   const pr = LIVE && LIVE.prices || {};
@@ -1132,7 +1142,7 @@ function renderGainers() {
   if (!G.length) { el.hidden = true; el.innerHTML = ''; return; }
   el.hidden = false;
   el.innerHTML = `<span class="gn-t"><span class="gn-e" aria-hidden="true">🔥</span>진입 후 달리는 중</span><span class="gn-c">`
-    + G.map(x => `<button type="button" class="gn" data-d="${x.p.day}" data-c="${x.p.code}" title="${esc(x.p.name)} · ${md(x.p.day)} 종가 ${fmt(x.p.base)}원에 진입 → 지금 ${fmt(x.l.p)}원">${logo(x.p.code, x.p.name, 16)}${esc(x.p.name)} <b class="${cls(x.ent)}">${pct(x.ent, 1)}</b><small>${md(x.p.day)} 진입${x.n <= 2 ? ` · <em>${x.n}일째</em>` : ''}${x.l.chg != null ? ` · 오늘 <span class="${x.l.chg < 0 ? 'dn' : ''}">${pct(x.l.chg, 1)}</span>` : ''}</small></button>`).join('')
+    + G.map(x => `<button type="button" class="gn" data-d="${x.p.day}" data-c="${x.p.code}" title="${esc(x.p.name)} · ${md(x.p.day)} 종가 ${fmt(x.p.base)}원에 진입 → 지금 ${fmt(x.l.p)}원${x.l.chg != null ? ` · 오늘 ${pct(x.l.chg, 1)}` : ''}">${logo(x.p.code, x.p.name, 18)}${esc(x.p.name)} <b class="${cls(x.ent)}">${pct(x.ent, 1)}</b>${gnSpark(x)}<small class="${x.n <= 2 ? 'nw' : ''}">${x.n}일차(${md(x.p.day)})</small></button>`).join('')
     + `</span>`;
   el.onclick = async e => { const b = e.target.closest('.gn'); if (!b) return; const d = b.dataset.d, c = b.dataset.c;
     if (CUR !== d) { await renderDay(d); location.hash = d; }
