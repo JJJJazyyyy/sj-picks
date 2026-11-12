@@ -643,3 +643,6 @@ body.resizing .hspl,body.resizing:has(.hspl.on) *{cursor:row-resize !important}
 .pstrat .sb i.d{background:linear-gradient(90deg,color-mix(in srgb,var(--dn) 10%,transparent),color-mix(in srgb,var(--dn) 55%,transparent))}
 .pstrat .sr.on .sb i.u{background:linear-gradient(90deg,color-mix(in srgb,var(--up) 22%,transparent),var(--up))}
 .pstrat .sr.on .sb i.d{background:linear-gradient(90deg,color-mix(in srgb,var(--dn) 22%,transparent),var(--dn))}
+/* 최고 종목 빼고/포함 토글 (11/12) */
+.pstrat .sh .sex{float:right;font:inherit;font-size:11px;font-weight:400;padding:1px 8px;border:1px solid var(--line);background:var(--panel);color:var(--sub);border-radius:10px;cursor:pointer}
+.pstrat .sh .sex.on{border-color:var(--navy);color:var(--navy);font-weight:700}

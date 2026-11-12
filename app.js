@@ -1106,40 +1106,44 @@ async function perfStrat() {
       const o = {}; (st.levels || []).filter(l => l.price > p.base).sort((a, b) => a.price - b.price).forEach(l => { if (!o[l.kind]) o[l.kind] = l.price; }); return o; } catch (e) { return {}; }
   }));
   // 한 종목을 규칙대로: 익절가에 장중 닿으면 그 가격(시가가 이미 넘었으면 시가), 손절은 종가가 손절선 아래로 마감한 날 종가
-  // half: 그 가격에 닿으면 절반만 먼저 팔고 나머지 절반은 같은 규칙으로 계속 (11/12 사용자: 더 높게 익절하는 시나리오)
-  const run = (p, tgt, useStop, half) => {
+  // half: 그 가격에 닿으면 절반만 먼저 팔고 나머지 절반은 같은 규칙으로 계속 · trail: +5% 넘은 뒤 종가가 고점보다 trail만큼 내려오면 그 종가에 팖
+  const run = (p, tgt, useStop, half, trail) => {
     const rows = p.path.map(([d, o, h, l, c]) => ({ d, o, h, l, c, live: false }));
     const lv = LIVE && LIVE.prices && LIVE.prices[p.code];
     if (lv && LIVE.date && LIVE.date.replace(/-/g, '') > rows[rows.length - 1].d) rows.push({ d: LIVE.date.replace(/-/g, ''), o: lv.o || lv.p, h: lv.h || lv.p, l: lv.l || lv.p, c: lv.p, live: true });
-    let wt = 1, got = 0, pre = '';
+    let wt = 1, got = 0, pre = '', hi = p.base;
     const fin = (px, w) => ({ r: (got + wt * (px / p.base - 1)) * 100, w: pre + w });
     for (const r of rows) {
       if (half && wt === 1 && r.h >= half) { got += .5 * (Math.max(r.o, half) / p.base - 1); wt = .5; pre = `반 익절 ${md(r.d)} · `; }
       if (tgt && r.h >= tgt) return fin(Math.max(r.o, tgt), `익절 ${md(r.d)}`);
       if (useStop && p.stop && !r.live && r.c < p.stop) return fin(r.c, `손절 ${md(r.d)}`);
+      if (trail && !r.live) { hi = Math.max(hi, r.h); if (hi >= p.base * 1.05 && r.c <= hi * (1 - trail)) return fin(r.c, `고점 대비 −${trail * 100}% ${md(r.d)}`); }
     }
     return fin(rows[rows.length - 1].c, '보유 중');
   };
+  // 11/12 사용자: 전략 수는 6개 유지, 최고 종목(NHN) 빼고 봐도 잘 나온 것들로 교체 (그냥 보유·손절만은 기준선)
   const ST = [
     ['그냥 보유', '안 팔고 지금 가격으로 평가', p => run(p, 0, false)],
     ['손절만 지킴', '추천 손절선 아래로 마감한 날 종가에 팖', p => run(p, 0, true)],
-    ['손절 + 40% 익절', '+40% 닿으면 팖', p => run(p, p.base * 1.4, true)],
+    ['손절 + 고점 −5%', '+5% 넘게 오른 뒤 종가가 최고점보다 5% 내려오면 그 종가에 팖', p => run(p, 0, true, 0, .05)],
+    ['손절 + 25% 익절', '+25% 닿으면 팖', p => run(p, p.base * 1.25, true)],
     ['손절 + 30% 익절', '+30% 닿으면 팖', p => run(p, p.base * 1.3, true)],
-    ['손절 + 20% 익절', '+20% 닿으면 팖', p => run(p, p.base * 1.2, true)],
-    ['손절 + 15% 익절', '+15% 닿으면 팖', p => run(p, p.base * 1.15, true)],
-    ['손절 + 10% 익절', '+10% 닿으면 팖', p => run(p, p.base * 1.1, true)],
-    ['반 +10% · 반 보유', '+10% 닿으면 절반만 팔고 나머지는 손절선까지 보유', p => run(p, 0, true, p.base * 1.1)],
-    ['손절 + 저항2 익절', '추천 저항2에 닿으면 팖', (p, i) => run(p, lvs[i]['저항2'], true)],
-    ['손절 + 저항1 익절', '추천 저항1에 닿으면 팖', (p, i) => run(p, lvs[i]['저항1'], true)],
+    ['반 15% · 반 30%', '+15% 닿으면 절반, +30% 닿으면 나머지 절반을 팖', p => run(p, p.base * 1.3, true, p.base * 1.15)],
   ];
-  const n = P.length, man = v => `${v >= 0 ? '+' : '−'}${Math.abs(v / 1e4).toFixed(1)}만원`;
-  const R = ST.map(([nm, rule, f]) => { const rs = P.map((p, i) => ({ p, ...f(p, i) })); const g = rs.reduce((a, x) => a + 1e6 * x.r / 100, 0);
-    return { nm, rule, rs, g, win: rs.filter(x => x.r > 0).length }; });
-  const mx = Math.max(...R.map(x => Math.abs(x.g)), 1), tot = n * 1e6;
-  // 11/11 사용자: 왼쪽 = 통계 A(고른 전략 큰 숫자 + 버튼 + 조건), 오른쪽 = 통계 B(전략별 막대). 막대 행을 눌러도 왼쪽이 바뀜
+  const man = v => `${v >= 0 ? '+' : '−'}${Math.abs(v / 1e4).toFixed(1)}만원`;
+  // 최고 종목 = 진입 뒤 최고점이 가장 높았던 종목. 그 한 종목이 평균을 끌어올리니 빼고 보는 게 기본 (11/12 사용자)
+  const top = P.reduce((a, b) => ((b.max_up || 0) > (a.max_up || 0) ? b : a));
+  let ex = true; try { if (localStorage.getItem('sjStratEx') === '0') ex = false; } catch (e) { }
+  let PP, n, R, mx, tot;
+  const calc = () => { const idx = P.map((p, i) => i).filter(i => !ex || P.length < 2 || P[i] !== top); PP = idx; n = idx.length; tot = n * 1e6;
+    R = ST.map(([nm, rule, f]) => { const rs = idx.map(i => ({ p: P[i], ...f(P[i], i) })); const g = rs.reduce((a, x) => a + 1e6 * x.r / 100, 0);
+      return { nm, rule, rs, g, win: rs.filter(x => x.r > 0).length }; });
+    mx = Math.max(...R.map(x => Math.abs(x.g)), 1); };
+  calc();
   let sel = 1; try { const s0 = localStorage.getItem('sjStrat'), v = +s0; if (s0 !== null && s0 !== '' && v >= 0 && v < R.length) sel = v; } catch (e) { }
+  const exBtn = () => `<button type="button" class="sex${ex ? ' on' : ''}" data-ex="1" title="진입 뒤 최고 ${pct(top.max_up || 0, 1)}까지 오른 ${esc(top.name)} 한 종목이 평균을 크게 끌어올려서, 빼고 보는 게 기본">${ex ? `${esc(top.name)} 빼고` : `${esc(top.name)} 포함`}</button>`;
   const A = () => { const x = R[sel];
-    return `<div class="sh">100만원씩 넣었다면 <small>시세 있는 ${n}종목 · 총 ${fmt(n * 100)}만원 · 지금까지</small></div>`
+    return `<div class="sh">100만원씩 넣었다면 <small>시세 있는 ${n}종목 · 총 ${fmt(n * 100)}만원 · 지금까지</small>${exBtn()}</div>`
       + `<div class="sa"><span class="sx">→</span><b class="big">${fmt(Math.round((tot + x.g) / 1e4))}만원</b><b class="${cls(x.g)}">${man(x.g)} (${pct(x.g / tot * 100, 1)})</b><span class="sx">이긴 종목 ${x.win}/${n}</span></div>`
       + `<div class="sbt">${R.map((y, j) => `<button type="button" data-j="${j}" class="${j === sel ? 'on' : ''}">${y.nm}</button>`).join('')}</div>`
       + `<div class="scd"><b>조건</b> 선정일 종가에 삼 · ${x.rule} · 수수료·세금 제외</div>`
@@ -1147,9 +1151,10 @@ async function perfStrat() {
   const B = () => `<div class="sh">전략별 비교 <small>같은 ${n}종목 · 막대를 누르면 왼쪽에 자세히</small></div>`
     + R.map((x, j) => `<div class="sr${j === sel ? ' on' : ''}" data-j="${j}" title="${esc(x.rule + '\n' + x.rs.map(y => `${y.p.name} ${pct(y.r, 1)} · ${y.w}`).join('\n'))}"><span class="sn">${x.nm}</span><span class="sb"><i class="${x.g >= 0 ? 'u' : 'd'}" style="width:${(Math.abs(x.g) / mx * 100).toFixed(1)}%"></i></span>`
       + `<span class="sv ${cls(x.g)}"><b>${man(x.g)}</b> <small>(${pct(x.g / tot * 100, 1)})</small></span></div>`).join('')
-    + `<div class="sc">손절 = 종가가 추천 손절선 아래로 마감한 날 그 종가 · 익절 = 장중에 닿은 가격(시가가 이미 넘었으면 시가)</div>`;
+    + `<div class="sc">손절 = 종가가 추천 손절선 아래로 마감한 날 그 종가 · 익절 = 장중에 닿은 가격(시가가 이미 넘었으면 시가) · 고점 −5% = 마감 기준</div>`;
   const draw = () => { el.innerHTML = `<div class="pa">${A()}</div><div class="pb">${B()}</div>`; };
-  el.onclick = e => { const t = e.target.closest('[data-j]'); if (!t) return; sel = +t.dataset.j; try { localStorage.setItem('sjStrat', sel); } catch (er) { } draw(); };
+  el.onclick = e => { if (e.target.closest('[data-ex]')) { ex = !ex; try { localStorage.setItem('sjStratEx', ex ? '1' : '0'); } catch (er) { } calc(); draw(); return; }
+    const t = e.target.closest('[data-j]'); if (!t) return; sel = +t.dataset.j; try { localStorage.setItem('sjStrat', sel); } catch (er) { } draw(); };
   draw();
 }
 // 성과 칸 미니 차트: 진입 뒤 경로 (30분봉 있으면 30분봉, 없으면 일봉 종가) + 진입가·손절선·최고점
