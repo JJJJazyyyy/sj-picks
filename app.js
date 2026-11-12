@@ -76,10 +76,49 @@ async function init() {
   setInterval(async () => { try { const L = await getJSON('data/live.json'); if (!LIVE || L.date !== LIVE.date || L.time !== LIVE.time) { LIVE = L; applyLive(); perfMini(); } } catch (e) { } }, 5 * 60 * 1000);
   renderPerf();
   route();
+  newPickWatch();
   if (SHOT) setTimeout(() => {   // 설명 이미지 캡처용: 첫 종목 + 점수표 열기
     document.querySelectorAll('.rv').forEach(e => e.classList.add('in')); goTo(0, false);
     const c = document.querySelector('#st0 .scchip'); if (c) c.click();
   }, 1500);
+}
+
+// ── 새 종목 알림 (11/12 사용자 B안): 평일 16:00~17:00에만 2분마다 index.json 확인 → 새 선정일이면 오른쪽 위 카드 ──
+function newPickWatch() {
+  const kst = () => { const p = Object.fromEntries(new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Seoul', weekday: 'short', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(new Date()).map(x => [x.type, x.value]));
+    return { wd: p.weekday, hm: +p.hour * 100 + +p.minute }; };
+  const inWin = () => { const k = kst(); return !['Sat', 'Sun'].includes(k.wd) && k.hm >= 1600 && k.hm <= 1700; };
+  let busy = false, shown = '';
+  const check = async () => {
+    if (busy || !inWin() || !INDEX) return; busy = true;
+    try {
+      const N = await getJSON(`data/index.json?t=${Date.now()}`);      // 주소 뒤 시각: GitHub Pages 10분 캐시 피하기
+      if (N.latest && N.latest > INDEX.latest && N.latest !== shown) { shown = N.latest; await newPickShow(N); }
+    } catch (e) { } finally { busy = false; }
+  };
+  setInterval(check, 2 * 60 * 1000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) check(); });
+  check();
+}
+async function newPickShow(N) {
+  let D = null; try { D = await getJSON(`data/days/${N.latest}.json?t=${Date.now()}`); } catch (e) { }
+  const d0 = N.days.find(d => d.day === N.latest) || { stocks: [] };
+  const kind = c => { const x = D && D.stocks.find(y => y.code === c); return x && x.kind === 'swing' ? '미리 담을 종목' : '급등 후보'; };
+  let t = document.querySelector('.ntoast');
+  if (!t) { t = document.createElement('div'); t.className = 'ntoast'; t.setAttribute('role', 'status'); t.setAttribute('aria-live', 'polite'); document.body.appendChild(t); }
+  t.innerHTML = `<div class="nt-h"><span class="nt-dot"></span>새 종목이 나왔어요<button type="button" class="nt-x" aria-label="닫기">×</button></div>`
+    + `<div class="nt-s">${dname(N.latest)} 마감 기준 · ${esc((N.updated || '').slice(11))} 업데이트</div>`
+    + d0.stocks.map(x => `<div class="nt-r"><span>${logo(x.code, x.name, 16)}${esc(x.name)}<i>${kind(x.code)}</i></span><b class="${cls(x.chg)}">${pct(x.chg, 1)}</b></div>`).join('')
+    + `<div class="nt-b"><button type="button" class="nt-go">보러 가기</button><button type="button" class="nt-later">나중에</button></div>`;
+  const hd = document.querySelector('header.top'); t.style.top = ((hd ? hd.getBoundingClientRect().bottom : 0) + 10) + 'px';
+  t.classList.add('on');
+  const T0 = document.title.replace(/^\(새 종목\) /, ''); document.title = '(새 종목) ' + T0;
+  const close = () => { t.classList.remove('on'); document.title = T0; };
+  t.querySelector('.nt-x').onclick = close; t.querySelector('.nt-later').onclick = close;
+  t.querySelector('.nt-go').onclick = () => { close();
+    INDEX = N; $('#updated').textContent = '갱신 ' + INDEX.updated;
+    $('#daySel').innerHTML = INDEX.days.map(d => `<option value="${d.day}">${dname(d.day)} 마감 · ${d.stocks.map(s => esc(s.name)).join(', ')}</option>`).join('');
+    renderPerf(); if (location.hash.slice(1) === N.latest) renderDay(N.latest); else location.hash = N.latest; };
 }
 
 function route() {

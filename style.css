@@ -667,3 +667,14 @@ body.resizing .hspl,body.resizing:has(.hspl.on) *{cursor:row-resize !important}
 .stip .st-v{text-align:right;font-size:11.5px;font-weight:700}
 .stip .st-w{font-size:10.5px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pstrat .sr{cursor:pointer}.pstrat .sr:focus{outline:1px solid var(--navy);outline-offset:-1px}
+/* 새 종목 알림 카드 B안 (11/12) */
+.ntoast{position:fixed;right:16px;z-index:80;width:290px;max-width:calc(100vw - 24px);background:var(--panel);color:var(--txt);border:1px solid var(--line);border-radius:12px;padding:11px 13px;font-size:12.5px;box-shadow:0 12px 32px rgba(15,23,42,.18),0 2px 6px rgba(15,23,42,.08);opacity:0;transform:translateY(-8px);pointer-events:none;transition:opacity .25s ease-out,transform .25s ease-out}
+.ntoast.on{opacity:1;transform:none;pointer-events:auto}
+.ntoast .nt-h{display:flex;align-items:center;gap:7px;font-weight:800;font-size:13.5px}
+.ntoast .nt-dot{width:8px;height:8px;border-radius:50%;background:var(--up);box-shadow:0 0 0 3px color-mix(in srgb,var(--up) 22%,transparent)}
+.ntoast .nt-x{margin-left:auto;border:0;background:none;color:var(--sub);font-size:18px;line-height:1;cursor:pointer;padding:0 2px}
+.ntoast .nt-s{color:var(--sub);font-size:11.5px;margin:2px 0 8px}
+.ntoast .nt-r{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-top:1px solid var(--line2)}
+.ntoast .nt-r span{display:flex;align-items:center;gap:5px;min-width:0}.ntoast .nt-r i{font-style:normal;color:var(--sub);font-size:11px;margin-left:3px}
+.ntoast .nt-b{display:flex;gap:6px;margin-top:9px}.ntoast .nt-b button{flex:1;font:inherit;font-size:12.5px;border-radius:7px;padding:6px 0;cursor:pointer}
+.ntoast .nt-go{background:var(--navy);border:1px solid var(--navy);color:#fff;font-weight:700}.ntoast .nt-later{background:var(--panel);border:1px solid var(--line);color:var(--sub)}
