@@ -1120,13 +1120,14 @@ const GAIN_MIN = 5;
 function renderGainers() {
   const el = $('#gainers'); if (!el || !INDEX) return;
   const pr = LIVE && LIVE.prices || {};
-  // 11/12 사용자: 최근 들어간 종목에 가중치 — 점수 = 진입 후 % × (1 + 0.5 ÷ 진입 뒤 거래일 수). 1일째 ×1.5 · 2일째 ×1.25 · 3일째 ×1.17 · 4일째 ×1.13
-  // 점수 5 이상만 → 1일째는 +3.4%, 2일째는 +4%, 오래된 종목은 +5% 가까이 올라야 들어옴
+  // 11/12 사용자: 최근 들어간 종목에 가중치 '더 세게' — 점수 = 진입 후 % × 배수. 1일째 ×2 · 2일째 ×1.6 · 3일째 ×1.3 · 4일째부터 ×1
+  // 점수 5 이상만 → 1일째 +2.5% · 2일째 +3.1% · 3일째 +3.8% · 4일째부터 +5%
+  const GAIN_W = [2, 1.6, 1.3];
   const ld = LIVE && LIVE.date ? LIVE.date.replace(/-/g, '') : '';
   const G = (INDEX.perf || []).map(p => { const l = pr[p.code]; if (!l || !l.p || !p.base) return null;
       const ds = new Set((p.path || []).map(r => r[0]).filter(d => d > p.day)); if (ld > p.day) ds.add(ld);
       const n = Math.max(ds.size, 1), ent = (l.p / p.base - 1) * 100;
-      return { p, l, ent, n, sc: ent * (1 + 0.5 / n) }; })
+      return { p, l, ent, n, sc: ent * (GAIN_W[n - 1] || 1) }; })
     .filter(x => x && x.ent > 0 && x.sc >= GAIN_MIN).sort((a, b) => b.sc - a.sc);
   if (!G.length) { el.hidden = true; el.innerHTML = ''; return; }
   el.hidden = false;
