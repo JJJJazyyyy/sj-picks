@@ -1133,7 +1133,7 @@ async function perfStrat() {
     }
     return fin(rows[rows.length - 1].c, '보유 중');
   };
-  // 11/12 사용자: 전략 수는 6개 유지, 최고 종목(NHN) 빼고 봐도 잘 나온 것들로 교체 (그냥 보유·손절만은 기준선)
+  // 11/12 사용자: 전략 수는 6개 유지, 최고 종목(NHN) 빼고 봐도 잘 나온 것들로 고름 (화면 통계는 전 종목) (그냥 보유·손절만은 기준선)
   const ST = [
     ['그냥 보유', '안 팔고 지금 가격으로 평가', p => run(p, 0, false)],
     ['손절만 지킴', '추천 손절선 아래로 마감한 날 종가에 팖', p => run(p, 0, true)],
@@ -1143,12 +1143,10 @@ async function perfStrat() {
     ['다음날 9:30 매도', '다음날 첫 30분봉(9:00~9:30)이 끝날 때 가격에 팖 · 거래량이 하루 중 가장 몰리는 때', (p, i) => at930(p, i)],
   ];
   const man = v => `${v >= 0 ? '+' : '−'}${Math.abs(v / 1e4).toFixed(1)}만원`;
-  // 최고 종목 = 진입 뒤 최고점이 가장 높았던 종목. 그 한 종목이 평균을 끌어올리니 빼고 보는 게 기본 (11/12 사용자)
-  const top = P.reduce((a, b) => ((b.max_up || 0) > (a.max_up || 0) ? b : a));
-  let ex = true; try { if (localStorage.getItem('sjStratEx') === '0') ex = false; } catch (e) { }
   // 11/12 사용자: 누적 합계는 날이 쌓일수록 커지기만 해서 → 선정일 하루(3종목 × 100만원) 평균 수익으로. 전략은 수익 높은 순
   let n, R, mx, tot, nd;
-  const calc = () => { const idx = P.map((p, i) => i).filter(i => !ex || P.length < 2 || P[i] !== top); n = idx.length; tot = n * 1e6;
+  // 통계는 항상 전 종목 (NHN 빼기는 전략 고를 때만 썼음, 11/12 사용자)
+  const calc = () => { const idx = P.map((p, i) => i); n = idx.length; tot = n * 1e6;
     nd = new Set(idx.map(i => P[i].day)).size || 1;
     R = ST.map(([nm, rule, f]) => { const rs = idx.map(i => ({ p: P[i], ...f(P[i], i) })); const g = rs.reduce((a, x) => a + 1e6 * x.r / 100, 0);
       const dm = {}; rs.forEach(x => { const d = dm[x.p.day] || (dm[x.p.day] = { d: x.p.day, g: 0, k: 0 }); d.g += 1e6 * x.r / 100; d.k++; });
@@ -1158,10 +1156,9 @@ async function perfStrat() {
     mx = Math.max(...R.map(x => Math.abs(x.da)), 1); };
   calc();
   let sel = '손절만 지킴'; try { const s0 = localStorage.getItem('sjStrat'); if (s0 && ST.some(x => x[0] === s0)) sel = s0; } catch (e) { }
-  const exBtn = () => `<button type="button" class="sex${ex ? ' on' : ''}" data-ex="1" title="진입 뒤 최고 ${pct(top.max_up || 0, 1)}까지 오른 ${esc(top.name)} 한 종목이 평균을 크게 끌어올려서, 빼고 보는 게 기본">${ex ? `${esc(top.name)} 빼고` : `${esc(top.name)} 포함`}</button>`;
   const m1 = v => `${v >= 0 ? '+' : '−'}${Math.abs(v / 1e4).toFixed(1)}`;
   const A = () => { const x = R.find(y => y.nm === sel) || R[0], dd = x.days.slice(-8);
-    return `<div class="sh">매일 3종목 × 100만원씩 샀다면 <small>선정일 ${nd}일 · ${n}종목 · 지금까지</small>${exBtn()}</div>`
+    return `<div class="sh">매일 3종목 × 100만원씩 샀다면 <small>선정일 ${nd}일 · ${n}종목 · 지금까지</small></div>`
       + `<div class="sa"><span class="sx">하루 평균</span><b class="big ${cls(x.g)}">${man(x.da)}</b><b class="${cls(x.g)}">(${pct(x.g / tot * 100, 1)})</b><span class="sx">100만원당 ${man(x.g / n)} · 이긴 종목 ${x.win}/${n}</span></div>`
       + `<div class="sdy">${x.days.length > dd.length ? '<span class="sx">최근 8일</span>' : ''}${dd.map(d => `<span title="${md(d.d)} 고른 ${d.k}종목 합계">${md(d.d)} <b class="${cls(d.g)}">${m1(d.g)}</b></span>`).join('')}<span class="wd">이긴 날 ${x.wd}/${x.days.length}</span></div>`
       + `<div class="sbt">${R.map(y => `<button type="button" data-j="${esc(y.nm)}" class="${y.nm === x.nm ? 'on' : ''}">${y.nm}</button>`).join('')}</div>`
@@ -1173,7 +1170,7 @@ async function perfStrat() {
       + `<span class="sv ${cls(x.g)}"><b>${man(x.da)}</b> <small>(${pct(x.g / tot * 100, 1)})</small></span></div>`).join('')
     + `<div class="sc">하루 평균 = 고른 날마다 3종목 손익을 더한 뒤 날 수로 나눔 · % = 100만원당 평균 · 손절 = 종가가 추천 손절선 아래로 마감한 날 그 종가 · 익절 = 장중에 닿은 가격(시가가 이미 넘었으면 시가)</div>`; };
   const draw = () => { el.innerHTML = `<div class="pa">${A()}</div><div class="pb">${B()}</div>`; };
-  el.onclick = e => { if (e.target.closest('[data-ex]')) { ex = !ex; try { localStorage.setItem('sjStratEx', ex ? '1' : '0'); } catch (er) { } calc(); draw(); return; }
+  el.onclick = e => {
     const t = e.target.closest('[data-j]'); if (!t) return; sel = t.dataset.j; try { localStorage.setItem('sjStrat', sel); } catch (er) { } draw(); };
   draw();
 }
