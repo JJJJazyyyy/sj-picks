@@ -1106,21 +1106,29 @@ async function perfStrat() {
       const o = {}; (st.levels || []).filter(l => l.price > p.base).sort((a, b) => a.price - b.price).forEach(l => { if (!o[l.kind]) o[l.kind] = l.price; }); return o; } catch (e) { return {}; }
   }));
   // 한 종목을 규칙대로: 익절가에 장중 닿으면 그 가격(시가가 이미 넘었으면 시가), 손절은 종가가 손절선 아래로 마감한 날 종가
-  const run = (p, tgt, useStop) => {
+  // half: 그 가격에 닿으면 절반만 먼저 팔고 나머지 절반은 같은 규칙으로 계속 (11/12 사용자: 더 높게 익절하는 시나리오)
+  const run = (p, tgt, useStop, half) => {
     const rows = p.path.map(([d, o, h, l, c]) => ({ d, o, h, l, c, live: false }));
     const lv = LIVE && LIVE.prices && LIVE.prices[p.code];
     if (lv && LIVE.date && LIVE.date.replace(/-/g, '') > rows[rows.length - 1].d) rows.push({ d: LIVE.date.replace(/-/g, ''), o: lv.o || lv.p, h: lv.h || lv.p, l: lv.l || lv.p, c: lv.p, live: true });
+    let wt = 1, got = 0, pre = '';
+    const fin = (px, w) => ({ r: (got + wt * (px / p.base - 1)) * 100, w: pre + w });
     for (const r of rows) {
-      if (tgt && r.h >= tgt) return { r: (Math.max(r.o, tgt) / p.base - 1) * 100, w: `익절 ${md(r.d)}` };
-      if (useStop && p.stop && !r.live && r.c < p.stop) return { r: (r.c / p.base - 1) * 100, w: `손절 ${md(r.d)}` };
+      if (half && wt === 1 && r.h >= half) { got += .5 * (Math.max(r.o, half) / p.base - 1); wt = .5; pre = `반 익절 ${md(r.d)} · `; }
+      if (tgt && r.h >= tgt) return fin(Math.max(r.o, tgt), `익절 ${md(r.d)}`);
+      if (useStop && p.stop && !r.live && r.c < p.stop) return fin(r.c, `손절 ${md(r.d)}`);
     }
-    return { r: (rows[rows.length - 1].c / p.base - 1) * 100, w: '보유 중' };
+    return fin(rows[rows.length - 1].c, '보유 중');
   };
   const ST = [
     ['그냥 보유', '안 팔고 지금 가격으로 평가', p => run(p, 0, false)],
     ['손절만 지킴', '추천 손절선 아래로 마감한 날 종가에 팖', p => run(p, 0, true)],
+    ['손절 + 40% 익절', '+40% 닿으면 팖', p => run(p, p.base * 1.4, true)],
+    ['손절 + 30% 익절', '+30% 닿으면 팖', p => run(p, p.base * 1.3, true)],
     ['손절 + 20% 익절', '+20% 닿으면 팖', p => run(p, p.base * 1.2, true)],
+    ['손절 + 15% 익절', '+15% 닿으면 팖', p => run(p, p.base * 1.15, true)],
     ['손절 + 10% 익절', '+10% 닿으면 팖', p => run(p, p.base * 1.1, true)],
+    ['반 +10% · 반 보유', '+10% 닿으면 절반만 팔고 나머지는 손절선까지 보유', p => run(p, 0, true, p.base * 1.1)],
     ['손절 + 저항2 익절', '추천 저항2에 닿으면 팖', (p, i) => run(p, lvs[i]['저항2'], true)],
     ['손절 + 저항1 익절', '추천 저항1에 닿으면 팖', (p, i) => run(p, lvs[i]['저항1'], true)],
   ];
