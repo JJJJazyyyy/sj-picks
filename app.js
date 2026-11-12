@@ -1180,10 +1180,33 @@ async function perfStrat() {
       + `<div class="sst">${x.rs.map(y => `<span class="${cls(y.r)}" title="${esc(y.w)}">${esc(y.p.name)} ${pct(y.r, 1)}${y.w === '보유 중' ? '' : ` <small>${y.w}</small>`}</span>`).join('')}</div>`; };
   const B = () => { const cur = (R.find(y => y.nm === sel) || R[0]).nm;
     return `<div class="sh">전략별 하루 평균 <small>선정일 하루(3종목)당 · 수익 높은 순 · 누르면 왼쪽에 자세히</small></div>`
-    + R.map(x => `<div class="sr${x.nm === cur ? ' on' : ''}" data-j="${esc(x.nm)}" title="${esc(x.rule + (top ? `\n${top.name} 빼면 하루 ${man(x.gx / nd)} (${pct(x.gx / Math.max(tot - 1e6, 1) * 100, 1)})` : '') + '\n' + x.rs.map(y => `${y.p.name} ${pct(y.r, 1)} · ${y.w}`).join('\n'))}"><span class="sn">${x.nm}</span><span class="sb"><i class="${x.g >= 0 ? 'u' : 'd'}" style="width:${(Math.abs(x.da) / mx * 100).toFixed(1)}%"></i></span>`
+    + R.map(x => `<div class="sr${x.nm === cur ? ' on' : ''}" data-j="${esc(x.nm)}" tabindex="0""><span class="sn">${x.nm}</span><span class="sb"><i class="${x.g >= 0 ? 'u' : 'd'}" style="width:${(Math.abs(x.da) / mx * 100).toFixed(1)}%"></i></span>`
       + `<span class="sv ${cls(x.g)}"><b>${man(x.da)}</b> <small>(${pct(x.g / tot * 100, 1)})</small></span></div>`).join('')
     + `<div class="sc">하루 평균 = 고른 날마다 3종목 손익을 더한 뒤 날 수로 나눔 · % = 100만원당 평균 · 손절 = 종가가 추천 손절선 아래로 마감한 날 그 종가 · 익절 = 장중에 닿은 가격(시가가 이미 넘었으면 시가)</div>`; };
   const draw = () => { el.innerHTML = `<div class="pa">${A()}</div><div class="pb">${B()}</div>`; };
+  // 막대 말풍선 (11/12 사용자 A안 라이트): 기다림 없이 바로 · 숫자 3칸 + 종목별 0 기준 미니 막대
+  let tip = document.querySelector('.stip');
+  if (!tip) { tip = document.createElement('div'); tip.className = 'stip'; tip.setAttribute('role', 'tooltip'); document.body.appendChild(tip); }
+  const tipHTML = x => {
+    const rs = x.rs.slice().sort((a, b) => b.r - a.r), lo = Math.min(0, ...rs.map(y => y.r)), hi = Math.max(0, ...rs.map(y => y.r)), sp = (hi - lo) || 1;
+    const P0 = v => (v - lo) / sp * 100, z = P0(0);
+    return `<div class="st-h">${esc(x.nm)}</div><div class="st-r">${esc(x.rule)}</div>`
+      + `<div class="st-k"><span>하루 평균 <b class="${cls(x.g)}">${man(x.da)}</b></span><span>이긴 종목 <b>${x.win}/${n}</b></span>${top ? `<span>${esc(top.name)} 빼면 <b class="${cls(x.gx)}">${man(x.gx / nd)}</b></span>` : ''}</div>`
+      + rs.map(y => { const a = Math.min(P0(y.r), z), w = Math.abs(P0(y.r) - z);
+        return `<div class="st-row"><span class="st-n">${esc(y.p.name)}</span><span class="st-t" style="--z:${z.toFixed(1)}%"><i class="${y.r >= 0 ? 'u' : 'd'}" style="left:${a.toFixed(1)}%;width:${Math.max(w, .6).toFixed(1)}%"></i></span><span class="st-v ${cls(y.r)}">${pct(y.r, 1)}</span><span class="st-w">${esc(y.w)}</span></div>`; }).join('');
+  };
+  const tipShow = row => { const x = R.find(y => y.nm === row.dataset.j); if (!x) return;
+    tip.innerHTML = tipHTML(x); tip.style.display = 'block';
+    const r = row.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight;
+    let left = Math.min(Math.max(8, r.left + 150), innerWidth - w - 8), top0 = r.bottom + 6;
+    if (top0 + h > innerHeight - 8) top0 = Math.max(8, r.top - h - 6);
+    tip.style.left = left + 'px'; tip.style.top = top0 + 'px'; };
+  const tipHide = () => { tip.style.display = 'none'; };
+  el.onmouseover = e => { const row = e.target.closest('.sr'); if (row) tipShow(row); };
+  el.onmouseout = e => { const row = e.target.closest('.sr'); if (row && !row.contains(e.relatedTarget)) tipHide(); };
+  el.onfocusin = e => { const row = e.target.closest('.sr'); if (row) tipShow(row); };
+  el.onfocusout = tipHide;
+  if (!window._stipScroll) { window._stipScroll = 1; addEventListener('scroll', () => { const t = document.querySelector('.stip'); if (t) t.style.display = 'none'; }, { passive: true }); }
   el.onclick = e => {
     const t = e.target.closest('[data-j]'); if (!t) return; sel = t.dataset.j; try { localStorage.setItem('sjStrat', sel); } catch (er) { } draw(); };
   draw();

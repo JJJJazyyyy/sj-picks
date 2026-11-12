@@ -653,3 +653,17 @@ body.resizing .hspl,body.resizing:has(.hspl.on) *{cursor:row-resize !important}
 /* 전략 이름 한 줄 유지 (11/12) — 이름 칸을 넓히고 막대를 줄임 */
 .pstrat .sr{grid-template-columns:148px minmax(40px,1fr) 128px}.pstrat .sr .sn{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 @media (max-width:640px){.pstrat .sr{grid-template-columns:140px minmax(30px,1fr) auto}}
+/* 전략 막대 말풍선 A안 라이트 (11/12) */
+.stip{display:none;position:fixed;z-index:70;width:360px;max-width:calc(100vw - 16px);background:var(--panel);color:var(--txt);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:12px;box-shadow:0 10px 28px rgba(15,23,42,.16),0 2px 6px rgba(15,23,42,.08);pointer-events:none}
+.stip .st-h{font-weight:800;font-size:13px}.stip .st-r{color:var(--sub);font-size:11px;line-height:1.5;margin:2px 0 8px}
+.stip .st-k{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px}.stip .st-k span{background:var(--panel2);border:1px solid var(--line2);border-radius:6px;padding:2px 7px;font-size:11px;color:var(--sub)}.stip .st-k b{margin-left:2px}
+.stip .st-row{display:grid;grid-template-columns:74px minmax(40px,1fr) 46px 92px;gap:6px;align-items:center;height:18px}
+.stip .st-n{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11.5px}
+.stip .st-t{position:relative;height:6px;border-radius:3px;background:color-mix(in srgb,var(--line2) 60%,transparent)}
+.stip .st-t:before{content:"";position:absolute;left:var(--z);top:-3px;bottom:-3px;border-left:1px dashed var(--sub);opacity:.6}
+.stip .st-t i{position:absolute;top:0;height:6px;border-radius:3px}
+.stip .st-t i.u{background:linear-gradient(90deg,color-mix(in srgb,var(--up) 35%,transparent),var(--up))}
+.stip .st-t i.d{background:linear-gradient(270deg,color-mix(in srgb,var(--dn) 35%,transparent),var(--dn))}
+.stip .st-v{text-align:right;font-size:11.5px;font-weight:700}
+.stip .st-w{font-size:10.5px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pstrat .sr{cursor:pointer}.pstrat .sr:focus{outline:1px solid var(--navy);outline-offset:-1px}
