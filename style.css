@@ -650,3 +650,6 @@ body.resizing .hspl,body.resizing:has(.hspl.on) *{cursor:row-resize !important}
 .pstrat .sdy{display:flex;flex-wrap:wrap;gap:4px 6px;margin:0 0 7px;font-size:11.5px}
 .pstrat .sdy span{border:1px solid var(--line2);border-radius:4px;padding:1px 7px;color:var(--sub);white-space:nowrap}.pstrat .sdy span b{margin-left:3px}
 .pstrat .sdy .wd{border-style:dashed}.pstrat .sdy .sx{border:0;padding:1px 0}
+/* 전략 이름 한 줄 유지 (11/12) — 이름 칸을 넓히고 막대를 줄임 */
+.pstrat .sr{grid-template-columns:148px minmax(40px,1fr) 128px}.pstrat .sr .sn{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media (max-width:640px){.pstrat .sr{grid-template-columns:140px minmax(30px,1fr) auto}}
