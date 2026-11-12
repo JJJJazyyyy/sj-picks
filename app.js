@@ -1118,6 +1118,16 @@ async function perfStrat() {
     if (nx) return { r: (nx[4] / p.base - 1) * 100, w: `분봉 없음 · ${md(nx[0])} 종가` };
     return run(p, 0, false);
   };
+  // 다음날 하루만: 장중 tgt배 닿으면 그 가격(시가가 이미 넘었으면 시가), 못 닿으면 다음날 종가 · 다음날이 오늘이고 장 중이면 '진행 중'
+  const nextDay = (p, k) => {
+    const rows = p.path.map(([d, o, h, l, c]) => ({ d, o, h, c, live: false }));
+    const lv = LIVE && LIVE.prices && LIVE.prices[p.code], ld = LIVE && LIVE.date ? LIVE.date.replace(/-/g, '') : '';
+    if (lv && ld && (!rows.length || ld > rows[rows.length - 1].d)) rows.push({ d: ld, o: lv.o || lv.p, h: lv.h || lv.p, c: lv.p, live: !LIVE.closed });
+    const r = rows.find(x => x.d > p.day); if (!r) return run(p, 0, false);
+    const t = p.base * k;
+    if (r.h >= t) return { r: (Math.max(r.o, t) / p.base - 1) * 100, w: `익절 ${md(r.d)}` };
+    return { r: (r.c / p.base - 1) * 100, w: r.live ? '진행 중' : `${md(r.d)} 종가` };
+  };
   // half: 그 가격에 닿으면 절반만 먼저 팔고 나머지 절반은 같은 규칙으로 계속 · trail: +5% 넘은 뒤 종가가 고점보다 trail만큼 내려오면 그 종가에 팖
   const run = (p, tgt, useStop, half, trail) => {
     const rows = p.path.map(([d, o, h, l, c]) => ({ d, o, h, l, c, live: false }));
@@ -1138,8 +1148,9 @@ async function perfStrat() {
     ['그냥 보유', '안 팔고 지금 가격으로 평가', p => run(p, 0, false)],
     ['손절만 지킴', '추천 손절선 아래로 마감한 날 종가에 팖', p => run(p, 0, true)],
     ['손절 + 고점 −5%', '+5% 넘게 오른 뒤 종가가 최고점보다 5% 내려오면 그 종가에 팖', p => run(p, 0, true, 0, .05)],
-    ['손절 + 25% 익절', '+25% 닿으면 팖', p => run(p, p.base * 1.25, true)],
-    ['손절 + 30% 익절', '+30% 닿으면 팖', p => run(p, p.base * 1.3, true)],
+    // 11/12 사용자: 급등주라 +25%·+30% 익절은 닿는 일이 드물어 뺌 → 상승 종목이 충분히 쌓이면 다시 검토
+    ['다음날 +5% 익절', '다음날 장중 +5% 닿으면 팖, 못 닿으면 다음날 종가에 팖 (하루만 들고 감)', p => nextDay(p, 1.05)],
+    ['반 +10% · 반 고점 −5%', '+10% 닿으면 절반 팖, 나머지는 종가가 최고점보다 5% 내려오면 팖', p => run(p, 0, true, p.base * 1.1, .05)],
     ['다음날 9:30 매도', '다음날 첫 30분봉(9:00~9:30)이 끝날 때 가격에 팖 · 거래량이 하루 중 가장 몰리는 때', (p, i) => at930(p, i)],
   ];
   const man = v => `${v >= 0 ? '+' : '−'}${Math.abs(v / 1e4).toFixed(1)}만원`;
