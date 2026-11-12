@@ -691,3 +691,7 @@ body.resizing .hspl,body.resizing:has(.hspl.on) *{cursor:row-resize !important}
 .gainers .gn small{font-size:11px;color:var(--sub)}.gainers .gn small.dn{color:var(--dn)}
 @media (max-width:640px){.gainers{flex-wrap:wrap;padding:6px 10px}.gainers .gn-c{width:100%}}
 .gainers .gn-e{font-size:15px;line-height:1}
+/* 진입 후 달리는 중 칩: 1번 각진 태그 (11/12) */
+.gainers .gn{gap:6px;border:1px solid var(--line);border-left:3px solid var(--up);border-radius:0;padding:3px 10px 3px 7px;background:var(--panel2)}
+.gainers .gn:hover{border-color:var(--sub);border-left-color:var(--up)}
+.gainers .gn small{font-size:11px;color:var(--sub)}.gainers .gn small .dn{color:var(--dn)}

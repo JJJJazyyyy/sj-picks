@@ -1126,7 +1126,7 @@ function renderGainers() {
   if (!G.length) { el.hidden = true; el.innerHTML = ''; return; }
   el.hidden = false;
   el.innerHTML = `<span class="gn-t"><span class="gn-e" aria-hidden="true">🔥</span>진입 후 달리는 중</span><span class="gn-c">`
-    + G.map(x => `<button type="button" class="gn" data-d="${x.p.day}" data-c="${x.p.code}" title="${esc(x.p.name)} · ${md(x.p.day)} 종가 ${fmt(x.p.base)}원에 진입 → 지금 ${fmt(x.l.p)}원">${logo(x.p.code, x.p.name, 16)}${esc(x.p.name)} <b class="${cls(x.ent)}">${pct(x.ent, 1)}</b><span class="gn-d">${md(x.p.day)} 진입</span>${x.l.chg != null ? `<small class="${x.l.chg < 0 ? 'dn' : ''}">오늘 ${pct(x.l.chg, 1)}</small>` : ''}</button>`).join('')
+    + G.map(x => `<button type="button" class="gn" data-d="${x.p.day}" data-c="${x.p.code}" title="${esc(x.p.name)} · ${md(x.p.day)} 종가 ${fmt(x.p.base)}원에 진입 → 지금 ${fmt(x.l.p)}원">${logo(x.p.code, x.p.name, 16)}${esc(x.p.name)} <b class="${cls(x.ent)}">${pct(x.ent, 1)}</b><small>${md(x.p.day)} 진입${x.l.chg != null ? ` · 오늘 <span class="${x.l.chg < 0 ? 'dn' : ''}">${pct(x.l.chg, 1)}</span>` : ''}</small></button>`).join('')
     + `</span>`;
   el.onclick = async e => { const b = e.target.closest('.gn'); if (!b) return; const d = b.dataset.d, c = b.dataset.c;
     if (CUR !== d) { await renderDay(d); location.hash = d; }
