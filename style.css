@@ -740,3 +740,6 @@ body.resizing .hspl,body.resizing:has(.hspl.on) *{cursor:row-resize !important}
 .pm-f .tag.run i{background:#3B82F6;animation:pmbl2 .9s ease-in-out infinite alternate}
 @keyframes pmbl2{from{opacity:1}to{opacity:.2}}
 @media (prefers-reduced-motion:reduce){.pm-f .tag.run i{animation:none}}
+/* 상태 칩 색 (11/13 사용자 1번): 익절 에메랄드, 매도 인디고 */
+.pm-f .tag.tp,.dk .pm-f .tag.tp{background:#059669;color:#fff}
+.pm-f .tag.tl,.dk .pm-f .tag.tl{background:#4F46E5;color:#fff}
