@@ -748,3 +748,9 @@ body.resizing .hspl,body.resizing:has(.hspl.on) *{cursor:row-resize !important}
 .pm-f .tag.tl,.dk .pm-f .tag.tl{background:linear-gradient(90deg,#2962FF,#4FA3FF);color:#fff}
 /* 익절 칩 (11/13 사용자 1번): 파랑처럼 선명→밝게 흐르는 네온 레드 */
 .pm-f .tag.tp,.dk .pm-f .tag.tp{background:linear-gradient(90deg,#FF1744,#FF6E6E);color:#fff}
+/* 11/13 사용자: 익절 칩 = 네온 그린 + 칩 글로우 + 글씨 드롭·글로우(6번), 이익 쪽 카드 글로우도 초록 */
+.pm-f .tag.tp,.dk .pm-f .tag.tp{background:linear-gradient(90deg,#00B050,#2BD67B);color:#fff;box-shadow:0 0 7px rgba(0,176,80,.7);text-shadow:0 1px 1px rgba(0,0,0,.6),0 0 4px rgba(0,0,0,.45)}
+.pm-c.r1{--gl:0 0 2.4px rgba(134,239,172,.55),0 0 0 1px rgba(134,239,172,.12)}
+.pm-c.r2{--gl:0 0 3.6px rgba(74,222,128,.6),0 0 0 1px rgba(74,222,128,.12)}
+.pm-c.r3{--gl:0 0 4.8px rgba(34,197,94,.65),0 0 0 1px rgba(34,197,94,.12)}
+.pm-c.r4{--gl:0 0 6.4px rgba(22,163,74,.75),0 0 0 1px rgba(22,163,74,.12)}
