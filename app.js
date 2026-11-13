@@ -73,7 +73,7 @@ async function init() {
   window.addEventListener('hashchange', route);
   try { LIVE = await getJSON('data/live.json'); } catch (e) { LIVE = null; }
   loadMkt(); setInterval(loadMkt, 3 * 60 * 1000);      // 시장 날씨 (장중 10분 · 장전 10분 · 저녁 30분 갱신)
-  setInterval(async () => { try { const L = await getJSON('data/live.json'); if (!LIVE || L.date !== LIVE.date || L.time !== LIVE.time) { LIVE = L; applyLive(); perfMini(); renderGainers(); } } catch (e) { } }, 5 * 60 * 1000);
+  setInterval(async () => { try { const L = await getJSON('data/live.json'); if (!LIVE || L.date !== LIVE.date || L.time !== LIVE.time) { LIVE = L; applyLive(); perfMini(); perfStrat(); renderGainers(); } } catch (e) { } }, 5 * 60 * 1000);
   renderPerf();
   route();
   newPickWatch();
@@ -1183,7 +1183,9 @@ function pmTag(p) {
 function pmTags() { document.querySelectorAll('#perfMini .pm-c[data-k]').forEach(a => { const p = PMP[a.dataset.k], t = a.querySelector('.pm-f > .tag'); if (p && t) t.outerHTML = pmTag(p); }); }
 async function perfStrat() {
   const el = $('#perfStrat'); if (!el) return;
-  const P = (INDEX.perf || []).filter(p => p.path && p.path.length);
+  // 11/13 사용자: 어제 고른 종목은 일봉 기록(path)이 아직 없어도 오늘 현재가(live.json)로 전략 계산에 넣음 (전엔 빠져서 '진행 중'으로만 보였음)
+  const LD = LIVE && LIVE.date ? LIVE.date.replace(/-/g, '') : '';
+  const P = (INDEX.perf || []).filter(p => (p.path && p.path.length) || (LD > p.day && LIVE.prices && LIVE.prices[p.code]));
   if (!P.length) { el.innerHTML = ''; return; }
   const lvs = await Promise.all(P.map(async p => {
     try { const D = DAYC[p.day] || (DAYC[p.day] = await getJSON(`data/days/${p.day}.json`)); const st = D.stocks.find(x => x.code === p.code) || {};
@@ -1198,13 +1200,13 @@ async function perfStrat() {
     if (b) { const now = LIVE && LIVE.date && LIVE.time ? `${LIVE.date.replace(/-/g, '')}${String(LIVE.time).replace(/\D/g, '').slice(0, 4)}` : '';
       const done = !now || now >= ymd(b.t) + '0930';
       return { r: (b.c / p.base - 1) * 100, w: done ? `9:30 매도 ${md(ymd(b.t))}` : '9:30 전' }; }
-    const nx = p.path.find(r => r[0] > p.day);   // 분봉이 없으면 다음날 종가로 대신
+    const nx = (p.path || []).find(r => r[0] > p.day);   // 분봉이 없으면 다음날 종가로 대신
     if (nx) return { r: (nx[4] / p.base - 1) * 100, w: `분봉 없음 · ${md(nx[0])} 종가` };
     return run(p, 0, false);
   };
   // 다음날 하루만: 장중 tgt배 닿으면 그 가격(시가가 이미 넘었으면 시가), 못 닿으면 다음날 종가 · 다음날이 오늘이고 장 중이면 '진행 중'
   const nextDay = (p, k) => {
-    const rows = p.path.map(([d, o, h, l, c]) => ({ d, o, h, c, live: false }));
+    const rows = (p.path || []).map(([d, o, h, l, c]) => ({ d, o, h, c, live: false }));
     const lv = LIVE && LIVE.prices && LIVE.prices[p.code], ld = LIVE && LIVE.date ? LIVE.date.replace(/-/g, '') : '';
     if (lv && ld && (!rows.length || ld > rows[rows.length - 1].d)) rows.push({ d: ld, o: lv.o || lv.p, h: lv.h || lv.p, c: lv.p, live: !LIVE.closed });
     const r = rows.find(x => x.d > p.day); if (!r) return run(p, 0, false);
@@ -1214,9 +1216,9 @@ async function perfStrat() {
   };
   // half: 그 가격에 닿으면 절반만 먼저 팔고 나머지 절반은 같은 규칙으로 계속 · trail: +5% 넘은 뒤 종가가 고점보다 trail만큼 내려오면 그 종가에 팖
   const run = (p, tgt, useStop, half, trail) => {
-    const rows = p.path.map(([d, o, h, l, c]) => ({ d, o, h, l, c, live: false }));
+    const rows = (p.path || []).map(([d, o, h, l, c]) => ({ d, o, h, l, c, live: false }));
     const lv = LIVE && LIVE.prices && LIVE.prices[p.code];
-    if (lv && LIVE.date && LIVE.date.replace(/-/g, '') > rows[rows.length - 1].d) rows.push({ d: LIVE.date.replace(/-/g, ''), o: lv.o || lv.p, h: lv.h || lv.p, l: lv.l || lv.p, c: lv.p, live: true });
+    if (lv && LD && LD > (rows.length ? rows[rows.length - 1].d : p.day)) rows.push({ d: LD, o: lv.o || lv.p, h: lv.h || lv.p, l: lv.l || lv.p, c: lv.p, live: true });
     let wt = 1, got = 0, pre = '', hi = p.base;
     const fin = (px, w) => ({ r: (got + wt * (px / p.base - 1)) * 100, w: pre + w });
     for (const r of rows) {
