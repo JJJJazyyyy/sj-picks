@@ -1170,6 +1170,17 @@ function renderPerf() {
 }
 // 전략별 비교 (11/11 사용자 통계 B): 종목마다 100만원, 선정일 종가 매수 → 규칙대로 팔았으면 지금 얼마
 const DAYC = {};
+// 11/13 사용자: 성과 카드 꼬리표를 고른 전략 결과대로 → 판 종목은 '+n.n% 익절'(이익) / '−n.n% 매도'(손해), 손절은 '손절 M/D', 아직 들고 있으면 진행 중
+let STRAT_SEL = null; const PMP = {};
+function pmTag(p) {
+  const y = STRAT_SEL && STRAT_SEL[p.day + p.code], w = y ? y.w : '';
+  const base = () => p.stop_hit ? `<span class="tag stop">손절 ${md(p.stop_hit)}</span>` : p.done ? '<span class="tag end">10일 완료</span>' : '<span class="tag run">진행 중</span>';
+  if (!y || /^(보유 중|진행 중|9:30 전)$/.test(w)) return base();
+  if (/^손절 /.test(w)) return `<span class="tag stop" title="${esc(w)}">${w}</span>`;
+  if (/^반 익절 [^·]+ · 보유 중$/.test(w)) return `<span class="tag tp" title="${esc(w)} · 나머지 절반은 들고 있음">${pct(y.r, 1)} 반 익절</span>`;
+  return y.r >= 0 ? `<span class="tag tp" title="${esc(w)}">${pct(y.r, 1)} 익절</span>` : `<span class="tag tl" title="${esc(w)}">${pct(y.r, 1)} 매도</span>`;
+}
+function pmTags() { document.querySelectorAll('#perfMini .pm-c[data-k]').forEach(a => { const p = PMP[a.dataset.k], t = a.querySelector('.pm-f > .tag'); if (p && t) t.outerHTML = pmTag(p); }); }
 async function perfStrat() {
   const el = $('#perfStrat'); if (!el) return;
   const P = (INDEX.perf || []).filter(p => p.path && p.path.length);
@@ -1256,7 +1267,8 @@ async function perfStrat() {
     + R.map(x => `<div class="sr${x.nm === cur ? ' on' : ''}" data-j="${esc(x.nm)}" tabindex="0""><span class="sn">${x.nm}</span><span class="sb"><i class="${x.g >= 0 ? 'u' : 'd'}" style="width:${(Math.abs(x.da) / mx * 100).toFixed(1)}%"></i></span>`
       + `<span class="sv ${cls(x.g)}"><b>${man(x.da)}</b> <small>(${pct(x.g / tot * 100, 1)})</small></span></div>`).join('')
     + `<div class="sc">하루 평균 = 고른 날마다 3종목 손익을 더한 뒤 날 수로 나눔 · % = 100만원당 평균 · 손절 = 종가가 추천 손절선 아래로 마감한 날 그 종가 · 익절 = 장중에 닿은 가격(시가가 이미 넘었으면 시가)</div>`; };
-  const draw = () => { el.innerHTML = `<div class="pa">${A()}</div><div class="pb">${B()}</div>`; };
+  const draw = () => { el.innerHTML = `<div class="pa">${A()}</div><div class="pb">${B()}</div>`;
+    const x = R.find(y => y.nm === sel) || R[0]; STRAT_SEL = {}; x.rs.forEach(y => { STRAT_SEL[y.p.day + y.p.code] = y; }); pmTags(); };
   // 막대 말풍선 (11/12 사용자 A안 라이트): 기다림 없이 바로 · 숫자 3칸 + 종목별 0 기준 미니 막대
   let tip = document.querySelector('.stip');
   if (!tip) { tip = document.createElement('div'); tip.className = 'stip'; tip.setAttribute('role', 'tooltip'); document.body.appendChild(tip); }
@@ -1327,11 +1339,11 @@ async function perfMini() {
   if (!P.length) { el.innerHTML = ''; return; }
   const cards = await Promise.all(P.map(async p => {
     const path = await perfPath(p);
-    const st = p.stop_hit ? `<span class="tag stop">손절 ${md(p.stop_hit)}</span>` : p.done ? '<span class="tag end">10일 완료</span>' : '<span class="tag run">진행 중</span>';
+    PMP[p.day + p.code] = p; const st = pmTag(p);
     const head = `<div class="pm-h">${logo(p.code, p.name, 18)}<b>${esc(p.name)}</b><span class="pm-s" title="진입가">${md(p.day)} · ${fmt(p.base)}</span></div>`;
-    if (!path) return `<a class="pm-c ${pmTier(p, null)}" href="#${p.day}">${head}<div class="pm-none">아직 진입 뒤 시세 없음</div><div class="pm-f">${st}</div></a>`;
+    if (!path) return `<a class="pm-c ${pmTier(p, null)}" data-k="${p.day}${p.code}" href="#${p.day}">${head}<div class="pm-none">아직 진입 뒤 시세 없음</div><div class="pm-f">${st}</div></a>`;
     const S = miniSVG(p, path), days = new Set(path.pts.map(x => x.d)).size;
-    return `<a class="pm-c ${pmTier(p, S.now)}" href="#${p.day}" title="${esc(p.name)} · ${path.src} 기준 · 남색 선 = 진입가, 파란 점선 = 손절 ${fmt(p.stop)}">${head}${S.svg}<div class="pm-f">${st}${ladder(S.mx)}<span class="pm-s">${days}일</span></div></a>`;
+    return `<a class="pm-c ${pmTier(p, S.now)}" data-k="${p.day}${p.code}" href="#${p.day}" title="${esc(p.name)} · ${path.src} 기준 · 남색 선 = 진입가, 파란 점선 = 손절 ${fmt(p.stop)}">${head}${S.svg}<div class="pm-f">${st}${ladder(S.mx)}<span class="pm-s">${days}일</span></div></a>`;
   }));
   if (q === PMQ) el.innerHTML = cards.join('');
 }

@@ -721,3 +721,7 @@ body.resizing .hspl,body.resizing:has(.hspl.on) *{cursor:row-resize !important}
 .pm-c.b4 svg{opacity:.6}
 /* 아카이브: 종목마다 한 줄 (11/13) */
 .arch .as{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* 성과 카드 꼬리표: 고른 전략으로 판 결과 (11/13) */
+.tag.tp{background:#FEE2E2;color:#B91C1C}.tag.tl{background:#DBEAFE;color:#1D4ED8}
+.dk .tag.tp{background:#4C1414;color:#FCA5A5}.dk .tag.tl{background:#172554;color:#93C5FD}
+.pm-f .tag.tp,.pm-f .tag.tl{padding:0 4px;letter-spacing:-.3px}
