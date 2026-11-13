@@ -754,3 +754,5 @@ body.resizing .hspl,body.resizing:has(.hspl.on) *{cursor:row-resize !important}
 .pm-c.r2{--gl:0 0 3.6px rgba(74,222,128,.6),0 0 0 1px rgba(74,222,128,.12)}
 .pm-c.r3{--gl:0 0 4.8px rgba(34,197,94,.65),0 0 0 1px rgba(34,197,94,.12)}
 .pm-c.r4{--gl:0 0 6.4px rgba(22,163,74,.75),0 0 0 1px rgba(22,163,74,.12)}
+/* 11/13 사용자: 익절 칩 둘레 글로우 뺌 (글씨 그림자는 유지) */
+.pm-f .tag.tp,.dk .pm-f .tag.tp{box-shadow:none}
