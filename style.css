@@ -725,3 +725,11 @@ body.resizing .hspl,body.resizing:has(.hspl.on) *{cursor:row-resize !important}
 .tag.tp{background:#FEE2E2;color:#B91C1C}.tag.tl{background:#DBEAFE;color:#1D4ED8}
 .dk .tag.tp{background:#4C1414;color:#FCA5A5}.dk .tag.tl{background:#172554;color:#93C5FD}
 .pm-f .tag.tp,.pm-f .tag.tl{padding:0 4px;letter-spacing:-.3px}
+/* 성과 카드 상태 칩 (11/13 사용자 5번 세트 B안 + 볼드): 끝난 것만 꽉 찬 색 칩(모서리 3px), 진행 중은 깜빡이는 초록 점, 완료는 글자만 */
+.pm-f .tag{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;line-height:18px;font-weight:700;border-radius:3px;padding:0 6px;letter-spacing:-.2px;white-space:nowrap}
+.pm-f .tag.tp{background:#DC2626;color:#fff}.pm-f .tag.tl{background:#2563EB;color:#fff}.pm-f .tag.stop{background:#111827;color:#fff}
+.pm-f .tag.run{background:none;color:#16A34A;padding:0 2px}.pm-f .tag.end{background:none;color:var(--sub);padding:0 2px}
+.pm-f .tag.run i{width:7px;height:7px;border-radius:50%;background:#22C55E;animation:pmbl 1.4s steps(1) infinite}
+@keyframes pmbl{50%{opacity:.25}}
+@media (prefers-reduced-motion:reduce){.pm-f .tag.run i{animation:none}}
+.dk .pm-f .tag.stop{background:#E5E7EB;color:#111827}.dk .pm-f .tag.run{color:#4ADE80}.dk .pm-f .tag.tp{background:#DC2626;color:#fff}.dk .pm-f .tag.tl{background:#2563EB;color:#fff}

@@ -1174,7 +1174,7 @@ const DAYC = {};
 let STRAT_SEL = null; const PMP = {};
 function pmTag(p) {
   const y = STRAT_SEL && STRAT_SEL[p.day + p.code], w = y ? y.w : '';
-  const base = () => p.stop_hit ? `<span class="tag stop">손절 ${md(p.stop_hit)}</span>` : p.done ? '<span class="tag end">10일 완료</span>' : '<span class="tag run">진행 중</span>';
+  const base = () => p.stop_hit ? `<span class="tag stop">손절 ${md(p.stop_hit)}</span>` : p.done ? '<span class="tag end">✓ 10일 완료</span>' : '<span class="tag run"><i></i>진행 중</span>';
   if (!y || /^(보유 중|진행 중|9:30 전)$/.test(w)) return base();
   if (/^손절 /.test(w)) return `<span class="tag stop" title="${esc(w)}">${w}</span>`;
   if (/^반 익절 [^·]+ · 보유 중$/.test(w)) return `<span class="tag tp" title="${esc(w)} · 나머지 절반은 들고 있음">${pct(y.r, 1)} 반 익절</span>`;
