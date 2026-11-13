@@ -746,3 +746,5 @@ body.resizing .hspl,body.resizing:has(.hspl.on) *{cursor:row-resize !important}
 /* 상태 칩 색 (11/13 사용자): 익절 진한 빨강 그라데이션, 매도 A안 파랑 그라데이션 */
 .pm-f .tag.tp,.dk .pm-f .tag.tp{background:linear-gradient(90deg,#C81E1E,#EF4444);color:#fff}
 .pm-f .tag.tl,.dk .pm-f .tag.tl{background:linear-gradient(90deg,#2962FF,#4FA3FF);color:#fff}
+/* 익절 칩 (11/13 사용자 1번): 파랑처럼 선명→밝게 흐르는 네온 레드 */
+.pm-f .tag.tp,.dk .pm-f .tag.tp{background:linear-gradient(90deg,#FF1744,#FF6E6E);color:#fff}
