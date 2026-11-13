@@ -733,3 +733,10 @@ body.resizing .hspl,body.resizing:has(.hspl.on) *{cursor:row-resize !important}
 @keyframes pmbl{50%{opacity:.25}}
 @media (prefers-reduced-motion:reduce){.pm-f .tag.run i{animation:none}}
 .dk .pm-f .tag.stop{background:#E5E7EB;color:#111827}.dk .pm-f .tag.run{color:#4ADE80}.dk .pm-f .tag.tp{background:#DC2626;color:#fff}.dk .pm-f .tag.tl{background:#2563EB;color:#fff}
+/* 상태 칩 수정 (11/13 사용자): 볼드 빼고, 익절은 초록, 진행 중은 파랑 + 부드럽게 깜빡임 */
+.pm-f .tag{font-weight:400;letter-spacing:0}
+.pm-f .tag.tp,.dk .pm-f .tag.tp{background:#16A34A;color:#fff}
+.pm-f .tag.run{color:#2563EB}.dk .pm-f .tag.run{color:#60A5FA}
+.pm-f .tag.run i{background:#3B82F6;animation:pmbl2 1.8s ease-in-out infinite alternate}
+@keyframes pmbl2{from{opacity:1}to{opacity:.2}}
+@media (prefers-reduced-motion:reduce){.pm-f .tag.run i{animation:none}}
