@@ -1319,6 +1319,8 @@ function ladder(mx) {
   return `<span class="lad" title="진입 뒤 최고 ${pct(mx, 1)}"><span class="lf" style="width:${w.toFixed(1)}%;background-size:${(10000 / Math.max(w, .1)).toFixed(1)}% 100%"></span>`
     + ['+5', '+10', '+20', '+30'].map((t, j) => `<i class="${w >= (j + 1) * 25 - 7 ? 'on' : ''}">${t}</i>`).join('') + `</span><b class="lv ${cls(mx)}">${pct(mx, 1)}</b>`;
 }
+// 11/13 사용자: 카드 테두리 단계 = 지금 수익 기준. 빨강 +5·+10·+20·+30, 파랑 0~−2·−2~−4·−4 이하, 손절 이탈은 가장 진한 파랑
+const pmTier = (p, now) => p.stop_hit ? 'b4' : now == null ? '' : now >= 30 ? 'r4' : now >= 20 ? 'r3' : now >= 10 ? 'r2' : now >= 5 ? 'r1' : now <= -4 ? 'b3' : now <= -2 ? 'b2' : now < 0 ? 'b1' : '';
 let PMQ = 0;
 async function perfMini() {
   const el = $('#perfMini'); if (!el) return; const P = INDEX.perf || [], q = ++PMQ;
@@ -1327,9 +1329,9 @@ async function perfMini() {
     const path = await perfPath(p);
     const st = p.stop_hit ? `<span class="tag stop">손절 이탈 ${md(p.stop_hit)}</span>` : p.done ? '<span class="tag end">10일 완료</span>' : '<span class="tag run">진행 중</span>';
     const head = `<div class="pm-h">${logo(p.code, p.name, 18)}<b>${esc(p.name)}</b><span class="pm-s" title="진입가">${md(p.day)} · ${fmt(p.base)}</span></div>`;
-    if (!path) return `<a class="pm-c" href="#${p.day}">${head}<div class="pm-none">아직 진입 뒤 시세 없음</div><div class="pm-f">${st}</div></a>`;
+    if (!path) return `<a class="pm-c ${pmTier(p, null)}" href="#${p.day}">${head}<div class="pm-none">아직 진입 뒤 시세 없음</div><div class="pm-f">${st}</div></a>`;
     const S = miniSVG(p, path), days = new Set(path.pts.map(x => x.d)).size;
-    return `<a class="pm-c" href="#${p.day}" title="${esc(p.name)} · ${path.src} 기준 · 남색 선 = 진입가, 파란 점선 = 손절 ${fmt(p.stop)}">${head}${S.svg}<div class="pm-f">${st}${ladder(S.mx)}<span class="pm-s">${days}일</span></div></a>`;
+    return `<a class="pm-c ${pmTier(p, S.now)}" href="#${p.day}" title="${esc(p.name)} · ${path.src} 기준 · 남색 선 = 진입가, 파란 점선 = 손절 ${fmt(p.stop)}">${head}${S.svg}<div class="pm-f">${st}${ladder(S.mx)}<span class="pm-s">${days}일</span></div></a>`;
   }));
   if (q === PMQ) el.innerHTML = cards.join('');
 }
