@@ -743,3 +743,6 @@ body.resizing .hspl,body.resizing:has(.hspl.on) *{cursor:row-resize !important}
 /* 상태 칩 색 (11/13 사용자 1번): 익절 에메랄드, 매도 인디고 */
 .pm-f .tag.tp,.dk .pm-f .tag.tp{background:#059669;color:#fff}
 .pm-f .tag.tl,.dk .pm-f .tag.tl{background:#4F46E5;color:#fff}
+/* 상태 칩 색 (11/13 사용자): 익절 진한 빨강 그라데이션, 매도 A안 파랑 그라데이션 */
+.pm-f .tag.tp,.dk .pm-f .tag.tp{background:linear-gradient(90deg,#C81E1E,#EF4444);color:#fff}
+.pm-f .tag.tl,.dk .pm-f .tag.tl{background:linear-gradient(90deg,#2962FF,#4FA3FF);color:#fff}
