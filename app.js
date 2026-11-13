@@ -1178,7 +1178,7 @@ function pmTag(p) {
   if (!y || /^(보유 중|진행 중|9:30 전)$/.test(w)) return base();
   if (/^손절 /.test(w)) return `<span class="tag stop" title="${esc(w)}">${w}</span>`;
   if (/^반 익절 [^·]+ · 보유 중$/.test(w)) return `<span class="tag tp" title="${esc(w)} · 나머지 절반은 들고 있음">${pct(y.r, 1)} 반 익절</span>`;
-  return y.r >= 0 ? `<span class="tag tp" title="${esc(w)}">${pct(y.r, 1)} 익절</span>` : `<span class="tag tl" title="${esc(w)}">${pct(y.r, 1)} 매도</span>`;
+  return y.r >= 0 ? `<span class="tag tp" title="${esc(w)}">${pct(y.r, 1)} 익절</span>` : `<span class="tag tl" title="${esc(w)}">${pct(y.r, 1)} 손절</span>`;
 }
 function pmTags() { document.querySelectorAll('#perfMini .pm-c[data-k]').forEach(a => { const p = PMP[a.dataset.k], t = a.querySelector('.pm-f > .tag'); if (p && t) t.outerHTML = pmTag(p); }); }
 async function perfStrat() {
