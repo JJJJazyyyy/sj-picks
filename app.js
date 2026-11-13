@@ -1160,7 +1160,7 @@ function renderPerf() {
   const c = v => `<td class="${cls(v)}">${pct(v)}</td>`;
   $('#perfTbl').innerHTML = `<tr><th class="l">선정일</th><th class="l">종목</th><th>진입가</th><th>+1일</th><th>+3일</th><th>+5일</th><th>+10일</th><th>최고(10일)</th><th>최저(10일)</th><th>최근 종가</th><th>손절선</th><th class="l">상태</th></tr>` +
     (P.length ? P.map(p => {
-      const st = p.stop_hit ? `<span class="tag stop">손절 이탈 ${md(p.stop_hit)}</span>` : p.done ? '<span class="tag end">10일 완료</span>' : `<span class="tag run">진행 ${p.last ? p.last.n : 0}일</span>`;
+      const st = p.stop_hit ? `<span class="tag stop">손절 ${md(p.stop_hit)}</span>` : p.done ? '<span class="tag end">10일 완료</span>' : `<span class="tag run">진행 ${p.last ? p.last.n : 0}일</span>`;
       const hot = p.last && p.last.ret >= 10 ? ' <span class="tag hot">급등</span>' : '';
       const pf = p.perf || {};
       return `<tr class="${p.stop_hit ? 'hit' : ''}"><td class="l"><a href="#${p.day}">${dname(p.day)}</a></td><td class="l nmcell">${logo(p.code, p.name, 18)}<b>${esc(p.name)}</b></td><td>${fmt(p.base)}</td>${c(pf['1'])}${c(pf['3'])}${c(pf['5'])}${c(pf['10'])}${c(p.max_up)}${c(p.max_dn)}
@@ -1327,7 +1327,7 @@ async function perfMini() {
   if (!P.length) { el.innerHTML = ''; return; }
   const cards = await Promise.all(P.map(async p => {
     const path = await perfPath(p);
-    const st = p.stop_hit ? `<span class="tag stop">손절 이탈 ${md(p.stop_hit)}</span>` : p.done ? '<span class="tag end">10일 완료</span>' : '<span class="tag run">진행 중</span>';
+    const st = p.stop_hit ? `<span class="tag stop">손절 ${md(p.stop_hit)}</span>` : p.done ? '<span class="tag end">10일 완료</span>' : '<span class="tag run">진행 중</span>';
     const head = `<div class="pm-h">${logo(p.code, p.name, 18)}<b>${esc(p.name)}</b><span class="pm-s" title="진입가">${md(p.day)} · ${fmt(p.base)}</span></div>`;
     if (!path) return `<a class="pm-c ${pmTier(p, null)}" href="#${p.day}">${head}<div class="pm-none">아직 진입 뒤 시세 없음</div><div class="pm-f">${st}</div></a>`;
     const S = miniSVG(p, path), days = new Set(path.pts.map(x => x.d)).size;
@@ -1336,8 +1336,8 @@ async function perfMini() {
   if (q === PMQ) el.innerHTML = cards.join('');
 }
 function renderArchive(day) {
-  $('#archList').innerHTML = INDEX.days.map(d => `<a href="#${d.day}" class="${d.day === day ? 'cur' : ''}"><span class="d">${dname(d.day)} 마감</span><br>${d.stocks.map(s => { const pf = (INDEX.perf || []).find(p => p.day === d.day && p.code === s.code), x = pf ? retNow(s.code, d.day, pf.base) : null;
-    return `${logo(s.code, s.name, 15)}${esc(s.name)} <span class="${x ? cls(x.r) : ''}">${x ? pct(x.r) : '-'}</span>`; }).join(' · ')}<br><small class="al">진입 후 지금 등락</small></a>`).join('');
+  $('#archList').innerHTML = INDEX.days.map(d => `<a href="#${d.day}" class="${d.day === day ? 'cur' : ''}"><span class="d">${dname(d.day)} 마감</span>${d.stocks.map(s => { const pf = (INDEX.perf || []).find(p => p.day === d.day && p.code === s.code), x = pf ? retNow(s.code, d.day, pf.base) : null;
+    return `<span class="as">${logo(s.code, s.name, 15)}${esc(s.name)} <span class="${x ? cls(x.r) : ''}">${x ? pct(x.r) : '-'}</span></span>`; }).join('')}</a>`).join('');   // 11/13 사용자: 종목마다 한 줄, '진입 후 지금 등락' 문구 뺌
 }
 
 init();
