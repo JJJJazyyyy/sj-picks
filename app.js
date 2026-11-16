@@ -1174,9 +1174,11 @@ const DAYC = {};
 let STRAT_SEL = null; const PMP = {};
 function pmTag(p) {
   const y = STRAT_SEL && STRAT_SEL[p.day + p.code], w = y ? y.w : '';
-  const base = () => p.stop_hit ? `<span class="tag stop">손절 ${md(p.stop_hit)}</span>` : p.done ? '<span class="tag end">✓ 10일 완료</span>' : '<span class="tag run"><i></i>진행 중</span>';
+  // 11/16 사용자: 손절 칩은 날짜 말고 퍼센트로 통일 (날짜는 마우스 올리면) · 서버 손절 기록은 그날 종가 기준
+  const sx = () => { const r = (p.path || []).find(x => x[0] === p.stop_hit); return ((r ? r[4] : p.stop) / p.base - 1) * 100; };
+  const base = () => p.stop_hit ? `<span class="tag stop" title="손절 ${md(p.stop_hit)} · 종가가 손절선 아래로 마감">${pct(sx(), 1)} 손절</span>` : p.done ? '<span class="tag end">✓ 10일 완료</span>' : '<span class="tag run"><i></i>진행 중</span>';
   if (!y || /^(보유 중|진행 중|9:30 전)$/.test(w)) return base();
-  if (/^손절 /.test(w)) return `<span class="tag stop" title="${esc(w)}">${w}</span>`;
+  if (/^손절 /.test(w)) return `<span class="tag stop" title="${esc(w)}">${pct(y.r, 1)} 손절</span>`;
   if (/^반 익절 [^·]+ · 보유 중$/.test(w)) return `<span class="tag tp" title="${esc(w)} · 나머지 절반은 들고 있음">${pct(y.r, 1)} 반 익절</span>`;
   return y.r >= 0 ? `<span class="tag tp" title="${esc(w)}">${pct(y.r, 1)} 익절</span>` : `<span class="tag tl" title="${esc(w)}">${pct(y.r, 1)} 손절</span>`;
 }
