@@ -1191,40 +1191,58 @@ async function perfStrat() {
     try { const D = DAYC[p.day] || (DAYC[p.day] = await getJSON(`data/days/${p.day}.json`)); const st = D.stocks.find(x => x.code === p.code) || {};
       const o = {}; (st.levels || []).filter(l => l.price > p.base).sort((a, b) => a.price - b.price).forEach(l => { if (!o[l.kind]) o[l.kind] = l.price; }); return o; } catch (e) { return {}; }
   }));
-  // 한 종목을 규칙대로: 익절가에 장중 닿으면 그 가격(시가가 이미 넘었으면 시가), 손절은 종가가 손절선 아래로 마감한 날 종가
-  // 다음날 9:30 매도 (11/12 사용자: 낮았던 '반 15%·반 30%' 대신). 30분봉 시각은 한국 시각을 UTC처럼 저장 → 선정일 다음 날 9:00 봉의 종가
+  // 한 종목을 규칙대로: 익절가에 장중 닿으면 그 가격(시가가 이미 넘었으면 시가)
+  // 11/16 사용자: 손절 = 장중에 추천 손절선 닿으면 손절선 가격에 팖(시가가 이미 아래면 시가) · 오늘 장중도 바로 반영 · '그냥 보유' 빼고 모든 전략에
+  //   같은 날 익절가·손절선 둘 다 닿았으면 30분봉으로 먼저 닿은 쪽 (같은 봉이거나 분봉이 없으면 손절 먼저)
+  // 다음날 9:30 매도 (11/12 사용자). 30분봉 시각은 한국 시각을 UTC처럼 저장 → 선정일 다음 날 9:00 봉의 종가
   const M30 = await Promise.all(P.map(p => minRows(p.code, '30').catch(() => null)));
+  const ymd = t => { const d = new Date(t * 1000); return `${d.getUTCFullYear()}${pad2(d.getUTCMonth() + 1)}${pad2(d.getUTCDate())}`; };
+  const MB = new Map(P.map((p, i) => [p, M30[i] || []]));
+  const first = (p, d, up, dn, o) => { if (up && o >= up) return 'up'; if (dn && o <= dn) return 'dn';
+    for (const b of MB.get(p)) { if (ymd(b.t) !== d) continue; if (dn && b.l <= dn) return 'dn'; if (up && b.h >= up) return 'up'; }
+    return 'dn'; };
+  const rowsOf = p => { const rows = (p.path || []).map(([d, o, h, l, c]) => ({ d, o, h, l, c, live: false }));
+    const lv = LIVE && LIVE.prices && LIVE.prices[p.code];
+    if (lv && LD && LD > (rows.length ? rows[rows.length - 1].d : p.day)) rows.push({ d: LD, o: lv.o || lv.p, h: lv.h || lv.p, l: lv.l || lv.p, c: lv.p, live: !LIVE.closed });
+    return rows.filter(r => r.d > p.day); };
+  const SL = (p, r) => ({ r: (Math.min(r.o, p.stop) / p.base - 1) * 100, w: `손절 ${md(r.d)}` });
   const at930 = (p, i) => {
-    const ymd = t => { const d = new Date(t * 1000); return `${d.getUTCFullYear()}${pad2(d.getUTCMonth() + 1)}${pad2(d.getUTCDate())}`; };
-    const b = (M30[i] || []).find(x => ymd(x.t) > p.day && x.t % 86400 === 9 * 3600);
-    if (b) { const now = LIVE && LIVE.date && LIVE.time ? `${LIVE.date.replace(/-/g, '')}${String(LIVE.time).replace(/\D/g, '').slice(0, 4)}` : '';
+    const b = MB.get(p).find(x => ymd(x.t) > p.day && x.t % 86400 === 9 * 3600);
+    if (b) { if (p.stop && b.l <= p.stop) return SL(p, { o: b.o, d: ymd(b.t) });
+      const now = LIVE && LIVE.date && LIVE.time ? `${LD}${String(LIVE.time).replace(/\D/g, '').slice(0, 4)}` : '';
       const done = !now || now >= ymd(b.t) + '0930';
       return { r: (b.c / p.base - 1) * 100, w: done ? `9:30 매도 ${md(ymd(b.t))}` : '9:30 전' }; }
-    const nx = (p.path || []).find(r => r[0] > p.day);   // 분봉이 없으면 다음날 종가로 대신
-    if (nx) return { r: (nx[4] / p.base - 1) * 100, w: `분봉 없음 · ${md(nx[0])} 종가` };
-    return run(p, 0, false);
+    const nx = rowsOf(p)[0];   // 분봉이 없으면 다음날 종가로 대신
+    if (!nx) return run(p, 0, false);
+    if (p.stop && nx.l <= p.stop) return SL(p, nx);
+    return { r: (nx.c / p.base - 1) * 100, w: nx.live ? '9:30 전' : `분봉 없음 · ${md(nx.d)} 종가` };
   };
-  // 다음날 하루만: 장중 tgt배 닿으면 그 가격(시가가 이미 넘었으면 시가), 못 닿으면 다음날 종가 · 다음날이 오늘이고 장 중이면 '진행 중'
+  // 다음날 하루만: 장중 tgt배 닿으면 그 가격, 손절선 닿으면 손절, 둘 다 아니면 다음날 종가 · 다음날이 오늘이고 장 중이면 '진행 중'
   const nextDay = (p, k) => {
-    const rows = (p.path || []).map(([d, o, h, l, c]) => ({ d, o, h, c, live: false }));
-    const lv = LIVE && LIVE.prices && LIVE.prices[p.code], ld = LIVE && LIVE.date ? LIVE.date.replace(/-/g, '') : '';
-    if (lv && ld && (!rows.length || ld > rows[rows.length - 1].d)) rows.push({ d: ld, o: lv.o || lv.p, h: lv.h || lv.p, c: lv.p, live: !LIVE.closed });
-    const r = rows.find(x => x.d > p.day); if (!r) return run(p, 0, false);
-    const t = p.base * k;
-    if (r.h >= t) return { r: (Math.max(r.o, t) / p.base - 1) * 100, w: `익절 ${md(r.d)}` };
+    const r = rowsOf(p)[0]; if (!r) return run(p, 0, false);
+    const t = p.base * k, s = p.stop || 0;
+    let hu = r.h >= t, hd = s && r.l <= s;
+    if (hu && hd) { hu = first(p, r.d, t, s, r.o) === 'up'; hd = !hu; }
+    if (hd) return SL(p, r);
+    if (hu) return { r: (Math.max(r.o, t) / p.base - 1) * 100, w: `익절 ${md(r.d)}` };
     return { r: (r.c / p.base - 1) * 100, w: r.live ? '진행 중' : `${md(r.d)} 종가` };
   };
   // half: 그 가격에 닿으면 절반만 먼저 팔고 나머지 절반은 같은 규칙으로 계속 · trail: +5% 넘은 뒤 종가가 고점보다 trail만큼 내려오면 그 종가에 팖
   const run = (p, tgt, useStop, half, trail) => {
-    const rows = (p.path || []).map(([d, o, h, l, c]) => ({ d, o, h, l, c, live: false }));
-    const lv = LIVE && LIVE.prices && LIVE.prices[p.code];
-    if (lv && LD && LD > (rows.length ? rows[rows.length - 1].d : p.day)) rows.push({ d: LD, o: lv.o || lv.p, h: lv.h || lv.p, l: lv.l || lv.p, c: lv.p, live: true });
+    const rows = rowsOf(p), s = useStop && p.stop ? p.stop : 0;
+    if (!rows.length) return { r: 0, w: '보유 중' };
     let wt = 1, got = 0, pre = '', hi = p.base;
     const fin = (px, w) => ({ r: (got + wt * (px / p.base - 1)) * 100, w: pre + w });
     for (const r of rows) {
-      if (half && wt === 1 && r.h >= half) { got += .5 * (Math.max(r.o, half) / p.base - 1); wt = .5; pre = `반 익절 ${md(r.d)} · `; }
-      if (tgt && r.h >= tgt) return fin(Math.max(r.o, tgt), `익절 ${md(r.d)}`);
-      if (useStop && p.stop && !r.live && r.c < p.stop) return fin(r.c, `손절 ${md(r.d)}`);
+      const up = half && wt === 1 ? half : tgt;
+      let hu = up && r.h >= up, hd = s && r.l <= s;
+      if (hu && hd) { hu = first(p, r.d, up, s, r.o) === 'up'; hd = !hu; }
+      if (hd) return fin(Math.min(r.o, s), `손절 ${md(r.d)}`);
+      if (hu) {
+        if (!(half && wt === 1)) return fin(Math.max(r.o, tgt), `익절 ${md(r.d)}`);
+        got += .5 * (Math.max(r.o, half) / p.base - 1); wt = .5; pre = `반 익절 ${md(r.d)} · `;
+        if (tgt && r.h >= tgt) return fin(Math.max(r.o, tgt), `익절 ${md(r.d)}`);
+      }
       if (trail && !r.live) { hi = Math.max(hi, r.h); if (hi >= p.base * 1.05 && r.c <= hi * (1 - trail)) return fin(r.c, `고점 대비 −${trail * 100}% ${md(r.d)}`); }
     }
     return fin(rows[rows.length - 1].c, '보유 중');
@@ -1232,12 +1250,12 @@ async function perfStrat() {
   // 11/12 사용자: 전략 수는 6개 유지, 최고 종목(NHN) 빼고 봐도 잘 나온 것들로 고름 (화면 통계는 전 종목) (그냥 보유·손절만은 기준선)
   const ST = [
     ['그냥 보유', '안 팔고 지금 가격으로 평가', p => run(p, 0, false)],
-    ['손절만 지킴', '추천 손절선 아래로 마감한 날 종가에 팖', p => run(p, 0, true)],
+    ['손절만 지킴', '장중에 추천 손절선 닿으면 그 가격에 팖', p => run(p, 0, true)],
     ['손절 + 고점 −5%', '+5% 넘게 오른 뒤 종가가 최고점보다 5% 내려오면 그 종가에 팖', p => run(p, 0, true, 0, .05)],
     // 11/12 사용자: 급등주라 +25%·+30% 익절은 닿는 일이 드물어 뺌 → 상승 종목이 충분히 쌓이면 다시 검토
-    ['다음날 +5% 익절', '다음날 장중 +5% 닿으면 팖, 못 닿으면 다음날 종가에 팖 (하루만 들고 감)', p => nextDay(p, 1.05)],
+    ['다음날 +5% 익절', '다음날 장중 +5% 닿으면 팖, 손절선 닿으면 손절, 둘 다 아니면 다음날 종가에 팖 (하루만 들고 감)', p => nextDay(p, 1.05)],
     ['반 +10% · 반 고점 −5%', '+10% 닿으면 절반 팖, 나머지는 종가가 최고점보다 5% 내려오면 팖', p => run(p, 0, true, p.base * 1.1, .05)],
-    ['다음날 9:30 매도', '다음날 첫 30분봉(9:00~9:30)이 끝날 때 가격에 팖 · 거래량이 하루 중 가장 몰리는 때', (p, i) => at930(p, i)],
+    ['다음날 9:30 매도', '다음날 첫 30분봉(9:00~9:30)이 끝날 때 가격에 팖 · 그 사이 손절선 닿으면 손절', (p, i) => at930(p, i)],
   ];
   const man = v => `${v >= 0 ? '+' : '−'}${Math.abs(v / 1e4).toFixed(1)}만원`;
   // 11/12 사용자: 누적 합계는 날이 쌓일수록 커지기만 해서 → 선정일 하루(3종목 × 100만원) 평균 수익으로. 전략은 수익 높은 순
@@ -1268,7 +1286,7 @@ async function perfStrat() {
     return `<div class="sh">전략별 하루 평균 <small>선정일 하루(3종목)당 · 수익 높은 순 · 누르면 왼쪽에 자세히</small></div>`
     + R.map(x => `<div class="sr${x.nm === cur ? ' on' : ''}" data-j="${esc(x.nm)}" tabindex="0""><span class="sn">${x.nm}</span><span class="sb"><i class="${x.g >= 0 ? 'u' : 'd'}" style="width:${(Math.abs(x.da) / mx * 100).toFixed(1)}%"></i></span>`
       + `<span class="sv ${cls(x.g)}"><b>${man(x.da)}</b> <small>(${pct(x.g / tot * 100, 1)})</small></span></div>`).join('')
-    + `<div class="sc">하루 평균 = 고른 날마다 3종목 손익을 더한 뒤 날 수로 나눔 · % = 100만원당 평균 · 손절 = 종가가 추천 손절선 아래로 마감한 날 그 종가 · 익절 = 장중에 닿은 가격(시가가 이미 넘었으면 시가)</div>`; };
+    + `<div class="sc">하루 평균 = 고른 날마다 3종목 손익을 더한 뒤 날 수로 나눔 · % = 100만원당 평균 · 손절 = 장중에 추천 손절선 닿으면 그 가격(시가가 이미 아래면 시가, '그냥 보유' 빼고 모든 전략) · 익절 = 장중에 닿은 가격(시가가 이미 넘었으면 시가) · 같은 날 둘 다 닿으면 30분봉으로 먼저 닿은 쪽</div>`; };
   const draw = () => { el.innerHTML = `<div class="pa">${A()}</div><div class="pb">${B()}</div>`;
     const x = R.find(y => y.nm === sel) || R[0]; STRAT_SEL = {}; x.rs.forEach(y => { STRAT_SEL[y.p.day + y.p.code] = y; }); pmTags(); };
   // 막대 말풍선 (11/12 사용자 A안 라이트): 기다림 없이 바로 · 숫자 3칸 + 종목별 0 기준 미니 막대
