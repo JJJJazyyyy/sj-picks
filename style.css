@@ -756,3 +756,5 @@ body.resizing .hspl,body.resizing:has(.hspl.on) *{cursor:row-resize !important}
 .pm-c.r4{--gl:0 0 6.4px rgba(22,163,74,.75),0 0 0 1px rgba(22,163,74,.12)}
 /* 11/13 사용자: 익절 칩 둘레 글로우 뺌 (글씨 그림자는 유지) */
 .pm-f .tag.tp,.dk .pm-f .tag.tp{box-shadow:none}
+/* 11/16 사용자: 손절 칩(손절 M/D)도 검정 말고 파란 손절 칩과 같게 */
+.pm-f .tag.stop,.dk .pm-f .tag.stop{background:linear-gradient(90deg,#2962FF,#4FA3FF);color:#fff}
