@@ -1182,7 +1182,7 @@ function stopExit(p) {
   const r = rows.find(x => x.l <= s);   // gap: 다음날 시가부터 손절선 아래 (11/17 사용자: '갭하락 미진입' — 장전 시간외에서 안 샀다고 봄)
   return r ? { r: (Math.min(r.o, s) / p.base - 1) * 100, d: r.d, s, gap: r === rows[0] && r.o <= s, o: (r.o / p.base - 1) * 100 } : null;
 }
-const stopTag = (p, se) => se.gap ? `<span class="tag stop gap" title="${md(se.d)} 시가 ${pct(se.o, 1)} — 손절선 ${fmt(se.s)} 아래로 출발해서 안 샀다고 봄 (선정일 종가 진입 기준이면 ${pct(se.r, 1)})">갭하락 미진입</span>` : `<span class="tag stop" title="손절 ${md(se.d)} · 손절선 ${fmt(se.s)}${se.s !== p.stop ? ` (추천 ${fmt(p.stop)} → 진입가 −${STOP_CAP * 100}%로 짧게)` : ''}">${pct(se.r, 1)} 손절</span>`;
+const stopTag = (p, se) => se.gap ? `<span class="tag stop gap" title="${md(se.d)} 시가 ${pct(se.o, 1)} — 손절선 ${fmt(se.s)} 아래로 출발해서 안 샀다고 봄 · 전략 통계엔 0%">${pct(se.o, 1)} 갭하락 미진입</span>` : `<span class="tag stop" title="손절 ${md(se.d)} · 손절선 ${fmt(se.s)}${se.s !== p.stop ? ` (추천 ${fmt(p.stop)} → 진입가 −${STOP_CAP * 100}%로 짧게)` : ''}">${pct(se.r, 1)} 손절</span>`;
 // 전략별 비교 (11/11 사용자 통계 B): 종목마다 100만원, 선정일 종가 매수 → 규칙대로 팔았으면 지금 얼마
 const DAYC = {};
 // 11/13 사용자: 성과 카드 꼬리표를 고른 전략 결과대로 → 판 종목은 '+n.n% 익절'(이익) / '−n.n% 매도'(손해), 손절은 '손절 M/D', 아직 들고 있으면 진행 중
@@ -1193,7 +1193,7 @@ function pmTag(p) {
   const se = stopExit(p);
   const base = () => se ? stopTag(p, se) : p.done ? '<span class="tag end">✓ 10일 완료</span>' : '<span class="tag run"><i></i>진행 중</span>';
   if (!y || /^(보유 중|진행 중|9:30 전)$/.test(w)) return base();
-  if (se && se.gap && y.r < 0) return stopTag(p, se);
+  if (se && se.gap) return stopTag(p, se);
   if (/^손절 /.test(w)) return `<span class="tag stop" title="${esc(w)}">${pct(y.r, 1)} 손절</span>`;
   if (/^반 익절 [^·]+ · 보유 중$/.test(w)) return `<span class="tag tp" title="${esc(w)} · 나머지 절반은 들고 있음">${pct(y.r, 1)} 반 익절</span>`;
   return y.r >= 0 ? `<span class="tag tp" title="${esc(w)}">${pct(y.r, 1)} 익절</span>` : `<span class="tag tl" title="${esc(w)}">${pct(y.r, 1)} 손절</span>`;
@@ -1283,9 +1283,10 @@ async function perfStrat() {
   // 통계는 항상 전 종목 (NHN 빼기는 전략 고를 때만 썼음, 11/12 사용자)
   // 최고 종목(진입 뒤 최고점이 가장 높은 종목, 지금 NHN): 막대 말풍선에 '빼면 얼마'만 보여줌. 순서·숫자는 전 종목 (11/12 사용자)
   const top = P.length > 2 ? P.reduce((a, b) => ((b.max_up || 0) > (a.max_up || 0) ? b : a)) : null;
+  const GAP = P.map(p => { const se = stopExit(p); return !!(se && se.gap); });
   const calc = () => { const idx = P.map((p, i) => i); n = idx.length; tot = n * 1e6;
     nd = new Set(idx.map(i => P[i].day)).size || 1;
-    R = ST.map(([nm, rule, f]) => { const rs = idx.map(i => ({ p: P[i], ...f(P[i], i) })); const g = rs.reduce((a, x) => a + 1e6 * x.r / 100, 0);
+    R = ST.map(([nm, rule, f]) => { const rs = idx.map(i => ({ p: P[i], ...(GAP[i] ? { r: 0, w: '갭하락 미진입' } : f(P[i], i)) }));   /* 11/17 사용자: 갭하락 미진입은 통계에 0% */ const g =rs.reduce((a, x) => a + 1e6 * x.r / 100, 0);
       const dm = {}; rs.forEach(x => { const d = dm[x.p.day] || (dm[x.p.day] = { d: x.p.day, g: 0, k: 0 }); d.g += 1e6 * x.r / 100; d.k++; });
       const days = Object.values(dm).sort((a, b) => a.d < b.d ? -1 : 1);
       const gx = rs.reduce((a, x) => a + (x.p === top ? 0 : 1e6 * x.r / 100), 0);
