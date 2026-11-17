@@ -207,7 +207,8 @@ function kindChip(s, sm) {
 }
 function jumpHTML(D) {
   return D.stocks.map((s, i) => { const x = retNow(s.code, D.day, s.close);
-    return `<a href="javascript:void(0)" data-k="${i}" title="${x ? '진입 후 · ' + esc(x.c.label) : '아직 현재가 없음'}"><span class="r">${i + 1}</span>${logo(s.code, s.name, 18)}${esc(s.name)}${kindChip(s, 1)} <span class="pv ${x ? cls(x.r) : ''}">${x ? pct(x.r) : '-'}</span><span class="jl">진입 후</span></a>`; }).join('');
+    const pf = (INDEX.perf || []).find(p => p.day === D.day && p.code === s.code), se = pf && stopExit(pf);   // 11/17 사용자: 손절된 종목은 진입 후 % 앞에 칩
+    return `<a href="javascript:void(0)" data-k="${i}" title="${x ? '진입 후 · ' + esc(x.c.label) : '아직 현재가 없음'}"><span class="r">${i + 1}</span>${logo(s.code, s.name, 18)}${esc(s.name)}${kindChip(s, 1)} ${se ? stopTag(pf, se) : ''}<span class="pv ${x ? cls(x.r) : ''}">${x ? pct(x.r) : '-'}</span><span class="jl">진입 후</span></a>`; }).join('');
 }
 function applyLive() {
   if (!CURD) return;
@@ -332,9 +333,10 @@ function summary(D) {
     const iv = (s.inv || [])[0] || {}, fo = (iv.frgn || 0) + (iv.orgn || 0);
     const ch = chipOf((s.why && s.why[0]) || (s.notes || [])[0] || '').chips[0];
     const r = c ? (c.p / B - 1) * 100 : null;
+    const pf = (INDEX.perf || []).find(p => p.day === D.day && p.code === s.code), se = pf && stopExit(pf);   // 11/17 사용자
     const ds = (l, k) => l ? `<span class="${k}">${pct((l.price / ref - 1) * 100, 1)}</span> <small>${fmt(l.price)}</small>` : '-';
     return `<tr data-k="${i}"><td class="l"><span class="rk">${i + 1}</span></td><td class="l nmtd"><span class="nmcell">${logo(s.code, s.name, 20)}<b>${esc(s.name)}</b></span></td><td class="kc">${kindChip(s, 1)}</td>
-      <td class="g1">${fmt(B)} <small class="${cls(s.chg)}">(${pct(s.chg)})</small></td><td class="g2">${c ? fmt(c.p) : '-'}</td><td class="g2 ${cls(r)}">${c ? pct(r) : '-'}</td>
+      <td class="g1">${fmt(B)} <small class="${cls(s.chg)}">(${pct(s.chg)})</small></td><td class="g2">${c ? fmt(c.p) : '-'}</td><td class="g2 ${cls(r)}">${se ? stopTag(pf, se) + ' ' : ''}${c ? pct(r) : '-'}</td>
       <td class="l">${ch ? `<span class="cc" style="--c:${fixC(ch[1])}">${esc(ch[0])}</span>` : ''}</td><td>${ds(stop, 'dn')}</td><td>${ds(tg, 'up')}</td><td><b>${rr}</b></td><td class="${cls(fo)}">${fo > 0 ? '+' : ''}${fmt(fo)}억</td><td>${s.rsi ?? '-'}</td></tr>`;
   }).join('');
   const c0 = D.stocks.length ? cur(D.stocks[0].code, D.day) : null;
@@ -1156,18 +1158,30 @@ function renderPerf() {
     if (!v.length) return `<div class="stat">${h}거래일 뒤 <b>-</b> <small>아직 없음</small></div>`;
     const avg = v.reduce((a, b) => a + b, 0) / v.length, win = v.filter(x => x > 0).length;
     return `<div class="stat">${h}거래일 뒤 평균 <b class="${cls(avg)}">${pct(avg)}</b> · 상승 ${win}/${v.length}</div>`;
-  }).join('') + `<div class="stat">손절선 이탈 <b>${P.filter(p => p.stop_hit).length}</b>/${P.length}</div>`;
+  }).join('') + `<div class="stat">손절 <b>${P.filter(p => stopExit(p)).length}</b>/${P.length}</div>`;
   const c = v => `<td class="${cls(v)}">${pct(v)}</td>`;
   $('#perfTbl').innerHTML = `<tr><th class="l">선정일</th><th class="l">종목</th><th>진입가</th><th>+1일</th><th>+3일</th><th>+5일</th><th>+10일</th><th>최고(10일)</th><th>최저(10일)</th><th>최근 종가</th><th>손절선</th><th class="l">상태</th></tr>` +
     (P.length ? P.map(p => {
-      const st = p.stop_hit ? `<span class="tag stop">손절 ${md(p.stop_hit)}</span>` : p.done ? '<span class="tag end">10일 완료</span>' : `<span class="tag run">진행 ${p.last ? p.last.n : 0}일</span>`;
+      const se = stopExit(p), st = se ? stopTag(p, se) : p.done ? '<span class="tag end">10일 완료</span>' : `<span class="tag run">진행 ${p.last ? p.last.n : 0}일</span>`;
       const hot = p.last && p.last.ret >= 10 ? ' <span class="tag hot">급등</span>' : '';
       const pf = p.perf || {};
-      return `<tr class="${p.stop_hit ? 'hit' : ''}"><td class="l"><a href="#${p.day}">${dname(p.day)}</a></td><td class="l nmcell">${logo(p.code, p.name, 18)}<b>${esc(p.name)}</b></td><td>${fmt(p.base)}</td>${c(pf['1'])}${c(pf['3'])}${c(pf['5'])}${c(pf['10'])}${c(p.max_up)}${c(p.max_dn)}
-        <td>${p.last ? `${fmt(p.last.c)} <small class="${cls(p.last.ret)}">${pct(p.last.ret, 1)}</small>` : '-'}</td><td>${fmt(p.stop)}</td><td class="l">${st}${hot}</td></tr>`;
+      return `<tr class="${se ? 'hit' : ''}"><td class="l"><a href="#${p.day}">${dname(p.day)}</a></td><td class="l nmcell">${logo(p.code, p.name, 18)}<b>${esc(p.name)}</b></td><td>${fmt(p.base)}</td>${c(pf['1'])}${c(pf['3'])}${c(pf['5'])}${c(pf['10'])}${c(p.max_up)}${c(p.max_dn)}
+        <td>${p.last ? `${fmt(p.last.c)} <small class="${cls(p.last.ret)}">${pct(p.last.ret, 1)}</small>` : '-'}</td><td title="추천 ${fmt(p.stop)}">${fmt(effStop(p))}</td><td class="l">${st}${hot}</td></tr>`;
     }).join('') : '<tr><td class="l" colspan="12">아직 기록 없음</td></tr>');
   perfMini(); perfStrat(); renderGainers();
 }
+// 11/17 사용자: 성과(지난 관심종목)에선 손절을 짧게 — 추천 손절선이 진입가 −6%보다 멀면 −6%(호가 단위로 올림)에서 끊음 (아리바이오랩 추천 손절 −18%)
+const STOP_CAP = .06;
+const tickUp = v => { const t = v < 2000 ? 1 : v < 5000 ? 5 : v < 20000 ? 10 : v < 50000 ? 50 : v < 200000 ? 100 : v < 500000 ? 500 : 1000; return Math.ceil(v / t) * t; };
+const effStop = p => Math.max(p.stop || 0, tickUp(p.base * (1 - STOP_CAP)));
+// 장중 저가가 손절선에 처음 닿은 날 → 손절선 가격(시가가 이미 아래면 시가)에 판 걸로. 오늘 장중(live.json) 포함
+function stopExit(p) {
+  const s = effStop(p), rows = (p.path || []).filter(r => r[0] > p.day).map(([d, o, h, l]) => ({ d, o, l }));
+  const lv = LIVE && LIVE.prices && LIVE.prices[p.code], ld = LIVE && LIVE.date ? LIVE.date.replace(/-/g, '') : '';
+  if (lv && ld > (rows.length ? rows[rows.length - 1].d : p.day)) rows.push({ d: ld, o: lv.o || lv.p, l: lv.l || lv.p });
+  const r = rows.find(x => x.l <= s); return r ? { r: (Math.min(r.o, s) / p.base - 1) * 100, d: r.d, s } : null;
+}
+const stopTag = (p, se) => `<span class="tag stop" title="손절 ${md(se.d)} · 손절선 ${fmt(se.s)}${se.s !== p.stop ? ` (추천 ${fmt(p.stop)} → 진입가 −${STOP_CAP * 100}%로 짧게)` : ''}">${pct(se.r, 1)} 손절</span>`;
 // 전략별 비교 (11/11 사용자 통계 B): 종목마다 100만원, 선정일 종가 매수 → 규칙대로 팔았으면 지금 얼마
 const DAYC = {};
 // 11/13 사용자: 성과 카드 꼬리표를 고른 전략 결과대로 → 판 종목은 '+n.n% 익절'(이익) / '−n.n% 매도'(손해), 손절은 '손절 M/D', 아직 들고 있으면 진행 중
@@ -1175,8 +1189,8 @@ let STRAT_SEL = null; const PMP = {};
 function pmTag(p) {
   const y = STRAT_SEL && STRAT_SEL[p.day + p.code], w = y ? y.w : '';
   // 11/16 사용자: 손절 칩은 날짜 말고 퍼센트로 통일 (날짜는 마우스 올리면) · 서버 손절 기록은 그날 종가 기준
-  const sx = () => { const r = (p.path || []).find(x => x[0] === p.stop_hit); return ((r ? r[4] : p.stop) / p.base - 1) * 100; };
-  const base = () => p.stop_hit ? `<span class="tag stop" title="손절 ${md(p.stop_hit)} · 종가가 손절선 아래로 마감">${pct(sx(), 1)} 손절</span>` : p.done ? '<span class="tag end">✓ 10일 완료</span>' : '<span class="tag run"><i></i>진행 중</span>';
+  const se = stopExit(p);
+  const base = () => se ? stopTag(p, se) : p.done ? '<span class="tag end">✓ 10일 완료</span>' : '<span class="tag run"><i></i>진행 중</span>';
   if (!y || /^(보유 중|진행 중|9:30 전)$/.test(w)) return base();
   if (/^손절 /.test(w)) return `<span class="tag stop" title="${esc(w)}">${pct(y.r, 1)} 손절</span>`;
   if (/^반 익절 [^·]+ · 보유 중$/.test(w)) return `<span class="tag tp" title="${esc(w)} · 나머지 절반은 들고 있음">${pct(y.r, 1)} 반 익절</span>`;
@@ -1189,6 +1203,7 @@ async function perfStrat() {
   const LD = LIVE && LIVE.date ? LIVE.date.replace(/-/g, '') : '';
   const P = (INDEX.perf || []).filter(p => (p.path && p.path.length) || (LD > p.day && LIVE.prices && LIVE.prices[p.code]));
   if (!P.length) { el.innerHTML = ''; return; }
+  P.forEach((p, i) => { P[i] = { ...p, stop: effStop(p) }; });   // 11/17: 전략도 짧은 손절선
   const lvs = await Promise.all(P.map(async p => {
     try { const D = DAYC[p.day] || (DAYC[p.day] = await getJSON(`data/days/${p.day}.json`)); const st = D.stocks.find(x => x.code === p.code) || {};
       const o = {}; (st.levels || []).filter(l => l.price > p.base).sort((a, b) => a.price - b.price).forEach(l => { if (!o[l.kind]) o[l.kind] = l.price; }); return o; } catch (e) { return {}; }
@@ -1331,7 +1346,7 @@ async function perfPath(p) {
 }
 function miniSVG(p, P) {
   const W = 240, H = 100, R = 44, b = p.base, r = v => (v / b - 1) * 100;
-  const cs = [0, ...P.pts.map(x => r(x.c))], hs = P.pts.map(x => r(x.h)), st = p.stop ? r(p.stop) : null;
+  const cs = [0, ...P.pts.map(x => r(x.c))], hs = P.pts.map(x => r(x.h)), st = p.stop ? r(effStop(p)) : null;
   const lo = Math.min(...cs, ...P.pts.map(x => r(x.l)), st ?? 0) - 1, hi0 = Math.max(...hs, 0), hi = hi0 + Math.max(2.5, (hi0 - lo) * .22);
   const y = v => (H - 5 - (v - lo) / (hi - lo) * (H - 12)).toFixed(1), n = cs.length - 1, x = i => (3 + i * (W - R - 6) / Math.max(n, 1)).toFixed(1);
   let g = '';
@@ -1355,7 +1370,7 @@ function ladder(mx) {
     + ['+5', '+10', '+20', '+30'].map((t, j) => `<i class="${w >= (j + 1) * 25 - 7 ? 'on' : ''}">${t}</i>`).join('') + `</span><b class="lv ${cls(mx)}">${pct(mx, 1)}</b>`;
 }
 // 11/13 사용자: 카드 테두리 단계 = 지금 수익 기준. 빨강 +5·+10·+20·+30, 파랑 0~−2·−2~−4·−4 이하, 손절 이탈은 가장 진한 파랑
-const pmTier = (p, now) => p.stop_hit ? 'b4' : now == null ? '' : now >= 30 ? 'r4' : now >= 20 ? 'r3' : now >= 10 ? 'r2' : now >= 5 ? 'r1' : now <= -4 ? 'b3' : now <= -2 ? 'b2' : now < 0 ? 'b1' : '';
+const pmTier = (p, now) => stopExit(p) ? 'b4' : now == null ? '' : now >= 30 ? 'r4' : now >= 20 ? 'r3' : now >= 10 ? 'r2' : now >= 5 ? 'r1' : now <= -4 ? 'b3' : now <= -2 ? 'b2' : now < 0 ? 'b1' : '';
 let PMQ = 0;
 async function perfMini() {
   const el = $('#perfMini'); if (!el) return; const P = INDEX.perf || [], q = ++PMQ;
@@ -1366,7 +1381,7 @@ async function perfMini() {
     const head = `<div class="pm-h">${logo(p.code, p.name, 18)}<b>${esc(p.name)}</b><span class="pm-s" title="진입가">${md(p.day)} · ${fmt(p.base)}</span></div>`;
     if (!path) return `<a class="pm-c ${pmTier(p, null)}" data-k="${p.day}${p.code}" href="#${p.day}">${head}<div class="pm-none">아직 진입 뒤 시세 없음</div><div class="pm-f">${st}</div></a>`;
     const S = miniSVG(p, path), days = new Set(path.pts.map(x => x.d)).size;
-    return `<a class="pm-c ${pmTier(p, S.now)}" data-k="${p.day}${p.code}" href="#${p.day}" title="${esc(p.name)} · ${path.src} 기준 · 남색 선 = 진입가, 파란 점선 = 손절 ${fmt(p.stop)}">${head}${S.svg}<div class="pm-f">${st}${ladder(S.mx)}<span class="pm-s">${days}일</span></div></a>`;
+    return `<a class="pm-c ${pmTier(p, S.now)}" data-k="${p.day}${p.code}" href="#${p.day}" title="${esc(p.name)} · ${path.src} 기준 · 남색 선 = 진입가, 파란 점선 = 손절 ${fmt(effStop(p))}">${head}${S.svg}<div class="pm-f">${st}${ladder(S.mx)}<span class="pm-s">${days}일</span></div></a>`;
   }));
   if (q === PMQ) el.innerHTML = cards.join('');
 }
