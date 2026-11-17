@@ -1196,6 +1196,7 @@ function pmTag(p) {
   if (se && se.gap) return stopTag(p, se, 1);   // 11/17 사용자: 성과 카드는 % 빼고 짧게
   if (/^손절 /.test(w)) return `<span class="tag stop" title="${esc(w)}">${pct(y.r, 1)} 손절</span>`;
   if (/^반 익절 [^·]+ · 보유 중$/.test(w)) return `<span class="tag tp" title="${esc(w)} · 나머지 절반은 들고 있음">${pct(y.r, 1)} 반 익절</span>`;
+  if (/종가 매도$/.test(w)) return `<span class="tag ${y.r >= 0 ? 'tp' : 'tl'}" title="${esc(w)}">${pct(y.r, 1)} 매도</span>`;   // 11/17: 기한 끝나 종가에 판 건 익절·손절 말고 '매도'
   return y.r >= 0 ? `<span class="tag tp" title="${esc(w)}">${pct(y.r, 1)} 익절</span>` : `<span class="tag tl" title="${esc(w)}">${pct(y.r, 1)} 손절</span>`;
 }
 function pmTags() { document.querySelectorAll('#perfMini .pm-c[data-k]').forEach(a => { const p = PMP[a.dataset.k], t = a.querySelector('.pm-f > .tag'); if (p && t) t.outerHTML = pmTag(p); }); }
@@ -1247,12 +1248,14 @@ async function perfStrat() {
     return { r: (r.c / p.base - 1) * 100, w: r.live ? '진행 중' : `${md(r.d)} 종가` };
   };
   // half: 그 가격에 닿으면 절반만 먼저 팔고 나머지 절반은 같은 규칙으로 계속 · trail: +5% 넘은 뒤 종가가 고점보다 trail만큼 내려오면 그 종가에 팖
-  const run = (p, tgt, useStop, half, trail) => {
+  // days: N번째 거래일 종가까지만 들고 있다가 팖 (11/17)
+  const run = (p, tgt, useStop, half, trail, days) => {
     const rows = rowsOf(p), s = useStop && p.stop ? p.stop : 0;
     if (!rows.length) return { r: 0, w: '보유 중' };
-    let wt = 1, got = 0, pre = '', hi = p.base;
+    let wt = 1, got = 0, pre = '', hi = p.base, n = 0;
     const fin = (px, w) => ({ r: (got + wt * (px / p.base - 1)) * 100, w: pre + w });
     for (const r of rows) {
+      n++;
       const up = half && wt === 1 ? half : tgt;
       let hu = up && r.h >= up, hd = s && r.l <= s;
       if (hu && hd) { hu = first(p, r.d, up, s, r.o) === 'up'; hd = !hu; }
@@ -1263,14 +1266,16 @@ async function perfStrat() {
         if (tgt && r.h >= tgt) return fin(Math.max(r.o, tgt), `익절 ${md(r.d)}`);
       }
       if (trail && !r.live) { hi = Math.max(hi, r.h); if (hi >= p.base * 1.05 && r.c <= hi * (1 - trail)) return fin(r.c, `고점 대비 −${trail * 100}% ${md(r.d)}`); }
+      if (days && n >= days) return fin(r.c, r.live ? '진행 중' : `${md(r.d)} 종가 매도`);
     }
     return fin(rows[rows.length - 1].c, '보유 중');
   };
   // 11/12 사용자: 전략 수는 6개 유지, 최고 종목(NHN) 빼고 봐도 잘 나온 것들로 고름 (화면 통계는 전 종목) (그냥 보유·손절만은 기준선)
   const ST = [
-    ['그냥 보유', '안 팔고 지금 가격으로 평가', p => run(p, 0, false)],
-    ['손절만 지킴', '장중에 추천 손절선 닿으면 그 가격에 팖', p => run(p, 0, true)],
-    ['손절 + 고점 −5%', '+5% 넘게 오른 뒤 종가가 최고점보다 5% 내려오면 그 종가에 팖', p => run(p, 0, true, 0, .05)],
+    // 11/17 사용자: 저조했던 '그냥 보유'·'손절만 지킴'·'손절 + 고점 −5%' 대신 → 최고 종목 빼도, 앞·뒤 기간 나눠도 플러스였던 3개
+    ['다음날 +10% · 아니면 종가', '다음날 +10% 닿으면 팖, 손절선 닿으면 손절, 둘 다 아니면 다음날 종가에 팖', p => run(p, p.base * 1.1, true, 0, 0, 1)],
+    ['반 +5% · 반 +10%', '+5% 닿으면 절반 팖, 나머지 절반은 +10%에 팖 · 손절선 닿으면 손절', p => run(p, p.base * 1.1, true, p.base * 1.05)],
+    ['+10% 익절 · 이틀까지', '+10% 닿으면 팖, 손절선 닿으면 손절, 둘 다 아니면 이틀째 종가에 팖', p => run(p, p.base * 1.1, true, 0, 0, 2)],
     // 11/12 사용자: 급등주라 +25%·+30% 익절은 닿는 일이 드물어 뺌 → 상승 종목이 충분히 쌓이면 다시 검토
     // 11/16 사용자: '다음날 +5% 익절'(장중 손절 규칙에서 꼴찌) 대신 → 최고 종목 빼도 가장 탄탄했던 '+10% 익절 + 손절'
     ['+10% 익절 + 손절', '+10% 닿으면 팖, 손절선 닿으면 손절, 둘 다 아니면 계속 들고 감', p => run(p, p.base * 1.1, true)],
@@ -1294,7 +1299,7 @@ async function perfStrat() {
       .sort((a, b) => b.g - a.g);   // 항상 화면 숫자(하루 평균) 큰 순 (11/12 사용자)
     mx = Math.max(...R.map(x => Math.abs(x.da)), 1); };
   calc();
-  let sel = '손절만 지킴'; try { const s0 = localStorage.getItem('sjStrat'); if (s0 && ST.some(x => x[0] === s0)) sel = s0; } catch (e) { }
+  let sel = '+10% 익절 + 손절'; try { const s0 = localStorage.getItem('sjStrat'); if (s0 && ST.some(x => x[0] === s0)) sel = s0; } catch (e) { }
   const m1 = v => `${v >= 0 ? '+' : '−'}${Math.abs(v / 1e4).toFixed(1)}`;
   const A = () => { const x = R.find(y => y.nm === sel) || R[0], dd = x.days.slice(-8);
     return `<div class="sh">매일 3종목 × 100만원씩 샀다면 <small>선정일 ${nd}일 · ${n}종목 · 지금까지</small></div>`
@@ -1307,7 +1312,7 @@ async function perfStrat() {
     return `<div class="sh">전략별 하루 평균 <small>선정일 하루(3종목)당 · 수익 높은 순 · 누르면 왼쪽에 자세히</small></div>`
     + R.map(x => `<div class="sr${x.nm === cur ? ' on' : ''}" data-j="${esc(x.nm)}" tabindex="0""><span class="sn">${x.nm}</span><span class="sb"><i class="${x.g >= 0 ? 'u' : 'd'}" style="width:${(Math.abs(x.da) / mx * 100).toFixed(1)}%"></i></span>`
       + `<span class="sv ${cls(x.g)}"><b>${man(x.da)}</b> <small>(${pct(x.g / tot * 100, 1)})</small></span></div>`).join('')
-    + `<div class="sc">하루 평균 = 고른 날마다 3종목 손익을 더한 뒤 날 수로 나눔 · % = 100만원당 평균 · 손절 = 장중에 추천 손절선 닿으면 그 가격(시가가 이미 아래면 시가, '그냥 보유' 빼고 모든 전략) · 익절 = 장중에 닿은 가격(시가가 이미 넘었으면 시가) · 같은 날 둘 다 닿으면 30분봉으로 먼저 닿은 쪽</div>`; };
+    + `<div class="sc">하루 평균 = 고른 날마다 3종목 손익을 더한 뒤 날 수로 나눔 · % = 100만원당 평균 · 손절 = 장중에 추천 손절선 닿으면 그 가격(시가가 이미 아래면 시가, 모든 전략) · 익절 = 장중에 닿은 가격(시가가 이미 넘었으면 시가) · 같은 날 둘 다 닿으면 30분봉으로 먼저 닿은 쪽</div>`; };
   const draw = () => { el.innerHTML = `<div class="pa">${A()}</div><div class="pb">${B()}</div>`;
     const x = R.find(y => y.nm === sel) || R[0]; STRAT_SEL = {}; x.rs.forEach(y => { STRAT_SEL[y.p.day + y.p.code] = y; }); pmTags(); };
   // 막대 말풍선 (11/12 사용자 A안 라이트): 기다림 없이 바로 · 숫자 3칸 + 종목별 0 기준 미니 막대
