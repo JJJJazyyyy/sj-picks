@@ -1182,7 +1182,7 @@ function stopExit(p) {
   const r = rows.find(x => x.l <= s);   // gap: 다음날 시가부터 손절선 아래 (11/17 사용자: '갭하락 미진입' — 장전 시간외에서 안 샀다고 봄)
   return r ? { r: (Math.min(r.o, s) / p.base - 1) * 100, d: r.d, s, gap: r === rows[0] && r.o <= s, o: (r.o / p.base - 1) * 100 } : null;
 }
-const stopTag = (p, se) => se.gap ? `<span class="tag stop gap" title="${md(se.d)} 시가 ${pct(se.o, 1)} — 손절선 ${fmt(se.s)} 아래로 출발해서 안 샀다고 봄 · 전략 통계엔 0%">${pct(se.o, 1)} 갭하락 미진입</span>` : `<span class="tag stop" title="손절 ${md(se.d)} · 손절선 ${fmt(se.s)}${se.s !== p.stop ? ` (추천 ${fmt(p.stop)} → 진입가 −${STOP_CAP * 100}%로 짧게)` : ''}">${pct(se.r, 1)} 손절</span>`;
+const stopTag = (p, se, sh) => se.gap ? `<span class="tag stop gap" title="${md(se.d)} 시가 ${pct(se.o, 1)} — 손절선 ${fmt(se.s)} 아래로 출발해서 안 샀다고 봄 · 전략 통계엔 0%">${sh ? '' : pct(se.o, 1) + ' '}갭하락 미진입</span>` : `<span class="tag stop" title="손절 ${md(se.d)} · 손절선 ${fmt(se.s)}${se.s !== p.stop ? ` (추천 ${fmt(p.stop)} → 진입가 −${STOP_CAP * 100}%로 짧게)` : ''}">${pct(se.r, 1)} 손절</span>`;
 // 전략별 비교 (11/11 사용자 통계 B): 종목마다 100만원, 선정일 종가 매수 → 규칙대로 팔았으면 지금 얼마
 const DAYC = {};
 // 11/13 사용자: 성과 카드 꼬리표를 고른 전략 결과대로 → 판 종목은 '+n.n% 익절'(이익) / '−n.n% 매도'(손해), 손절은 '손절 M/D', 아직 들고 있으면 진행 중
@@ -1191,9 +1191,9 @@ function pmTag(p) {
   const y = STRAT_SEL && STRAT_SEL[p.day + p.code], w = y ? y.w : '';
   // 11/16 사용자: 손절 칩은 날짜 말고 퍼센트로 통일 (날짜는 마우스 올리면) · 서버 손절 기록은 그날 종가 기준
   const se = stopExit(p);
-  const base = () => se ? stopTag(p, se) : p.done ? '<span class="tag end">✓ 10일 완료</span>' : '<span class="tag run"><i></i>진행 중</span>';
+  const base = () => se ? stopTag(p, se, 1) : p.done ? '<span class="tag end">✓ 10일 완료</span>' : '<span class="tag run"><i></i>진행 중</span>';
   if (!y || /^(보유 중|진행 중|9:30 전)$/.test(w)) return base();
-  if (se && se.gap) return stopTag(p, se);
+  if (se && se.gap) return stopTag(p, se, 1);   // 11/17 사용자: 성과 카드는 % 빼고 짧게
   if (/^손절 /.test(w)) return `<span class="tag stop" title="${esc(w)}">${pct(y.r, 1)} 손절</span>`;
   if (/^반 익절 [^·]+ · 보유 중$/.test(w)) return `<span class="tag tp" title="${esc(w)} · 나머지 절반은 들고 있음">${pct(y.r, 1)} 반 익절</span>`;
   return y.r >= 0 ? `<span class="tag tp" title="${esc(w)}">${pct(y.r, 1)} 익절</span>` : `<span class="tag tl" title="${esc(w)}">${pct(y.r, 1)} 손절</span>`;
