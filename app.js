@@ -1259,7 +1259,7 @@ function oldHi(p) {
   return v == null ? null : { r: (v / p.base - 1) * 100, px: v, d };
 }
 function oldHiTag(p) { const h = oldHi(p); if (!h) return '<span class="tag run"><i></i>진행 중</span>';
-  return `<span class="tag ${h.r >= 0 ? 'tp' : 'tl'} tip" tabindex="0" data-tip="${esc(`옛 방식 종목 · 통계 제외\n진입가 ${fmt(p.base)} (${md(p.day)} 종가) → 최고 ${fmt(h.px)} (${md(h.d)})`)}">${pct(h.r, 1)} 최고점</span>`; }
+  return `<span class="tag hi tip" tabindex="0" data-tip="${esc(`옛 방식 종목 · 통계 제외\n진입가 ${fmt(p.base)} (${md(p.day)} 종가) → 최고 ${fmt(h.px)} (${md(h.d)})`)}">${pct(h.r, 1)} 최고점</span>`; }
 const hiTier = v => v == null ? '' : v >= 30 ? 'r4' : v >= 20 ? 'r3' : v >= 10 ? 'r2' : v >= 5 ? 'r1' : '';
 function pmTag(p) {
   if (p.method !== 'tv2') return oldHiTag(p);
@@ -1449,6 +1449,13 @@ async function perfStrat() {
   draw();
 }
 // 성과 칸 미니 차트: 진입 뒤 경로 (30분봉 있으면 30분봉, 없으면 일봉 종가) + 진입가·손절선·최고점
+// 11/23 사용자: 옛 방식 종목 미니 차트는 최고점을 찍은 날까지만 (그 날의 나머지 봉까지)
+function cutAtPeak(P) {
+  if (!P || !P.pts.length) return P;
+  let k = 0; P.pts.forEach((q, i) => { if (q.h > P.pts[k].h) k = i; });
+  let e = k; while (e + 1 < P.pts.length && P.pts[e + 1].d === P.pts[k].d) e++;
+  return { ...P, pts: P.pts.slice(0, e + 1), cut: true };
+}
 async function perfPath(p) {
   const end = Date.UTC(+p.day.slice(0, 4), +p.day.slice(4, 6) - 1, +p.day.slice(6, 8), 23) / 1000;
   const m = await minRows(p.code, '30');
@@ -1490,7 +1497,7 @@ async function perfMini() {
   const el = $('#perfMini'); if (!el) return; const P = INDEX.perf || [], q = ++PMQ;
   if (!P.length) { el.innerHTML = ''; return; }
   const cards = await Promise.all(P.map(async p => {
-    const path = await perfPath(p);
+    const path = p.method === 'tv2' ? await perfPath(p) : cutAtPeak(await perfPath(p));
     PMP[p.day + p.code] = p; const st = pmTag(p);
     const head = `<div class="pm-h">${logo(p.code, p.name, 18)}<b>${esc(p.name)}</b>${NEWM(p) ? '' : '<span class="pm-old" title="11/20까지 예전 점수 방식으로 고른 종목 · 통계 제외">옛 방식</span>'}<span class="pm-s" title="진입가">${md(p.day)} · ${fmt(p.base)}</span></div>`;
     if (!path) return `<a class="pm-c ${pmTier(p, null)}" data-k="${p.day}${p.code}" href="#${p.day}">${head}<div class="pm-none">아직 진입 뒤 시세 없음</div><div class="pm-f">${st}</div></a>`;
