@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-23 14:50",
+ "updated": "2026-11-23 15:24",
  "latest": "20261120",
  "days": [
   {
@@ -258,6 +258,7 @@
    "stop_hit": null,
    "done": false,
    "mkt_ok": false,
+   "entry": "bounce",
    "path": [],
    "path20": []
   },
@@ -275,6 +276,7 @@
    "stop_hit": null,
    "done": false,
    "mkt_ok": false,
+   "entry": "skip",
    "path": [],
    "path20": []
   },
@@ -292,6 +294,7 @@
    "stop_hit": null,
    "done": false,
    "mkt_ok": false,
+   "entry": "bounce",
    "path": [],
    "path20": []
   },
@@ -316,6 +319,7 @@
    "stop_hit": "20261120",
    "done": false,
    "mkt_ok": false,
+   "entry": "bounce",
    "path": [
     [
      "20261120",
@@ -356,6 +360,7 @@
    "stop_hit": null,
    "done": false,
    "mkt_ok": false,
+   "entry": "bounce",
    "path": [
     [
      "20261120",
@@ -396,6 +401,7 @@
    "stop_hit": null,
    "done": false,
    "mkt_ok": false,
+   "entry": "bounce",
    "path": [
     [
      "20261120",
@@ -436,6 +442,7 @@
    "stop_hit": null,
    "done": false,
    "mkt_ok": false,
+   "entry": "skip",
    "path": [
     [
      "20261119",
@@ -490,6 +497,7 @@
    "stop_hit": "20261120",
    "done": false,
    "mkt_ok": false,
+   "entry": "skip",
    "path": [
     [
      "20261119",
@@ -544,6 +552,7 @@
    "stop_hit": "20261120",
    "done": false,
    "mkt_ok": false,
+   "entry": "skip",
    "path": [
     [
      "20261119",
@@ -599,6 +608,7 @@
    "stop_hit": null,
    "done": false,
    "mkt_ok": false,
+   "entry": "skip",
    "path": [
     [
      "20261118",
@@ -668,6 +678,7 @@
    "stop_hit": null,
    "done": false,
    "mkt_ok": false,
+   "entry": "skip",
    "path": [
     [
      "20261118",
@@ -737,6 +748,7 @@
    "stop_hit": null,
    "done": false,
    "mkt_ok": false,
+   "entry": "skip",
    "path": [
     [
      "20261118",
@@ -806,6 +818,7 @@
    "stop_hit": null,
    "done": false,
    "mkt_ok": false,
+   "entry": "bounce",
    "path": [
     [
      "20261117",
@@ -889,6 +902,7 @@
    "stop_hit": "20261117",
    "done": false,
    "mkt_ok": false,
+   "entry": "bounce",
    "path": [
     [
      "20261117",
@@ -972,6 +986,7 @@
    "stop_hit": null,
    "done": false,
    "mkt_ok": false,
+   "entry": "skip",
    "path": [
     [
      "20261117",
@@ -1056,6 +1071,7 @@
    "stop_hit": "20261116",
    "done": false,
    "mkt_ok": false,
+   "entry": "bounce",
    "path": [
     [
      "20261116",
@@ -1154,6 +1170,7 @@
    "stop_hit": null,
    "done": false,
    "mkt_ok": false,
+   "entry": "bounce",
    "path": [
     [
      "20261116",
@@ -1252,6 +1269,7 @@
    "stop_hit": "20261120",
    "done": false,
    "mkt_ok": false,
+   "entry": "bounce",
    "path": [
     [
      "20261116",
@@ -1350,6 +1368,7 @@
    "stop_hit": "20261117",
    "done": false,
    "mkt_ok": false,
+   "entry": "skip",
    "path": [
     [
      "20261113",
@@ -1462,6 +1481,7 @@
    "stop_hit": null,
    "done": false,
    "mkt_ok": false,
+   "entry": "skip",
    "path": [
     [
      "20261113",
@@ -1574,6 +1594,7 @@
    "stop_hit": "20261117",
    "done": false,
    "mkt_ok": false,
+   "entry": "bounce",
    "path": [
     [
      "20261113",
@@ -1686,6 +1707,7 @@
    "stop_hit": "20261112",
    "done": false,
    "mkt_ok": false,
+   "entry": "bounce",
    "path": [
     [
      "20261112",
@@ -1812,6 +1834,7 @@
    "stop_hit": null,
    "done": false,
    "mkt_ok": false,
+   "entry": "bounce",
    "path": [
     [
      "20261112",
@@ -1938,6 +1961,7 @@
    "stop_hit": "20261116",
    "done": false,
    "mkt_ok": false,
+   "entry": "bounce",
    "path": [
     [
      "20261112",
@@ -2064,6 +2088,7 @@
    "stop_hit": "20261112",
    "done": false,
    "mkt_ok": false,
+   "entry": "skip",
    "path": [
     [
      "20261111",
@@ -2204,6 +2229,7 @@
    "stop_hit": "20261113",
    "done": false,
    "mkt_ok": false,
+   "entry": "skip",
    "path": [
     [
      "20261111",
@@ -2344,6 +2370,7 @@
    "stop_hit": null,
    "done": false,
    "mkt_ok": false,
+   "entry": "skip",
    "path": [
     [
      "20261111",
@@ -2484,6 +2511,7 @@
    "stop_hit": "20261110",
    "done": false,
    "mkt_ok": false,
+   "entry": "bounce",
    "path": [
     [
      "20261110",
@@ -2638,6 +2666,7 @@
    "stop_hit": null,
    "done": false,
    "mkt_ok": false,
+   "entry": "skip",
    "path": [
     [
      "20261110",
@@ -2792,6 +2821,7 @@
    "stop_hit": null,
    "done": false,
    "mkt_ok": false,
+   "entry": "skip",
    "path": [
     [
      "20261110",
@@ -2947,6 +2977,7 @@
    "stop_hit": null,
    "done": true,
    "mkt_ok": false,
+   "entry": "skip",
    "path": [
     [
      "20261109",
@@ -3116,6 +3147,7 @@
    "stop_hit": null,
    "done": true,
    "mkt_ok": false,
+   "entry": "skip",
    "path": [
     [
      "20261109",
@@ -3285,6 +3317,7 @@
    "stop_hit": null,
    "done": true,
    "mkt_ok": false,
+   "entry": "skip",
    "path": [
     [
      "20261109",
@@ -3454,6 +3487,7 @@
    "stop_hit": "20261110",
    "done": true,
    "mkt_ok": false,
+   "entry": "bounce",
    "path": [
     [
      "20261106",
@@ -3630,6 +3664,7 @@
    "stop_hit": null,
    "done": true,
    "mkt_ok": false,
+   "entry": "skip",
    "path": [
     [
      "20261106",
@@ -3806,6 +3841,7 @@
    "stop_hit": "20261116",
    "done": true,
    "mkt_ok": false,
+   "entry": "skip",
    "path": [
     [
      "20261106",

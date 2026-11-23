@@ -774,3 +774,9 @@ body.resizing .hspl,body.resizing:has(.hspl.on) *{cursor:row-resize !important}
 .tag.nent{background:color-mix(in srgb,#64748B 16%,var(--panel));color:#475569;border:1px dashed #94A3B8}.dk .tag.nent{color:#CBD5E1}
 tr.nent td{color:var(--sub)}.stat.nent-all{color:var(--sub)}.stat.nent-all small{display:block}
 .pm-c.ne{border-style:dashed;border-color:#CBD5E1;opacity:.82}.pm-c.ne:hover{opacity:1}
+.ent{display:inline-flex;align-items:center;font-size:12px;font-weight:800;padding:2px 8px;border-radius:999px;white-space:nowrap;margin-left:4px}
+.ent.sm{font-size:11px;font-weight:700;padding:0 7px;line-height:18px}
+.ent.long{background:#DCFCE7;color:#15803D}.ent.bounce{background:#FEF3C7;color:#B45309}.ent.skip{background:#F1F5F9;color:#64748B;border:1px dashed #94A3B8}
+.dk .ent.long{background:#14532D;color:#86EFAC}.dk .ent.bounce{background:#4A3410;color:#FCD34D}.dk .ent.skip{background:#1E293B;color:#CBD5E1}
+.mflt .mfl{flex-basis:100%;display:flex;flex-wrap:wrap;gap:4px 16px;font-size:12.5px}.mflt .mfl b{font-size:12.5px}.mflt .mfl b.bounce{color:#B45309}.mflt .mfl b.skip{color:#64748B}
+.mflt b.sig{font-size:13px;color:#B45309}.dk .mflt b.sig{color:#FCD34D}
