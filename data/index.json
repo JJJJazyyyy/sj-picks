@@ -295,7 +295,7 @@
    "name": "두산",
    "sector": "전기·전자",
    "base": 541000,
-   "stop": 494000,
+   "stop": 509000,
    "perf": {},
    "max_up": null,
    "max_dn": null,

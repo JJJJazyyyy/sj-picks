@@ -1227,7 +1227,9 @@ function renderPerf() {
 // 11/17 사용자: 성과(지난 관심종목)에선 손절을 짧게 — 추천 손절선이 진입가 −6%보다 멀면 −6%(호가 단위로 올림)에서 끊음 (아리바이오랩 추천 손절 −18%)
 const STOP_CAP = .06;
 const tickUp = v => { const t = v < 2000 ? 1 : v < 5000 ? 5 : v < 20000 ? 10 : v < 50000 ? 50 : v < 200000 ? 100 : v < 500000 ? 500 : 1000; return Math.ceil(v / t) * t; };
-const effStop = p => Math.max(p.stop || 0, tickUp(p.base * (1 - STOP_CAP)));
+const tickDn = v => { const t = v < 2000 ? 1 : v < 5000 ? 5 : v < 20000 ? 10 : v < 50000 ? 50 : v < 200000 ? 100 : v < 500000 ? 500 : 1000; return Math.floor(v / t) * t; };
+const effStop = p => { const s = Math.max(p.stop || 0, tickUp(p.base * (1 - STOP_CAP)));   // 11/23 사용자: 새 방식은 손절 5~6% 범위 (−5%보다 가까우면 −5%)
+  return p.method === 'tv2' ? Math.min(s, tickDn(p.base * .95)) : s; };
 // 장중 저가가 손절선에 처음 닿은 날 → 손절선 가격(시가가 이미 아래면 시가)에 판 걸로. 오늘 장중(live.json) 포함
 function stopExit(p) {
   const s = effStop(p), rows = (p.path || []).filter(r => r[0] > p.day).map(([d, o, h, l]) => ({ d, o, l }));
