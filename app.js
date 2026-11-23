@@ -1192,27 +1192,31 @@ function renderGainers() {
     if (CUR !== d) { await renderDay(d); location.hash = d; }
     const i = CURD && CURD.stocks ? CURD.stocks.findIndex(s => s.code === c) : -1; if (i >= 0) goTo(i); };
 }
+// 11/23 사용자: 성과·전략 통계는 새 선정 방식(tv2, 11/23 선정분)부터. 옛 방식(점수순) 종목은 기록·카드에만 남김
+const NEWM = p => p.method === 'tv2';
+const OLDN = () => (INDEX.perf || []).filter(p => !NEWM(p)).length;
 function renderPerf() {
-  const P = INDEX.perf || [];
+  const PA = INDEX.perf || [], P = PA.filter(NEWM);
   const H = ['1', '3', '5', '10'];
   // 11/23 사용자: 미진입(약세장·갭하락) 종목은 통계에서 빼고 진입한 종목만 평균
   const NE = P.map(noEntry), E = P.filter((p, i) => !NE[i]);
   const nw = NE.filter(x => x && x.k === 'weak').length, ng = NE.filter(x => x && x.k === 'gap').length;
   const all = h => { const v = P.map(p => p.perf && p.perf[h]).filter(x => x != null); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; };
   const nb = E.filter(p => p.entry === 'bounce').length;
-  const head = `<div class="stat">진입 <b>${E.length}</b>/${P.length}${nb ? ` <small>정상 ${E.length - nb} · 반등 매매 ${nb}</small>` : ''}${nw + ng ? ` <small>· 미진입 ${nw ? `약세장 ${nw}` : ''}${nw && ng ? ' · ' : ''}${ng ? `갭하락 ${ng}` : ''}</small>` : ''}</div>`;
+  const head = (OLDN() ? `<div class="stat old">새 방식부터 집계 <small>옛 방식 ${OLDN()}종목은 통계 제외 · 아래 기록엔 그대로</small></div>` : '') + `<div class="stat">진입 <b>${E.length}</b>/${P.length}${nb ? ` <small>정상 ${E.length - nb} · 반등 매매 ${nb}</small>` : ''}${nw + ng ? ` <small>· 미진입 ${nw ? `약세장 ${nw}` : ''}${nw && ng ? ' · ' : ''}${ng ? `갭하락 ${ng}` : ''}</small>` : ''}</div>`;
   $('#perfStats').innerHTML = head + (E.length ? H.map(h => {
     const v = E.map(p => p.perf && p.perf[h]).filter(x => x != null);
     if (!v.length) return `<div class="stat">${h}거래일 뒤 <b>-</b> <small>아직 없음</small></div>`;
     const avg = v.reduce((a, b) => a + b, 0) / v.length, win = v.filter(x => x > 0).length;
     return `<div class="stat">${h}거래일 뒤 평균 <b class="${cls(avg)}">${pct(avg)}</b> · 상승 ${win}/${v.length}</div>`;
   }).join('') + `<div class="stat">손절 <b>${E.filter(p => stopExit(p)).length}</b>/${E.length}</div>`
+    : !P.length ? `<div class="stat nent-all">새 방식 종목은 11/23 선정분부터 쌓여요 <small>(진입 뒤 시세가 생기면 여기 평균이 나와요)</small></div>`
     : `<div class="stat nent-all">진입한 종목 없음 — 전부 약세장 날 골라서 안 삼 <small>(샀다면 10거래일 뒤 평균 ${all('10') != null ? pct(all('10')) : '-'} · 손절 ${P.filter(p => { const se = stopExit(p); return se && !se.gap; }).length}/${P.length})</small></div>`);
   const c = v => `<td class="${cls(v)}">${pct(v)}</td>`;
   $('#perfTbl').innerHTML = `<tr><th class="l">선정일</th><th class="l">종목</th><th>진입가</th><th>+1일</th><th>+3일</th><th>+5일</th><th>+10일</th><th>최고(10일)</th><th>최저(10일)</th><th>최근 종가</th><th>손절선</th><th class="l">상태</th></tr>` +
-    (P.length ? P.map(p => {
+    (PA.length ? PA.map(p => {
       const se = stopExit(p), st = noEntry(p) ? weakTag(p) : se ? stopTag(p, se) : p.done ? '<span class="tag end">10일 완료</span>' : `<span class="tag run">진행 ${p.last ? p.last.n : 0}일</span>`;
-      const hot = (p.last && p.last.ret >= 10 ? ' <span class="tag hot">급등</span>' : '') + (p.entry === 'bounce' ? ' <span class="ent bounce sm">반등 매매</span>' : '');
+      const hot = (p.last && p.last.ret >= 10 ? ' <span class="tag hot">급등</span>' : '') + (p.entry === 'bounce' ? ' <span class="ent bounce sm">반등 매매</span>' : '') + (NEWM(p) ? '' : ' <span class="pm-old" title="11/20까지 예전 점수 방식으로 고른 종목 · 성과·전략 통계에서 뺌">옛 방식</span>');
       const pf = p.perf || {};
       return `<tr class="${noEntry(p) ? 'nent' : se ? 'hit' : ''}"><td class="l"><a href="#${p.day}">${dname(p.day)}</a></td><td class="l nmcell">${logo(p.code, p.name, 18)}<b>${esc(p.name)}</b></td><td>${fmt(p.base)}</td>${c(pf['1'])}${c(pf['3'])}${c(pf['5'])}${c(pf['10'])}${c(p.max_up)}${c(p.max_dn)}
         <td>${p.last ? `${fmt(p.last.c)} <small class="${cls(p.last.ret)}">${pct(p.last.ret, 1)}</small>` : '-'}</td><td title="추천 ${fmt(p.stop)}">${fmt(effStop(p))}</td><td class="l">${st}${hot}</td></tr>`;
@@ -1260,8 +1264,8 @@ async function perfStrat() {
   const el = $('#perfStrat'); if (!el) return;
   // 11/13 사용자: 어제 고른 종목은 일봉 기록(path)이 아직 없어도 오늘 현재가(live.json)로 전략 계산에 넣음 (전엔 빠져서 '진행 중'으로만 보였음)
   const LD = LIVE && LIVE.date ? LIVE.date.replace(/-/g, '') : '';
-  const P = (INDEX.perf || []).filter(p => (p.path && p.path.length) || (LD > p.day && LIVE.prices && LIVE.prices[p.code]));
-  if (!P.length) { el.innerHTML = ''; return; }
+  const P = (INDEX.perf || []).filter(p => NEWM(p) && ((p.path && p.path.length) || (LD > p.day && LIVE.prices && LIVE.prices[p.code])));
+  if (!P.length) { el.innerHTML = `<div class="pa"><div class="sh">전략별 비교 <small>새 선정 방식(11/23 선정분)부터 집계</small></div><div class="scd">새 방식 종목의 진입 뒤 시세가 아직 없어요. 다음 거래일 장이 열리면 여기부터 쌓여요. 옛 방식 ${OLDN()}종목은 전략 통계에서 뺐어요(아래 카드·기록엔 그대로).</div></div>`; STRAT_SEL = null; pmTags(); return; }
   P.forEach((p, i) => { P[i] = { ...p, stop: effStop(p) }; });   // 11/17: 전략도 짧은 손절선
   const lvs = await Promise.all(P.map(async p => {
     try { const D = DAYC[p.day] || (DAYC[p.day] = await getJSON(`data/days/${p.day}.json`)); const st = D.stocks.find(x => x.code === p.code) || {};
@@ -1459,7 +1463,7 @@ async function perfMini() {
   const cards = await Promise.all(P.map(async p => {
     const path = await perfPath(p);
     PMP[p.day + p.code] = p; const st = pmTag(p);
-    const head = `<div class="pm-h">${logo(p.code, p.name, 18)}<b>${esc(p.name)}</b><span class="pm-s" title="진입가">${md(p.day)} · ${fmt(p.base)}</span></div>`;
+    const head = `<div class="pm-h">${logo(p.code, p.name, 18)}<b>${esc(p.name)}</b>${NEWM(p) ? '' : '<span class="pm-old" title="11/20까지 예전 점수 방식으로 고른 종목 · 통계 제외">옛 방식</span>'}<span class="pm-s" title="진입가">${md(p.day)} · ${fmt(p.base)}</span></div>`;
     if (!path) return `<a class="pm-c ${pmTier(p, null)}" data-k="${p.day}${p.code}" href="#${p.day}">${head}<div class="pm-none">아직 진입 뒤 시세 없음</div><div class="pm-f">${st}</div></a>`;
     const S = miniSVG(p, path), days = new Set(path.pts.map(x => x.d)).size;
     return `<a class="pm-c ${pmTier(p, S.now)}" data-k="${p.day}${p.code}" href="#${p.day}" title="${esc(p.name)} · ${path.src} 기준 · 남색 선 = 진입가, 파란 점선 = 손절 ${fmt(effStop(p))}">${head}${S.svg}<div class="pm-f">${st}${ladder(S.mx)}<span class="pm-s">${days}일</span></div></a>`;
