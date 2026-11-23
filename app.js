@@ -1330,6 +1330,7 @@ async function perfStrat() {
   };
   const isWeak = p => { const D = DAYC[p.day]; return !!(D && D.market && D.market.ok === false); };
   const SKIP = { r: 0, w: '약세장 쉼' };
+  const NOENT = w => w === '약세장 쉼' || w === '갭하락 미진입';   // 11/23 사용자: 말풍선·종목 목록엔 안 산 종목 줄을 안 보임
   const ST = [
     ['추천: 약세장 쉼 · 고점 −10%', '약세장(코스닥 20일 평균 아래 또는 당일 −1% 이하) 날 고른 종목은 안 삼(0원) · 시장 양호한 날만 사서 손절선 닿으면 손절, 익절 목표 없이 장중 최고가에서 10% 내려오면 팖, 최대 20거래일 · 백테스트 1등', p => isWeak(p) ? SKIP : runT(p, .10, 0, 20)],
     ['고점 −10% 추적 · 매일', '시장 상관없이 매일 삼 · 손절선 닿으면 손절, 익절 목표 없이 장중 최고가에서 10% 내려오면 팖, 최대 20거래일', p => runT(p, .10, 0, 20)],
@@ -1351,7 +1352,7 @@ async function perfStrat() {
       const dm = {}; rs.forEach(x => { const d = dm[x.p.day] || (dm[x.p.day] = { d: x.p.day, g: 0, k: 0 }); d.g += 1e6 * x.r / 100; d.k++; });
       const days = Object.values(dm).sort((a, b) => a.d < b.d ? -1 : 1);
       const gx = rs.reduce((a, x) => a + (x.p === top ? 0 : 1e6 * x.r / 100), 0);
-      return { nm, rule, rs, g, gx, da: g / nd, days, wd: days.filter(d => d.g > 0).length, win: rs.filter(x => x.r > 0).length }; })
+      return { nm, rule, rs, g, gx, da: g / nd, days, wd: days.filter(d => d.g > 0).length, win: rs.filter(x => x.r > 0).length, nb: rs.filter(x => !NOENT(x.w)).length }; })
       .sort((a, b) => b.g - a.g);   // 항상 화면 숫자(하루 평균) 큰 순 (11/12 사용자)
     mx = Math.max(...R.map(x => Math.abs(x.da)), 1); };
   calc();
@@ -1359,11 +1360,11 @@ async function perfStrat() {
   const m1 = v => `${v >= 0 ? '+' : '−'}${Math.abs(v / 1e4).toFixed(1)}`;
   const A = () => { const x = R.find(y => y.nm === sel) || R[0], dd = x.days.slice(-8);
     return `<div class="sh">매일 3종목 × 100만원씩 샀다면 <small>선정일 ${nd}일 · ${n}종목 · 지금까지</small></div>`
-      + `<div class="sa"><span class="sx">하루 평균</span><b class="big ${cls(x.g)}">${man(x.da)}</b><b class="${cls(x.g)}">(${pct(x.g / tot * 100, 1)})</b><span class="sx">100만원당 ${man(x.g / n)} · 이긴 종목 ${x.win}/${n}</span></div>`
+      + `<div class="sa"><span class="sx">하루 평균</span><b class="big ${cls(x.g)}">${man(x.da)}</b><b class="${cls(x.g)}">(${pct(x.g / tot * 100, 1)})</b><span class="sx">100만원당 ${man(x.g / n)} · 이긴 종목 ${x.win}/${x.nb}${x.nb < n ? ` (산 종목 · 미진입 ${n - x.nb})` : ''}</span></div>`
       + `<div class="sdy">${x.days.length > dd.length ? '<span class="sx">최근 8일</span>' : ''}${dd.map(d => `<span title="${md(d.d)} 고른 ${d.k}종목 합계">${md(d.d)} <b class="${cls(d.g)}">${m1(d.g)}</b></span>`).join('')}<span class="wd">이긴 날 ${x.wd}/${x.days.length}</span></div>`
       + `<div class="sbt">${R.map(y => `<button type="button" data-j="${esc(y.nm)}" class="${y.nm === x.nm ? 'on' : ''}">${y.nm}</button>`).join('')}</div>`
       + `<div class="scd"><b>조건</b> 선정일 종가에 삼 · ${x.rule} · 수수료·세금 제외</div>`
-      + `<div class="sst">${x.rs.map(y => `<span class="${cls(y.r)}" title="${esc(y.w)}">${esc(y.p.name)} ${pct(y.r, 1)}${y.w === '보유 중' ? '' : ` <small>${y.w}</small>`}</span>`).join('')}</div>`; };
+      + `<div class="sst">${x.rs.filter(y => !NOENT(y.w)).map(y => `<span class="${cls(y.r)}" title="${esc(y.w)}">${esc(y.p.name)} ${pct(y.r, 1)}${y.w === '보유 중' ? '' : ` <small>${y.w}</small>`}</span>`).join('')}</div>`; };
   const B = () => { const cur = (R.find(y => y.nm === sel) || R[0]).nm;
     return `<div class="sh">전략별 하루 평균 <small>선정일 하루(3종목)당 · 수익 높은 순 · 누르면 왼쪽에 자세히</small></div>`
     + R.map(x => `<div class="sr${x.nm === cur ? ' on' : ''}" data-j="${esc(x.nm)}" tabindex="0""><span class="sn">${x.nm}</span><span class="sb"><i class="${x.g >= 0 ? 'u' : 'd'}" style="width:${(Math.abs(x.da) / mx * 100).toFixed(1)}%"></i></span>`
@@ -1375,12 +1376,12 @@ async function perfStrat() {
   let tip = document.querySelector('.stip');
   if (!tip) { tip = document.createElement('div'); tip.className = 'stip'; tip.setAttribute('role', 'tooltip'); document.body.appendChild(tip); }
   const tipHTML = x => {
-    const rs = x.rs.slice().sort((a, b) => b.r - a.r), lo = Math.min(0, ...rs.map(y => y.r)), hi = Math.max(0, ...rs.map(y => y.r)), sp = (hi - lo) || 1;
+    const rs = x.rs.filter(y => !NOENT(y.w)).sort((a, b) => b.r - a.r), lo = Math.min(0, ...rs.map(y => y.r)), hi = Math.max(0, ...rs.map(y => y.r)), sp = (hi - lo) || 1;
     const P0 = v => (v - lo) / sp * 100, z = P0(0);
     return `<div class="st-h">${esc(x.nm)}</div><div class="st-r">${esc(x.rule)}</div>`
-      + `<div class="st-k"><span>하루 평균 <b class="${cls(x.g)}">${man(x.da)}</b></span><span>이긴 종목 <b>${x.win}/${n}</b></span>${top ? `<span>${esc(top.name)} 빼면 <b class="${cls(x.gx)}">${man(x.gx / nd)}</b></span>` : ''}</div>`
+      + `<div class="st-k"><span>하루 평균 <b class="${cls(x.g)}">${man(x.da)}</b></span><span>이긴 종목 <b>${x.win}/${x.nb}</b>${x.nb < n ? ` <small>(산 종목)</small>` : ''}</span>${top ? `<span>${esc(top.name)} 빼면 <b class="${cls(x.gx)}">${man(x.gx / nd)}</b></span>` : ''}</div>`
       + rs.map(y => { const a = Math.min(P0(y.r), z), w = Math.abs(P0(y.r) - z);
-        return `<div class="st-row"><span class="st-n">${esc(y.p.name)}</span><span class="st-t" style="--z:${z.toFixed(1)}%"><i class="${y.r >= 0 ? 'u' : 'd'}" style="left:${a.toFixed(1)}%;width:${Math.max(w, .6).toFixed(1)}%"></i></span><span class="st-v ${cls(y.r)}">${pct(y.r, 1)}</span><span class="st-w">${esc(y.w)}</span></div>`; }).join('');
+        return `<div class="st-row"><span class="st-n">${esc(y.p.name)}</span><span class="st-t" style="--z:${z.toFixed(1)}%"><i class="${y.r >= 0 ? 'u' : 'd'}" style="left:${a.toFixed(1)}%;width:${Math.max(w, .6).toFixed(1)}%"></i></span><span class="st-v ${cls(y.r)}">${pct(y.r, 1)}</span><span class="st-w">${esc(y.w)}</span></div>`; }).join('') + (rs.length ? '' : '<div class="st-r">산 종목 없음</div>');
   };
   const tipShow = row => { const x = R.find(y => y.nm === row.dataset.j); if (!x) return;
     tip.innerHTML = tipHTML(x); tip.style.display = 'block';
