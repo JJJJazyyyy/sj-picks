@@ -820,3 +820,9 @@ tr.nent td{color:var(--sub)}.stat.nent-all{color:var(--sub)}.stat.nent-all small
 .pm-olds{grid-column:1/-1;margin-top:6px;border-top:1px dashed var(--line);padding-top:8px}
 .pm-olds>summary{cursor:pointer;font-weight:700;font-size:13.5px;color:var(--txt);padding:4px 2px}.pm-olds>summary small{font-weight:400;color:var(--sub);margin-left:6px}
 .pm-olds>.pmini{margin-top:8px}.pm-empty{grid-column:1/-1;color:var(--sub);font-size:13px;padding:8px 4px}
+/* 11/23 사용자: 매수 배너 테두리 4번 — 실선 + 같은 색 빛 번짐 (상태 색 따라) */
+.bbn{border:1.5px solid #A5B4FC;box-shadow:0 0 0 3px rgba(165,180,252,.25),0 0 12px rgba(99,102,241,.25)}
+.bbn.part{border-color:#FCD34D;box-shadow:0 0 0 3px rgba(252,211,77,.25),0 0 12px rgba(245,158,11,.22)}
+.bbn.star{border:1.5px solid #FBBF24;box-shadow:0 0 0 3px rgba(251,191,36,.25),0 0 12px rgba(245,158,11,.28)}
+.bbn.full{border-color:#6EE7B7;box-shadow:0 0 0 3px rgba(110,231,183,.25),0 0 12px rgba(16,185,129,.22)}
+.dk .bbn{border-color:#4F46E5}.dk .bbn.part,.dk .bbn.star{border-color:#B45309}.dk .bbn.full{border-color:#047857}
