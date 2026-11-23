@@ -207,8 +207,8 @@ function kindChip(s, sm) {
 }
 function jumpHTML(D) {
   return D.stocks.map((s, i) => { const x = retNow(s.code, D.day, s.close);
-    const pf = (INDEX.perf || []).find(p => p.day === D.day && p.code === s.code), se = pf && stopExit(pf);   // 11/17 사용자: 손절된 종목은 진입 후 % 앞에 칩
-    return `<a href="javascript:void(0)" data-k="${i}" title="${x ? '진입 후 · ' + esc(x.c.label) : '아직 현재가 없음'}"><span class="r">${i + 1}</span>${logo(s.code, s.name, 18)}${esc(s.name)}${kindChip(s, 1)} ${se ? stopTag(pf, se) : ''}<span class="pv ${x ? cls(x.r) : ''}">${x ? pct(x.r) : '-'}</span><span class="jl">진입 후</span></a>`; }).join('');
+    const pf = (INDEX.perf || []).find(p => p.day === D.day && p.code === s.code), se = pf && pf.method === 'tv2' && stopExit(pf);   // 11/23 옛 방식은 손절 칩 대신 최고점 · 11/17 사용자: 손절된 종목은 진입 후 % 앞에 칩
+    return `<a href="javascript:void(0)" data-k="${i}" title="${x ? '진입 후 · ' + esc(x.c.label) : '아직 현재가 없음'}"><span class="r">${i + 1}</span>${logo(s.code, s.name, 18)}${esc(s.name)}${kindChip(s, 1)} ${se ? stopTag(pf, se) : pf && pf.method !== 'tv2' ? oldHiTag(pf) : ''}<span class="pv ${x ? cls(x.r) : ''}">${x ? pct(x.r) : '-'}</span><span class="jl">진입 후</span></a>`; }).join('');
 }
 function applyLive() {
   if (!CURD) return;
@@ -353,10 +353,10 @@ function summary(D) {
     const iv = (s.inv || [])[0] || {}, fo = (iv.frgn || 0) + (iv.orgn || 0);
     const ch = chipOf((s.why && s.why[0]) || (s.notes || [])[0] || '').chips[0];
     const r = c ? (c.p / B - 1) * 100 : null;
-    const pf = (INDEX.perf || []).find(p => p.day === D.day && p.code === s.code), se = pf && stopExit(pf);   // 11/17 사용자
+    const pf = (INDEX.perf || []).find(p => p.day === D.day && p.code === s.code), se = pf && pf.method === 'tv2' && stopExit(pf);   // 11/23 옛 방식은 손절 칩 대신 최고점 · 11/17 사용자
     const ds = (l, k) => l ? `<span class="${k}">${pct((l.price / ref - 1) * 100, 1)}</span> <small>${fmt(l.price)}</small>` : '-';
     return `<tr data-k="${i}"><td class="l"><span class="rk">${i + 1}</span></td><td class="l nmtd"><span class="nmcell">${logo(s.code, s.name, 20)}<b>${esc(s.name)}</b></span></td><td class="kc">${kindChip(s, 1)}</td>
-      <td class="g1">${fmt(B)} <small class="${cls(s.chg)}">(${pct(s.chg)})</small></td><td class="g2">${c ? fmt(c.p) : '-'}</td><td class="g2 ${cls(r)}">${se ? stopTag(pf, se) + ' ' : ''}${c ? pct(r) : '-'}</td>
+      <td class="g1">${fmt(B)} <small class="${cls(s.chg)}">(${pct(s.chg)})</small></td><td class="g2">${c ? fmt(c.p) : '-'}</td><td class="g2 ${cls(r)}">${se ? stopTag(pf, se) + ' ' : pf && pf.method !== 'tv2' ? oldHiTag(pf) + ' ' : ''}${c ? pct(r) : '-'}</td>
       <td class="l">${ch ? `<span class="cc" style="--c:${fixC(ch[1])}">${esc(ch[0])}</span>` : ''}</td><td>${ds(stop, 'dn')}</td><td>${ds(tg, 'up')}</td><td><b>${rr}</b></td><td class="${cls(fo)}">${fo > 0 ? '+' : ''}${fmt(fo)}억</td><td>${s.rsi ?? '-'}</td></tr>`;
   }).join('');
   const c0 = D.stocks.length ? cur(D.stocks[0].code, D.day) : null;
@@ -1216,7 +1216,7 @@ function renderPerf() {
   const c = v => `<td class="${cls(v)}">${pct(v)}</td>`;
   $('#perfTbl').innerHTML = `<tr><th class="l">선정일</th><th class="l">종목</th><th>진입가</th><th>+1일</th><th>+3일</th><th>+5일</th><th>+10일</th><th>최고(10일)</th><th>최저(10일)</th><th>최근 종가</th><th>손절선</th><th class="l">상태</th></tr>` +
     (PA.length ? PA.map(p => {
-      const se = stopExit(p), st = noEntry(p) ? weakTag(p) : se ? stopTag(p, se) : p.done ? '<span class="tag end">10일 완료</span>' : `<span class="tag run">진행 ${p.last ? p.last.n : 0}일</span>`;
+      const se = p.method === 'tv2' ? stopExit(p) : null, st = p.method !== 'tv2' ? oldHiTag(p) : noEntry(p) ? weakTag(p) : se ? stopTag(p, se) : p.done ? '<span class="tag end">10일 완료</span>' : `<span class="tag run">진행 ${p.last ? p.last.n : 0}일</span>`;
       const hot = (p.last && p.last.ret >= 10 ? ' <span class="tag hot">급등</span>' : '') + (p.entry === 'bounce' ? ' <span class="ent bounce sm">반등 매매</span>' : '') + (NEWM(p) ? '' : ' <span class="pm-old" title="11/20까지 예전 점수 방식으로 고른 종목 · 성과·전략 통계에서 뺌">옛 방식</span>');
       const pf = p.perf || {};
       return `<tr class="${noEntry(p) ? 'nent' : se ? 'hit' : ''}"><td class="l"><a href="#${p.day}">${dname(p.day)}</a></td><td class="l nmcell">${logo(p.code, p.name, 18)}<b>${esc(p.name)}</b></td><td>${fmt(p.base)}</td>${c(pf['1'])}${c(pf['3'])}${c(pf['5'])}${c(pf['10'])}${c(p.max_up)}${c(p.max_dn)}
@@ -1250,7 +1250,19 @@ const stopTag = (p, se, sh) => se.gap ? `<span class="tag stop gap" title="${md(
 const DAYC = {};
 // 11/13 사용자: 성과 카드 꼬리표를 고른 전략 결과대로 → 판 종목은 '+n.n% 익절'(이익) / '−n.n% 매도'(손해), 손절은 '손절 M/D', 아직 들고 있으면 진행 중
 let STRAT_SEL = null, OLD_SEL = null; const PMP = {};
+// 11/23 사용자: 옛 방식 종목은 통계에 안 쓰니 손절·매도 대신 '진입 뒤 최고점' (+n.n% 최고점) — 실제 있었던 가격
+function oldHi(p) {
+  let v = null, d = '';
+  (p.path20 || p.path || []).filter(r => r[0] > p.day).forEach(r => { if (v == null || r[2] > v) { v = r[2]; d = r[0]; } });
+  const lv = LIVE && LIVE.prices && LIVE.prices[p.code], ld = LIVE && LIVE.date ? LIVE.date.replace(/-/g, '') : '';
+  if (lv && ld > p.day && (lv.h || lv.p) && (v == null || (lv.h || lv.p) > v)) { v = lv.h || lv.p; d = ld; }
+  return v == null ? null : { r: (v / p.base - 1) * 100, px: v, d };
+}
+function oldHiTag(p) { const h = oldHi(p); if (!h) return '<span class="tag run"><i></i>진행 중</span>';
+  return `<span class="tag ${h.r >= 0 ? 'tp' : 'tl'} tip" tabindex="0" data-tip="${esc(`옛 방식 종목 · 통계 제외\n진입가 ${fmt(p.base)} (${md(p.day)} 종가) → 최고 ${fmt(h.px)} (${md(h.d)})`)}">${pct(h.r, 1)} 최고점</span>`; }
+const hiTier = v => v == null ? '' : v >= 30 ? 'r4' : v >= 20 ? 'r3' : v >= 10 ? 'r2' : v >= 5 ? 'r1' : '';
 function pmTag(p) {
+  if (p.method !== 'tv2') return oldHiTag(p);
   const y = (STRAT_SEL && STRAT_SEL[p.day + p.code]) || (OLD_SEL && OLD_SEL[p.day + p.code]), w = y ? y.w : '';
   // 11/16 사용자: 손절 칩은 날짜 말고 퍼센트로 통일 (날짜는 마우스 올리면) · 서버 손절 기록은 그날 종가 기준
   const se = stopExit(p);
@@ -1374,7 +1386,7 @@ async function perfStrat() {
     const best = OST.map(([nm, , f]) => { const rs = PO.map(p => ({ p, ...f(p) })); return { nm, rs, g: rs.reduce((a, x) => a + 1e6 * x.r / 100, 0) }; }).sort((a, b) => b.g - a.g)[0];
     OLD_SEL = {}; best.rs.forEach(y => { OLD_SEL[y.p.day + y.p.code] = y; });
     const ndo = new Set(PO.map(p => p.day)).size || 1;
-    oldLine = `<div class="sc">옛 방식 ${PO.length}종목(11/20까지)은 진입 규칙 없이, 성적이 가장 좋았던 '${esc(best.nm.replace(/^추천: /, ''))}' 기준으로 카드에 표시 · 하루 평균 <b class="${cls(best.g)}">${man(best.g / ndo)}</b> · 이긴 종목 ${best.rs.filter(x => x.r > 0).length}/${PO.length} (통계엔 안 넣음)</div>`;
+    oldLine = `<div class="sc">옛 방식 ${PO.length}종목(11/20까지)은 통계에 넣지 않고, 카드엔 진입 뒤 최고점(+n.n% 최고점)만 표시 · 참고로 가장 나았던 전략은 '${esc(best.nm.replace(/^추천: /, ''))}' 하루 평균 <b class="${cls(best.g)}">${man(best.g / ndo)}</b></div>`;
   }
   if (!P.length) { el.innerHTML = `<div class="pa"><div class="sh">전략별 비교 <small>새 선정 방식(11/23 선정분)부터 집계</small></div><div class="scd">새 방식 종목의 진입 뒤 시세가 아직 없어요. 다음 거래일 장이 열리면 여기부터 쌓여요.</div>${oldLine}</div>`; STRAT_SEL = null; pmTags(); return; }
   // 11/12 사용자: 누적 합계는 날이 쌓일수록 커지기만 해서 → 선정일 하루(3종목 × 100만원) 평균 수익으로. 전략은 수익 높은 순
@@ -1472,7 +1484,7 @@ function ladder(mx) {
     + ['+5', '+10', '+20', '+30'].map((t, j) => `<i class="${w >= (j + 1) * 25 - 7 ? 'on' : ''}">${t}</i>`).join('') + `</span><b class="lv ${cls(mx)}">${pct(mx, 1)}</b>`;
 }
 // 11/13 사용자: 카드 테두리 단계 = 지금 수익 기준. 빨강 +5·+10·+20·+30, 파랑 0~−2·−2~−4·−4 이하, 손절 이탈은 가장 진한 파랑
-const pmTier = (p, now) => noEntry(p) ? 'ne' : stopExit(p) ? 'b4' : now == null ? '' : now >= 30 ? 'r4' : now >= 20 ? 'r3' : now >= 10 ? 'r2' : now >= 5 ? 'r1' : now <= -4 ? 'b3' : now <= -2 ? 'b2' : now < 0 ? 'b1' : '';
+const pmTier = (p, now) => p.method !== 'tv2' ? hiTier((oldHi(p) || {}).r) : noEntry(p) ? 'ne' : stopExit(p) ? 'b4' : now == null ? '' : now >= 30 ? 'r4' : now >= 20 ? 'r3' : now >= 10 ? 'r2' : now >= 5 ? 'r1' : now <= -4 ? 'b3' : now <= -2 ? 'b2' : now < 0 ? 'b1' : '';
 let PMQ = 0;
 async function perfMini() {
   const el = $('#perfMini'); if (!el) return; const P = INDEX.perf || [], q = ++PMQ;
