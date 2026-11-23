@@ -385,9 +385,11 @@ function scoreChip(s) {
   if (s.score == null) return '';
   const tv = s.kind === 'lead' || s.kind === 'mid';
   const rk = s.rank && s.ncand ? (tv ? ` · 거래대금 ${s.rank}위` : ` · ${s.ncand}개 중 ${s.rank}위`) : '';
+  if (tv) return `<button class="scchip" type="button" aria-expanded="false">거래대금 <b>${s.rank}위</b>${s.tv != null ? ` <small>${fmt(s.tv)}억</small>` : ''} <span class="car">▾</span></button>`;
   return `<button class="scchip" type="button" aria-expanded="false">${tv ? '참고' : '선정'} <b>${s.score}</b>${s.items ? `<small>/${scMax(s)}</small>` : ''}점${rk} <span class="car">▾</span></button>`;
 }
 function scoreTable(s) {
+  if (s.kind === 'lead' || s.kind === 'mid') return `<div class="sph"><b>거래대금 ${s.rank}위</b>로 뽑혔어요</div><table class="spt spt2">${tvRows(s).map(r => `<tr><td>${r[0]}</td><td class="vv">${r[1]}</td></tr>`).join('')}</table>${CURD ? skipList(CURD) : ''}<a class="spm" href="javascript:void(0)">선정 방식 보기 ↓</a>`;
   if (!s.items) return '<div class="hint">이날은 항목별 점수 기록이 없어요</div>';
   const big = Math.max(2, ...s.items.map(x => Math.abs(x.pts)));
   const rows = s.items.map(x => {
@@ -460,6 +462,23 @@ function methodHTML(D) {      // 11/10 사용자 B: 급등 후보 · 미리 담�
     ${note ? `<div class="spn">${esc(note.pickNote)}</div>` : ''}${body}`;
 }
 // 11/23부터 선정 방식: 거래대금 주도주 2 + 중형 주도주 1 + 시장 필터 (점수는 참고용 표로만)
+// 11/23 사용자 1안: 선정 방식은 지금 기준(거래대금·조건·진입·손절)으로 — 예전 점수표 대신
+function tvRows(s) {
+  const ok = b => b ? '<i class="ck ok">✓</i>' : '<i class="ck no">✕</i>';
+  const st = (s.levels || []).find(l => l.kind === '손절');
+  const hot = s.r5 != null && s.r20 != null ? s.r5 < 20 && s.r20 < 40 && s.chg < 16 : null;
+  return [
+    ['구분', s.kind === 'mid' ? '중형 주도주 <small>거래대금 21위 밑에서 1등</small>' : '주도주 <small>조건 통과 중 거래대금 상위</small>'],
+    ['거래대금', `${s.tv != null ? fmt(s.tv) + '억 · ' : ''}<b>${s.rank}위</b>${s.ncand ? ` <small>${s.ncand}개 중</small>` : ''}`],
+    ['당일 +2% 이상', `${ok(s.chg >= 2 && s.chg < 29.5)}${pct(s.chg)}`],
+    ['과열 아님', hot == null ? '-' : `${ok(hot)}5일 ${pct(s.r5, 0)} · 20일 ${pct(s.r20, 0)}${s.chg >= 16 ? ` · 당일 ${pct(s.chg, 0)}` : ''}`],
+    ['52주 고점 · 시가 출발', s.entry && s.entry.dhi != null ? `${pct(s.entry.dhi, 0)} · ${s.entry.gap != null ? pct(s.entry.gap, 1) : '-'}${s.entry.star ? ' <b class="up">★</b>' : ''}` : '-'],
+    ['진입', s.entry ? entChip(s, 1) : '-'],
+    ['손절', st ? `${fmt(st.price)} <small>${pct((st.price / s.close - 1) * 100, 1)} · ${esc(String(st.basis || '').replace(/ →.*$/, '').replace(/ 이탈$/, ''))}</small>` : '-'],
+  ];
+}
+function skipList(D) { const k = ((D.stocks.find(x => x.kind === 'lead') || D.stocks[0] || {}).skipped || []).slice(0, 6);
+  return k.length ? `<div class="mskip"><b>위 순위인데 안 뽑힌 종목</b> ${k.map(x => `거래대금 ${x.rank}위 ${esc(x.name)} <small>(${esc(x.why.replace(/ — .*$/, ''))})</small>`).join(' · ')}</div>` : ''; }
 function methodTV(D, st, mx) {
   const steps = `<ol class="msteps">
     <li><b>후보 모으기</b> — 코스피·코스닥 각각 등락률 상위 30 · 거래대금 상위 30 · 거래증가율 상위 30 (순위 조회가 모자라면 최근 후보 목록으로 보충)</li>
@@ -469,16 +488,12 @@ function methodTV(D, st, mx) {
     <li><b>진입 방식</b> — 선정일 종가(당일 시간외)에 삼. 시장 양호(코스닥 20일 평균 위 & 당일 −1% 초과)면 <b>정상 매수</b>(최고가 −10% 추적, 최대 20일). 약세장이어도 반등 신호(코스닥 5일선 위·당일 안 빠짐 / 코스닥 2일 연속 상승 / 종목 52주 고점 −15% 안)가 있으면 <b>반등 매매</b>(+3% 뒤 최고가 −4% 추적, 최대 10일), 없으면 <b>미진입</b></li>
     <li><b>★ 신고가 강세</b> — 52주 최고가 근처(−5% 안)에서 장 시작부터 2% 넘게 올라 출발한 종목은 시장이 약해도 사서 길게(고점에서 10% 빠지면 정리). 과거 105종목 평균 +8.2%, 약 6일에 한 번 나옴</li></ol>
     <div class="mwhy">2024.6~2026.11 전 종목 백테스트에서 가장 좋았던 방식이에요(+10% 익절·-6% 손절·10일 기준 종목당 <b class="up">+1.90%</b>). 진입 방식까지 더하면 진입 74%, 안 산 종목 0%로 친 평균 <b class="up">+2.12%</b>. 예전 점수순은 <b class="dn">-0.21%</b>로 무작위로 고른 것보다 나빴어요.</div>`;
-  if (!st.length) return `<h2>선정 방식</h2>${steps}`;
-  const base = st[0].items;
-  const head = st.map(x => `<th>${logo(x.code, x.name, 16)}${esc(x.name)}</th>`).join('');
-  const rows = base.map(it => `<tr><td class="l"><span class="mlb" tabindex="0" data-tip="${esc(it.rule)}">${esc(it.label)}</span></td>${st.map(x => { const v = (x.items || []).find(y => y.k === it.k);
-    if (!v) return '<td class="zz">-</td>';
-    return `<td class="${v.pts > 0 ? 'up' : v.pts < 0 ? 'dn' : 'zz'}">${v.pts > 0 ? '+' : ''}${v.pts} <small>${esc(v.val)}</small></td>`; }).join('')}</tr>`).join('');
-  const tvr = `<tr class="tot"><td class="l"><b>거래대금</b> <small>뽑힌 기준</small></td>${st.map(x => `<td><b>${x.rank}위</b> <small>${x.ncand}개 중</small></td>`).join('')}</tr>`;
-  const tot = `<tr><td class="l">참고 점수 합계 <small>최고 ${mx(st)}점</small></td>${st.map(x => `<td>${x.score}</td>`).join('')}</tr>`;
-  return `<h2>선정 방식 <small>${dname(D.day)} 마감 기준 · 거래대금 주도주 + 시장 필터</small></h2>${steps}
-    <h3 class="msec">참고: 예전 조건 점수 <small>선정에는 안 씀</small></h3><div class="tblwrap"><table class="perf mtab"><tr><th class="l">항목 <small>(마우스 → 조건)</small></th>${head}</tr>${tvr}${rows}${tot}</table></div>`;
+  const S = D.stocks || [];
+  if (!S.length) return `<h2>선정 방식</h2>${steps}`;
+  const R = S.map(tvRows), head = S.map(x => `<th>${logo(x.code, x.name, 16)}${esc(x.name)}</th>`).join('');
+  const rows = R[0].map((r, i) => `<tr><td class="l">${r[0]}</td>${R.map(q => `<td>${q[i][1]}</td>`).join('')}</tr>`).join('');
+  return `<h2>선정 방식 <small>${dname(D.day)} 마감 기준 · 세 종목이 어떻게 뽑혔는지</small></h2>${steps}
+    <div class="tblwrap"><table class="perf mtab mtv"><tr><th class="l">항목</th>${head}</tr>${rows}</table></div>${skipList(D)}`;
 }
 // 점수표 항목 조건 말풍선 (표가 가로 스크롤 박스 안이라 화면 기준으로 띄움)
 (() => { let tp = null;

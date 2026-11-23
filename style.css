@@ -799,3 +799,6 @@ tr.nent td{color:var(--sub)}.stat.nent-all{color:var(--sub)}.stat.nent-all small
 .mflt.wbn .mfl .tip{text-decoration-color:#64748B}
 .mflt.wbn .wb-r{flex:none;text-align:center;padding-left:14px;border-left:1px solid #334155;display:flex;flex-direction:column;align-items:center}
 .mflt.wbn .wb-r b{font-size:28px;line-height:1.1;color:#fff}.mflt.wbn .wb-r b small{font-size:15px;color:#94A3B8}.mflt.wbn .wb-r span{font-size:11px;color:#94A3B8}
+.mtv td{vertical-align:top}.mtv td small{color:var(--sub)}.ck{font-style:normal;font-weight:700;margin-right:4px}.ck.ok{color:#15803D}.ck.no{color:#B91C1C}
+.mskip{margin-top:8px;font-size:12.5px;color:var(--sub);line-height:1.7}.mskip b{color:var(--txt);margin-right:6px}
+.spt2 td{padding:3px 6px;font-size:12px}.spt2 td:first-child{color:var(--sub);white-space:nowrap}
