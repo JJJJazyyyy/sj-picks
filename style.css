@@ -826,3 +826,8 @@ tr.nent td{color:var(--sub)}.stat.nent-all{color:var(--sub)}.stat.nent-all small
 .bbn.star{border:1.5px solid #FBBF24;box-shadow:0 0 0 3px rgba(251,191,36,.25),0 0 12px rgba(245,158,11,.28)}
 .bbn.full{border-color:#6EE7B7;box-shadow:0 0 0 3px rgba(110,231,183,.25),0 0 12px rgba(16,185,129,.22)}
 .dk .bbn{border-color:#4F46E5}.dk .bbn.part,.dk .bbn.star{border-color:#B45309}.dk .bbn.full{border-color:#047857}
+/* 11/23 사용자: 날짜 제목 — SUIT ExtraBold 30px, 위에 한 줄 여백 */
+@font-face{font-family:'SUIT';src:url('https://cdn.jsdelivr.net/gh/sun-typeface/SUIT@2/fonts/static/woff2/SUIT-ExtraBold.woff2') format('woff2');font-weight:800;font-display:swap}
+.dayhead{margin-top:22px}
+.dayhead h1{font-family:'SUIT',var(--font);font-weight:800;font-size:30px;line-height:1.25;letter-spacing:-.3px}
+@media (max-width:640px){.dayhead{margin-top:14px}.dayhead h1{font-size:23px}}
