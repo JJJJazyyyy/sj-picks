@@ -1216,14 +1216,14 @@ function stopExit(p) {
   const lv = LIVE && LIVE.prices && LIVE.prices[p.code], ld = LIVE && LIVE.date ? LIVE.date.replace(/-/g, '') : '';
   if (lv && ld > (rows.length ? rows[rows.length - 1].d : p.day)) rows.push({ d: ld, o: lv.o || lv.p, l: lv.l || lv.p });
   const r = rows.find(x => x.l <= s);   // gap: 다음날 시가부터 손절선 아래 (11/17 사용자: '갭하락 미진입' — 장전 시간외에서 안 샀다고 봄)
-  return r ? { r: (Math.min(r.o, s) / p.base - 1) * 100, d: r.d, s, gap: r === rows[0] && r.o <= s, o: (r.o / p.base - 1) * 100 } : null;
+  return r ? { r: (Math.min(r.o, s) / p.base - 1) * 100, d: r.d, s, gap: false, og: r.o <= s, o: (r.o / p.base - 1) * 100 }   /* 11/23 사용자: 당일(선정일 종가) 진입이라 '갭하락 미진입' 없앰 → 시가가 손절선 아래면 시가에 손절 */ : null;
 }
 // 11/23 사용자: 미진입 규칙을 지난 종목에도 적용해 구분 — ① 약세장 미진입(선정일 16:00 시장 판정이 약세장이면 안 삼) ② 갭하락 미진입(다음날 시가가 손절선 아래)
-const noEntry = p => { if (p.mkt_ok === false) return { k: 'weak' }; const se = stopExit(p); return se && se.gap ? { k: 'gap', se } : null; };
+const noEntry = p => p.mkt_ok === false ? { k: 'weak' } : null;   // 11/23: 미진입은 약세장 하나만 (갭하락 미진입 없앰)
 const weakTag = (p, sh) => { const se = stopExit(p), r = p.last ? p.last.ret : null;
   const would = se ? `샀다면 ${se.gap ? '갭하락으로 안 샀음' : pct(se.r, 1) + ' 손절'}` : r != null ? `샀다면 지금 ${pct(r, 1)}` : '';
   return `<span class="tag nent" title="${md(p.day)} 선정일이 약세장(코스닥 20일 평균 아래 또는 당일 −1% 이하)이라 안 삼 · 통계 제외${would ? ' · ' + would : ''}">${sh ? '' : ''}약세장 미진입</span>`; };
-const stopTag = (p, se, sh) => se.gap ? `<span class="tag stop gap" title="${md(se.d)} 시가 ${pct(se.o, 1)} — 손절선 ${fmt(se.s)} 아래로 출발해서 안 샀다고 봄 · 전략 통계엔 0%">${sh ? '' : pct(se.o, 1) + ' '}갭하락 미진입</span>` : `<span class="tag stop" title="손절 ${md(se.d)} · 손절선 ${fmt(se.s)}${se.s !== p.stop ? ` (추천 ${fmt(p.stop)} → 진입가 −${STOP_CAP * 100}%로 짧게)` : ''}">${pct(se.r, 1)} 손절</span>`;
+const stopTag = (p, se, sh) => se.gap ? `<span class="tag stop gap" title="${md(se.d)} 시가 ${pct(se.o, 1)} — 손절선 ${fmt(se.s)} 아래로 출발해서 안 샀다고 봄 · 전략 통계엔 0%">${sh ? '' : pct(se.o, 1) + ' '}갭하락 미진입</span>` : `<span class="tag stop" title="손절 ${md(se.d)}${se.og ? ` · 시가 ${pct(se.o, 1)}부터 손절선 아래라 시가에 팖` : ''} · 손절선 ${fmt(se.s)}${se.s !== p.stop ? ` (추천 ${fmt(p.stop)} → 진입가 −${STOP_CAP * 100}%로 짧게)` : ''}">${pct(se.r, 1)} 손절</span>`;
 // 전략별 비교 (11/11 사용자 통계 B): 종목마다 100만원, 선정일 종가 매수 → 규칙대로 팔았으면 지금 얼마
 const DAYC = {};
 // 11/13 사용자: 성과 카드 꼬리표를 고른 전략 결과대로 → 판 종목은 '+n.n% 익절'(이익) / '−n.n% 매도'(손해), 손절은 '손절 M/D', 아직 들고 있으면 진행 중
@@ -1331,12 +1331,13 @@ async function perfStrat() {
   const isWeak = p => { const D = DAYC[p.day]; return !!(D && D.market && D.market.ok === false); };
   const SKIP = { r: 0, w: '약세장 쉼' };
   const NOENT = w => w === '약세장 쉼' || w === '갭하락 미진입';   // 11/23 사용자: 말풍선·종목 목록엔 안 산 종목 줄을 안 보임
+  // 11/23 사용자: 모든 전략에 미진입 규칙 공통 적용(선정일 종가 = 당일 시간외 진입, 약세장 날 고른 종목은 안 삼) → 매도 방식만 다른 6개 (백테스트 정상장 기준 상위)
   const ST = [
-    ['추천: 약세장 쉼 · 고점 −10%', '약세장(코스닥 20일 평균 아래 또는 당일 −1% 이하) 날 고른 종목은 안 삼(0원) · 시장 양호한 날만 사서 손절선 닿으면 손절, 익절 목표 없이 장중 최고가에서 10% 내려오면 팖, 최대 20거래일 · 백테스트 1등', p => isWeak(p) ? SKIP : runT(p, .10, 0, 20)],
-    ['고점 −10% 추적 · 매일', '시장 상관없이 매일 삼 · 손절선 닿으면 손절, 익절 목표 없이 장중 최고가에서 10% 내려오면 팖, 최대 20거래일', p => runT(p, .10, 0, 20)],
-    ['약세장 쉼 · 손절만 20일', '약세장 날 고른 종목은 안 삼 · 손절선 닿으면 손절, 아니면 20거래일째 종가에 팖', p => isWeak(p) ? SKIP : run(p, 0, true, 0, 0, 20)],
-    ['짧게: +3% 뒤 고점 −4%', '약세장에서 가장 덜 잃은 규칙 · 손절선 닿으면 손절, +3% 넘으면 그때부터 장중 최고가에서 4% 내려오면 팖, 최대 10거래일', p => runT(p, .04, .03, 10)],
-    ['약세장 쉼 · +10% 익절', '약세장 날 고른 종목은 안 삼 · +10% 닿으면 팖, 손절선 닿으면 손절, 최대 10거래일', p => isWeak(p) ? SKIP : run(p, p.base * 1.1, true, 0, 0, 10)],
+    ['추천: 고점 −10% 추적', '손절선 닿으면 손절, 익절 목표 없이 장중 최고가에서 10% 내려오면 팖, 최대 20거래일 · 백테스트 1등(앞 기간 +2.4%·뒤 기간 +6.0%)', p => runT(p, .10, 0, 20)],
+    ['손절만 · 20일', '손절선 닿으면 손절, 아니면 20거래일째 종가에 팖', p => run(p, 0, true, 0, 0, 20)],
+    ['고점 −7% 추적', '손절선 닿으면 손절, 장중 최고가에서 7% 내려오면 팖, 최대 20거래일', p => runT(p, .07, 0, 20)],
+    ['고점 −5% 추적 · 10일', '손절선 닿으면 손절, 장중 최고가에서 5% 내려오면 팖, 최대 10거래일', p => runT(p, .05, 0, 10)],
+    ['짧게: +3% 뒤 고점 −4%', '손절선 닿으면 손절, +3% 넘으면 그때부터 장중 최고가에서 4% 내려오면 팖, 최대 10거래일', p => runT(p, .04, .03, 10)],
     ['+10% 익절 + 손절 (예전 기본)', '+10% 닿으면 팖, 손절선 닿으면 손절, 최대 10거래일 · 11/23까지 사이트 기본 전략 (비교용)', p => run(p, p.base * 1.1, true, 0, 0, 10)],
   ];
   const man = v => `${v >= 0 ? '+' : '−'}${Math.abs(v / 1e4).toFixed(1)}만원`;
@@ -1348,7 +1349,7 @@ async function perfStrat() {
   const GAP = P.map(p => { const se = stopExit(p); return !!(se && se.gap); });
   const calc = () => { const idx = P.map((p, i) => i); n = idx.length; tot = n * 1e6;
     nd = new Set(idx.map(i => P[i].day)).size || 1;
-    R = ST.map(([nm, rule, f]) => { const rs = idx.map(i => ({ p: P[i], ...(GAP[i] ? { r: 0, w: '갭하락 미진입' } : f(P[i], i)) }));   /* 11/17 사용자: 갭하락 미진입은 통계에 0% */ const g =rs.reduce((a, x) => a + 1e6 * x.r / 100, 0);
+    R = ST.map(([nm, rule, f]) => { const rs = idx.map(i => ({ p: P[i], ...(isWeak(P[i]) ? SKIP : f(P[i], i)) }));   /* 11/23: 약세장 미진입은 모든 전략에서 0원(통계 제외) */   /* 11/17 사용자: 갭하락 미진입은 통계에 0% */ const g =rs.reduce((a, x) => a + 1e6 * x.r / 100, 0);
       const dm = {}; rs.forEach(x => { const d = dm[x.p.day] || (dm[x.p.day] = { d: x.p.day, g: 0, k: 0 }); d.g += 1e6 * x.r / 100; d.k++; });
       const days = Object.values(dm).sort((a, b) => a.d < b.d ? -1 : 1);
       const gx = rs.reduce((a, x) => a + (x.p === top ? 0 : 1e6 * x.r / 100), 0);
@@ -1356,20 +1357,20 @@ async function perfStrat() {
       .sort((a, b) => b.g - a.g);   // 항상 화면 숫자(하루 평균) 큰 순 (11/12 사용자)
     mx = Math.max(...R.map(x => Math.abs(x.da)), 1); };
   calc();
-  let sel = '추천: 약세장 쉼 · 고점 −10%'; try { const s0 = localStorage.getItem('sjStrat'); if (s0 && ST.some(x => x[0] === s0)) sel = s0; } catch (e) { }
+  let sel = '추천: 고점 −10% 추적'; try { const s0 = localStorage.getItem('sjStrat'); if (s0 && ST.some(x => x[0] === s0)) sel = s0; } catch (e) { }
   const m1 = v => `${v >= 0 ? '+' : '−'}${Math.abs(v / 1e4).toFixed(1)}`;
   const A = () => { const x = R.find(y => y.nm === sel) || R[0], dd = x.days.slice(-8);
     return `<div class="sh">매일 3종목 × 100만원씩 샀다면 <small>선정일 ${nd}일 · ${n}종목 · 지금까지</small></div>`
       + `<div class="sa"><span class="sx">하루 평균</span><b class="big ${cls(x.g)}">${man(x.da)}</b><b class="${cls(x.g)}">(${pct(x.g / tot * 100, 1)})</b><span class="sx">100만원당 ${man(x.g / n)} · 이긴 종목 ${x.win}/${x.nb}${x.nb < n ? ` (산 종목 · 미진입 ${n - x.nb})` : ''}</span></div>`
       + `<div class="sdy">${x.days.length > dd.length ? '<span class="sx">최근 8일</span>' : ''}${dd.map(d => `<span title="${md(d.d)} 고른 ${d.k}종목 합계">${md(d.d)} <b class="${cls(d.g)}">${m1(d.g)}</b></span>`).join('')}<span class="wd">이긴 날 ${x.wd}/${x.days.length}</span></div>`
       + `<div class="sbt">${R.map(y => `<button type="button" data-j="${esc(y.nm)}" class="${y.nm === x.nm ? 'on' : ''}">${y.nm}</button>`).join('')}</div>`
-      + `<div class="scd"><b>조건</b> 선정일 종가에 삼 · ${x.rule} · 수수료·세금 제외</div>`
+      + `<div class="scd"><b>조건</b> 선정일 종가(당일 시간외)에 삼 · 약세장 날 고른 종목은 안 삼 · ${x.rule} · 수수료·세금 제외</div>`
       + `<div class="sst">${x.rs.filter(y => !NOENT(y.w)).map(y => `<span class="${cls(y.r)}" title="${esc(y.w)}">${esc(y.p.name)} ${pct(y.r, 1)}${y.w === '보유 중' ? '' : ` <small>${y.w}</small>`}</span>`).join('')}</div>`; };
   const B = () => { const cur = (R.find(y => y.nm === sel) || R[0]).nm;
     return `<div class="sh">전략별 하루 평균 <small>선정일 하루(3종목)당 · 수익 높은 순 · 누르면 왼쪽에 자세히</small></div>`
     + R.map(x => `<div class="sr${x.nm === cur ? ' on' : ''}" data-j="${esc(x.nm)}" tabindex="0""><span class="sn">${x.nm}</span><span class="sb"><i class="${x.g >= 0 ? 'u' : 'd'}" style="width:${(Math.abs(x.da) / mx * 100).toFixed(1)}%"></i></span>`
       + `<span class="sv ${cls(x.g)}"><b>${man(x.da)}</b> <small>(${pct(x.g / tot * 100, 1)})</small></span></div>`).join('')
-    + `<div class="sc">하루 평균 = 고른 날마다 3종목 손익을 더한 뒤 날 수로 나눔 · % = 100만원당 평균 · 손절 = 장중에 추천 손절선 닿으면 그 가격(시가가 이미 아래면 시가, 모든 전략) · 익절 = 장중에 닿은 가격(시가가 이미 넘었으면 시가) · 같은 날 둘 다 닿으면 30분봉으로 먼저 닿은 쪽 · 약세장 쉼 = 그날 고른 종목을 안 산 걸로 0원 · 고점 −N% = 장중 최고가에서 N% 내려온 가격에 팖</div>`; };
+    + `<div class="sc">하루 평균 = 고른 날마다 3종목 손익을 더한 뒤 날 수로 나눔 · % = 100만원당 평균 · 손절 = 장중에 추천 손절선 닿으면 그 가격(시가가 이미 아래면 시가, 모든 전략) · 익절 = 장중에 닿은 가격(시가가 이미 넘었으면 시가) · 같은 날 둘 다 닿으면 30분봉으로 먼저 닿은 쪽 · 모든 전략 공통: 선정일 종가(당일)에 사고, 약세장 날 고른 종목은 안 삼(0원·목록 제외) · 시가가 손절선 아래로 시작하면 시가에 손절 · 고점 −N% = 장중 최고가에서 N% 내려온 가격에 팖</div>`; };
   const draw = () => { el.innerHTML = `<div class="pa">${A()}</div><div class="pb">${B()}</div>`;
     const x = R.find(y => y.nm === sel) || R[0]; STRAT_SEL = {}; x.rs.forEach(y => { STRAT_SEL[y.p.day + y.p.code] = y; }); pmTags(); };
   // 막대 말풍선 (11/12 사용자 A안 라이트): 기다림 없이 바로 · 숫자 3칸 + 종목별 0 기준 미니 막대
