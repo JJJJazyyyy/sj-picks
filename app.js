@@ -1174,7 +1174,7 @@ function renderGainers() {
   if (!G.length) { el.hidden = true; el.innerHTML = ''; return; }
   el.hidden = false;
   el.innerHTML = `<span class="gn-t"><span class="gn-e" aria-hidden="true">🔥</span>진입 후 달리는 중</span><span class="gn-c">`
-    + G.map(x => `<button type="button" class="gn" data-d="${x.p.day}" data-c="${x.p.code}" title="${esc(x.p.name)} · ${md(x.p.day)} 종가 ${fmt(x.p.base)}원에 진입 → 지금 ${fmt(x.l.p)}원${x.l.chg != null ? ` · 오늘 ${pct(x.l.chg, 1)}` : ''}">${logo(x.p.code, x.p.name, 18)}${esc(x.p.name)} <b class="${cls(x.ent)}">${pct(x.ent, 1)}</b>${gnSpark(x)}<small class="${x.n <= 2 ? 'nw' : ''}">${x.n}일차(${md(x.p.day)})</small></button>`).join('')
+    + G.map(x => `<button type="button" class="gn" data-d="${x.p.day}" data-c="${x.p.code}" title="${esc(x.p.name)} · ${md(x.p.day)} 종가 ${fmt(x.p.base)}원에 진입 → 지금 ${fmt(x.l.p)}원${x.l.chg != null ? ` · 오늘 ${pct(x.l.chg, 1)}` : ''}">${logo(x.p.code, x.p.name, 18)}${esc(x.p.name)} <b class="${cls(x.ent)}">${pct(x.ent, 1)}</b>${gnSpark(x)}<small class="${x.n <= 2 ? 'nw' : ''}">${x.n}일차(${md(x.p.day)})${x.p.mkt_ok === false ? ' · 약세장 미진입' : ''}</small></button>`).join('')
     + `</span>`;
   el.onclick = async e => { const b = e.target.closest('.gn'); if (!b) return; const d = b.dataset.d, c = b.dataset.c;
     if (CUR !== d) { await renderDay(d); location.hash = d; }
@@ -1183,19 +1183,25 @@ function renderGainers() {
 function renderPerf() {
   const P = INDEX.perf || [];
   const H = ['1', '3', '5', '10'];
-  $('#perfStats').innerHTML = H.map(h => {
-    const v = P.map(p => p.perf && p.perf[h]).filter(x => x != null);
+  // 11/23 사용자: 미진입(약세장·갭하락) 종목은 통계에서 빼고 진입한 종목만 평균
+  const NE = P.map(noEntry), E = P.filter((p, i) => !NE[i]);
+  const nw = NE.filter(x => x && x.k === 'weak').length, ng = NE.filter(x => x && x.k === 'gap').length;
+  const all = h => { const v = P.map(p => p.perf && p.perf[h]).filter(x => x != null); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; };
+  const head = `<div class="stat">진입 <b>${E.length}</b>/${P.length}${nw + ng ? ` <small>미진입 ${nw ? `약세장 ${nw}` : ''}${nw && ng ? ' · ' : ''}${ng ? `갭하락 ${ng}` : ''}</small>` : ''}</div>`;
+  $('#perfStats').innerHTML = head + (E.length ? H.map(h => {
+    const v = E.map(p => p.perf && p.perf[h]).filter(x => x != null);
     if (!v.length) return `<div class="stat">${h}거래일 뒤 <b>-</b> <small>아직 없음</small></div>`;
     const avg = v.reduce((a, b) => a + b, 0) / v.length, win = v.filter(x => x > 0).length;
     return `<div class="stat">${h}거래일 뒤 평균 <b class="${cls(avg)}">${pct(avg)}</b> · 상승 ${win}/${v.length}</div>`;
-  }).join('') + `<div class="stat">손절 <b>${P.filter(p => stopExit(p)).length}</b>/${P.length}</div>`;
+  }).join('') + `<div class="stat">손절 <b>${E.filter(p => stopExit(p)).length}</b>/${E.length}</div>`
+    : `<div class="stat nent-all">진입한 종목 없음 — 전부 약세장 날 골라서 안 삼 <small>(샀다면 10거래일 뒤 평균 ${all('10') != null ? pct(all('10')) : '-'} · 손절 ${P.filter(p => { const se = stopExit(p); return se && !se.gap; }).length}/${P.length})</small></div>`);
   const c = v => `<td class="${cls(v)}">${pct(v)}</td>`;
   $('#perfTbl').innerHTML = `<tr><th class="l">선정일</th><th class="l">종목</th><th>진입가</th><th>+1일</th><th>+3일</th><th>+5일</th><th>+10일</th><th>최고(10일)</th><th>최저(10일)</th><th>최근 종가</th><th>손절선</th><th class="l">상태</th></tr>` +
     (P.length ? P.map(p => {
-      const se = stopExit(p), st = se ? stopTag(p, se) : p.done ? '<span class="tag end">10일 완료</span>' : `<span class="tag run">진행 ${p.last ? p.last.n : 0}일</span>`;
+      const se = stopExit(p), st = p.mkt_ok === false ? weakTag(p) : se ? stopTag(p, se) : p.done ? '<span class="tag end">10일 완료</span>' : `<span class="tag run">진행 ${p.last ? p.last.n : 0}일</span>`;
       const hot = p.last && p.last.ret >= 10 ? ' <span class="tag hot">급등</span>' : '';
       const pf = p.perf || {};
-      return `<tr class="${se ? 'hit' : ''}"><td class="l"><a href="#${p.day}">${dname(p.day)}</a></td><td class="l nmcell">${logo(p.code, p.name, 18)}<b>${esc(p.name)}</b></td><td>${fmt(p.base)}</td>${c(pf['1'])}${c(pf['3'])}${c(pf['5'])}${c(pf['10'])}${c(p.max_up)}${c(p.max_dn)}
+      return `<tr class="${p.mkt_ok === false ? 'nent' : se ? 'hit' : ''}"><td class="l"><a href="#${p.day}">${dname(p.day)}</a></td><td class="l nmcell">${logo(p.code, p.name, 18)}<b>${esc(p.name)}</b></td><td>${fmt(p.base)}</td>${c(pf['1'])}${c(pf['3'])}${c(pf['5'])}${c(pf['10'])}${c(p.max_up)}${c(p.max_dn)}
         <td>${p.last ? `${fmt(p.last.c)} <small class="${cls(p.last.ret)}">${pct(p.last.ret, 1)}</small>` : '-'}</td><td title="추천 ${fmt(p.stop)}">${fmt(effStop(p))}</td><td class="l">${st}${hot}</td></tr>`;
     }).join('') : '<tr><td class="l" colspan="12">아직 기록 없음</td></tr>');
   perfMini(); perfStrat(); renderGainers();
@@ -1212,6 +1218,11 @@ function stopExit(p) {
   const r = rows.find(x => x.l <= s);   // gap: 다음날 시가부터 손절선 아래 (11/17 사용자: '갭하락 미진입' — 장전 시간외에서 안 샀다고 봄)
   return r ? { r: (Math.min(r.o, s) / p.base - 1) * 100, d: r.d, s, gap: r === rows[0] && r.o <= s, o: (r.o / p.base - 1) * 100 } : null;
 }
+// 11/23 사용자: 미진입 규칙을 지난 종목에도 적용해 구분 — ① 약세장 미진입(선정일 16:00 시장 판정이 약세장이면 안 삼) ② 갭하락 미진입(다음날 시가가 손절선 아래)
+const noEntry = p => { if (p.mkt_ok === false) return { k: 'weak' }; const se = stopExit(p); return se && se.gap ? { k: 'gap', se } : null; };
+const weakTag = (p, sh) => { const se = stopExit(p), r = p.last ? p.last.ret : null;
+  const would = se ? `샀다면 ${se.gap ? '갭하락으로 안 샀음' : pct(se.r, 1) + ' 손절'}` : r != null ? `샀다면 지금 ${pct(r, 1)}` : '';
+  return `<span class="tag nent" title="${md(p.day)} 선정일이 약세장(코스닥 20일 평균 아래 또는 당일 −1% 이하)이라 안 삼 · 통계 제외${would ? ' · ' + would : ''}">${sh ? '' : ''}약세장 미진입</span>`; };
 const stopTag = (p, se, sh) => se.gap ? `<span class="tag stop gap" title="${md(se.d)} 시가 ${pct(se.o, 1)} — 손절선 ${fmt(se.s)} 아래로 출발해서 안 샀다고 봄 · 전략 통계엔 0%">${sh ? '' : pct(se.o, 1) + ' '}갭하락 미진입</span>` : `<span class="tag stop" title="손절 ${md(se.d)} · 손절선 ${fmt(se.s)}${se.s !== p.stop ? ` (추천 ${fmt(p.stop)} → 진입가 −${STOP_CAP * 100}%로 짧게)` : ''}">${pct(se.r, 1)} 손절</span>`;
 // 전략별 비교 (11/11 사용자 통계 B): 종목마다 100만원, 선정일 종가 매수 → 규칙대로 팔았으면 지금 얼마
 const DAYC = {};
@@ -1221,6 +1232,7 @@ function pmTag(p) {
   const y = STRAT_SEL && STRAT_SEL[p.day + p.code], w = y ? y.w : '';
   // 11/16 사용자: 손절 칩은 날짜 말고 퍼센트로 통일 (날짜는 마우스 올리면) · 서버 손절 기록은 그날 종가 기준
   const se = stopExit(p);
+  if (p.mkt_ok === false && (!y || /^(약세장 쉼|보유 중|진행 중|9:30 전)$/.test(w))) return weakTag(p, 1);
   const base = () => se ? stopTag(p, se, 1) : p.done ? '<span class="tag end">✓ 10일 완료</span>' : '<span class="tag run"><i></i>진행 중</span>';
   if (!y || /^(보유 중|진행 중|9:30 전)$/.test(w)) return base();
   if (se && se.gap) return stopTag(p, se, 1);   // 11/17 사용자: 성과 카드는 % 빼고 짧게
@@ -1422,7 +1434,7 @@ function ladder(mx) {
     + ['+5', '+10', '+20', '+30'].map((t, j) => `<i class="${w >= (j + 1) * 25 - 7 ? 'on' : ''}">${t}</i>`).join('') + `</span><b class="lv ${cls(mx)}">${pct(mx, 1)}</b>`;
 }
 // 11/13 사용자: 카드 테두리 단계 = 지금 수익 기준. 빨강 +5·+10·+20·+30, 파랑 0~−2·−2~−4·−4 이하, 손절 이탈은 가장 진한 파랑
-const pmTier = (p, now) => stopExit(p) ? 'b4' : now == null ? '' : now >= 30 ? 'r4' : now >= 20 ? 'r3' : now >= 10 ? 'r2' : now >= 5 ? 'r1' : now <= -4 ? 'b3' : now <= -2 ? 'b2' : now < 0 ? 'b1' : '';
+const pmTier = (p, now) => p.mkt_ok === false ? 'ne' : stopExit(p) ? 'b4' : now == null ? '' : now >= 30 ? 'r4' : now >= 20 ? 'r3' : now >= 10 ? 'r2' : now >= 5 ? 'r1' : now <= -4 ? 'b3' : now <= -2 ? 'b2' : now < 0 ? 'b1' : '';
 let PMQ = 0;
 async function perfMini() {
   const el = $('#perfMini'); if (!el) return; const P = INDEX.perf || [], q = ++PMQ;
