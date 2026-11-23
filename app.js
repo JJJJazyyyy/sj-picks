@@ -327,15 +327,18 @@ function goTo(i, scroll = true) {
 }
 // 11/23 시장 필터: 코스닥이 20일 평균 아래거나 당일 -1% 넘게 빠지면 '약세장 · 쉬어가는 날' (종목은 그대로 3개)
 // 11/23 시장 필터 + ⑦ 진입 방식: 정상장 = 정상 매수 / 약세장이어도 반등 신호 있으면 '반등 매매(짧게)' / 아니면 미진입
-const ENTM = { long: ['정상 매수', '시장 양호 · 손절선, 익절 없이 장중 최고가 −10% 추적, 최대 20거래일'], bounce: ['반등 매매', '약세장이지만 반등 신호 · 손절 −6%, +3% 넘으면 장중 최고가 −4% 추적, 최대 10거래일 (짧게 먹고 나옴)'], skip: ['미진입', '약세장이고 반등 신호 없음 · 안 삼'] };
+const ENTM = { long: ['정상 매수', '시장 양호 · 손절선, 익절 없이 장중 최고가 −10% 추적, 최대 20거래일'], bounce: ['반등 매매', '약세장이지만 반등 신호 · 손절 −6%, +3% 넘으면 장중 최고가 −4% 추적, 최대 10거래일 (짧게 먹고 나옴)'], skip: ['관망', '약세장이고 반등 신호 없음 · 안 삼'] };
 const entOf = s => (s.entry && s.entry.mode) || null;
-function skipTip(s) { const m = (CURD && CURD.market) || null;   // 미진입 이유 말풍선 (11/23 사용자)
-  const L = ['미진입 — 안 삼 (통계 제외)'];
-  if (m && m.why && m.why.length) L.push('① 약세장: ' + m.why.join(' · '));
-  L.push('② 반등 신호 없음:'); (s.entry.no || ['코스닥 반등 신호 ✕', '52주 고점 근처 ✕']).forEach(x => L.push('  · ' + x));
-  return esc(L.join('\n')); }
+// 11/23 사용자 3안: 관망 이유는 한 문장으로 — 시장 상태 + 종목 상태
+function whyLine(m20, mchg, dhi) {
+  const mk = m20 != null && m20 < 0 ? `코스닥 20일선 ${pct(m20, 0)}` : mchg != null ? `코스닥 당일 ${pct(mchg, 1)}` : '약세장';
+  return `시장이 약하고(${mk}) 반등 신호도 없어요.` + (dhi != null ? ` 이 종목도 52주 고점에서 ${Math.abs(dhi).toFixed(0)}% 내려와 있어요.` : '');
+}
+function skipTip(s) { const m = (CURD && CURD.market) || {};
+  const m20 = m.kq && m.ma20 ? (m.kq / m.ma20 - 1) * 100 : null;
+  return esc('오늘은 안 사요\n' + whyLine(m20, m.chg, s.entry && s.entry.dhi)); }
 function entChip(s, sm) { const m = entOf(s), E = ENTM[m]; if (!E) return '';
-  if (m === 'skip') return `<span class="ent skip tip${sm ? ' sm' : ''}" tabindex="0" data-tip="${skipTip(s)}">${E[0]}</span>`;
+  if (m === 'skip') return `<span class="ent skip tip${sm ? ' sm' : ''}" tabindex="0" data-tip="${skipTip(s)}"><svg class="ban" viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="7" r="5.2"/><line x1="3.4" y1="10.6" x2="10.6" y2="3.4"/></svg>${E[0]}</span>`;
   const why = s.entry && s.entry.why && s.entry.why.length ? ' · ' + s.entry.why.join(' · ') : '';
   const star = s.entry && s.entry.star ? `<span class="ent star${sm ? ' sm' : ''}" title="★ 특이점: 52주 고점 −5% 안 + 선정일 갭상승 +2% 이상 · 시장 상관없이 길게(고점 −10% 추적, 20일) · 백테스트 종목당 +8.2%">★ 특이점</span>` : '';
   return star + `<span class="ent ${m}${sm ? ' sm' : ''}" title="${esc(E[1] + why)}">${E[0]}</span>`; }
@@ -347,7 +350,7 @@ function mktBox(D) {
   const B = D.stocks.filter(s => entOf(s) === 'bounce'), S = D.stocks.filter(s => entOf(s) === 'skip'), ST_ = D.stocks.filter(s => s.entry && s.entry.star);
   const sig = m.sig || [];   // 코스닥 반등 신호는 한 번만, 종목 옆엔 그 종목만의 이유(52주 고점)
   const own = s => (s.entry && s.entry.why || []).filter(w => !sig.includes(w));
-  const ls = (g, t) => g.length ? `<span><b class="${t}">${t === 'bounce' ? '반등 매매' : t === 'star' ? '★ 특이점(길게)' : '미진입'}</b> ${g.map(s => (t === 'skip' ? `<span class="tip" tabindex="0" data-tip="${skipTip(s)}">${esc(s.name)}</span>` : esc(s.name)) + (t === 'bounce' && own(s).length ? ` <small>(${esc(own(s).join(' · '))})</small>` : '')).join(', ')}</span>` : '';
+  const ls = (g, t) => g.length ? `<span><b class="${t}">${t === 'bounce' ? '반등 매매' : t === 'star' ? '★ 특이점(길게)' : '관망'}</b> ${g.map(s => (t === 'skip' ? `<span class="tip" tabindex="0" data-tip="${skipTip(s)}">${esc(s.name)}</span>` : esc(s.name)) + (t === 'bounce' && own(s).length ? ` <small>(${esc(own(s).join(' · '))})</small>` : '')).join(', ')}</span>` : '';
   return `<div class="mflt weak"><b>${ST_.length ? '약세장 · ★ 특이점은 길게' + (B.length ? ', 반등 매매는 짧게' : '') : B.length ? '약세장 · 반등 매매만 짧게' : '약세장 · 쉬어가는 날'}</b><span>${esc(m.why.join(' · '))}${sig.length ? ` · <b class="sig">반등 신호: ${esc(sig.join(' · '))}</b>` : ''}</span>`
     + (D.stocks.some(s => entOf(s)) ? `<div class="mfl">${ls(ST_, 'star')}${ls(B, 'bounce')}${ls(S, 'skip')}</div>` : '')
     + `<small>${B.length ? '반등 매매 = 손절 −6%, +3% 넘으면 최고가에서 4% 내려올 때 팖, 최대 10거래일. 약세장 반등은 짧으니 길게 들고 가지 않아요.' : '반등 신호가 없어서 오늘 고른 종목은 사지 않아요.'}</small></div>`;
@@ -1212,7 +1215,7 @@ function renderPerf() {
   const nw = NE.filter(x => x && x.k === 'weak').length, ng = NE.filter(x => x && x.k === 'gap').length;
   const all = h => { const v = P.map(p => p.perf && p.perf[h]).filter(x => x != null); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; };
   const nb = E.filter(p => p.entry === 'bounce').length;
-  const head = (OLDN() ? `<div class="stat old">새 방식부터 집계 <small>옛 방식 ${OLDN()}종목은 통계 제외 · 아래 기록엔 그대로</small></div>` : '') + `<div class="stat">진입 <b>${E.length}</b>/${P.length}${nb ? ` <small>정상 ${E.length - nb} · 반등 매매 ${nb}</small>` : ''}${nw + ng ? ` <small>· 미진입 ${nw ? `약세장 ${nw}` : ''}${nw && ng ? ' · ' : ''}${ng ? `갭하락 ${ng}` : ''}</small>` : ''}</div>`;
+  const head = (OLDN() ? `<div class="stat old">새 방식부터 집계 <small>옛 방식 ${OLDN()}종목은 통계 제외 · 아래 기록엔 그대로</small></div>` : '') + `<div class="stat">진입 <b>${E.length}</b>/${P.length}${nb ? ` <small>정상 ${E.length - nb} · 반등 매매 ${nb}</small>` : ''}${nw + ng ? ` <small>· 관망 ${nw ? `${nw}` : ''}${nw && ng ? ' · ' : ''}${ng ? `갭하락 ${ng}` : ''}</small>` : ''}</div>`;
   $('#perfStats').innerHTML = head + (E.length ? H.map(h => {
     const v = E.map(p => p.perf && p.perf[h]).filter(x => x != null);
     if (!v.length) return `<div class="stat">${h}거래일 뒤 <b>-</b> <small>아직 없음</small></div>`;
@@ -1248,13 +1251,7 @@ function stopExit(p) {
 }
 // 11/23 사용자: 미진입 규칙을 지난 종목에도 적용해 구분 — ① 약세장 미진입(선정일 16:00 시장 판정이 약세장이면 안 삼) ② 갭하락 미진입(다음날 시가가 손절선 아래)
 const noEntry = p => p.method === 'tv2' && (p.entry ? p.entry === 'skip' : p.mkt_ok === false) ? { k: 'weak' } : null;   // 11/23: 옛 방식 종목엔 진입 규칙 안 씀(가장 좋았던 전략으로 표시)   // ⑦: 약세장이어도 반등 매매는 진입   // 11/23: 미진입은 약세장 하나만 (갭하락 미진입 없앰)
-const weakTag = (p, sh) => { const se = stopExit(p), r = p.last ? p.last.ret : null;
-  // 11/23 사용자: 호버하면 이유를 말풍선으로 (약세장 근거 · 없던 반등 신호 · 52주 고점 거리 · 샀다면)
-  const L = [`${md(p.day)} 선정일 → 미진입 (안 삼 · 통계 제외)`];
-  L.push('① 약세장: ' + ((p.mwhy && p.mwhy.length) ? p.mwhy.join(' · ') : '코스닥 20일 평균 아래 또는 당일 −1% 이하'));
-  L.push('② 반등 신호 없음: 코스닥 5일선 위·당일 안 빠짐 ✕ · 코스닥 2일 연속 상승 ✕' + (p.dhi != null ? ` · 52주 고점 ${pct(p.dhi, 1)} (−15% 밖)` : ''));
-  if (se) L.push(`샀다면: ${pct(se.r, 1)} 손절 (${md(se.d)})`); else if (r != null) L.push(`샀다면: 지금 ${pct(r, 1)}`);
-  return `<span class="tag nent tip" tabindex="0" data-tip="${esc(L.join('\n'))}">약세장 미진입</span>`; };
+const weakTag = (p, sh) => `<span class="tag nent tip" tabindex="0" data-tip="${esc(`${md(p.day)} 선정 · 오늘은 안 사요(관망)\n` + whyLine(p.m20, p.mchg, p.dhi))}"><svg class="ban" viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="7" r="5.2"/><line x1="3.4" y1="10.6" x2="10.6" y2="3.4"/></svg>관망</span>`;
 const stopTag = (p, se, sh) => se.gap ? `<span class="tag stop gap" title="${md(se.d)} 시가 ${pct(se.o, 1)} — 손절선 ${fmt(se.s)} 아래로 출발해서 안 샀다고 봄 · 전략 통계엔 0%">${sh ? '' : pct(se.o, 1) + ' '}갭하락 미진입</span>` : `<span class="tag stop" title="손절 ${md(se.d)}${se.og ? ` · 시가 ${pct(se.o, 1)}부터 손절선 아래라 시가에 팖` : ''} · 손절선 ${fmt(se.s)}${se.s !== p.stop ? ` (추천 ${fmt(p.stop)} → 진입가 −${STOP_CAP * 100}%로 짧게)` : ''}">${pct(se.r, 1)} 손절</span>`;
 // 전략별 비교 (11/11 사용자 통계 B): 종목마다 100만원, 선정일 종가 매수 → 규칙대로 팔았으면 지금 얼마
 const DAYC = {};
