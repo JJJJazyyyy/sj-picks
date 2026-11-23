@@ -343,23 +343,25 @@ function entChip(s, sm) { const m = entOf(s), E = ENTM[m]; if (!E) return '';
   const why = s.entry && s.entry.why && s.entry.why.length ? ' · ' + s.entry.why.join(' · ') : '';
   const star = s.entry && s.entry.star ? `<span class="ent star tip${sm ? ' sm' : ''}" tabindex="0" data-tip="${esc(STAR_TIP)}">★ 신고가 강세</span>` : '';
   return star + `<span class="ent ${m}${sm ? ' sm' : ''}" title="${esc(E[1] + why)}">${E[0]}</span>`; }
+// 11/23 사용자: 매수 배너 A안(날씨 3D 이모지) + 진입 수는 이모지 모서리 배지(2번) — 매수 안 하는 날 / 일부만 매수하는 날 / 매수하는 날
 function mktBox(D) {
   const m = D.market; if (!m) return '';
-  const k = `코스닥 ${m.kq.toFixed(2)} · 20일 평균 ${m.ma20.toFixed(2)} · 당일 ${pct(m.chg)}`;
-  if (m.ok) return `<div class="mflt ok"><b>시장 양호 · 정상 매수</b><span>${k}</span></div>`;
-  if (D.method !== 'tv2') return `<div class="mflt weak"><b>약세장</b><span>${esc(m.why.join(' · '))}</span><small>예전 방식으로 고른 날이에요. 진입 방식(정상 매수·반등 매매·미진입)은 11/23 선정분부터 적용해요.</small></div>`;
-  const B = D.stocks.filter(s => entOf(s) === 'bounce'), S = D.stocks.filter(s => entOf(s) === 'skip'), ST_ = D.stocks.filter(s => s.entry && s.entry.star);
-  const sig = m.sig || [];   // 코스닥 반등 신호는 한 번만, 종목 옆엔 그 종목만의 이유(52주 고점)
-  const own = s => (s.entry && s.entry.why || []).filter(w => !sig.includes(w) && !/^★|약세장이지만/.test(w));
-  const ls = (g, t) => g.length ? `<span><b class="${t}">${t === 'bounce' ? '반등 매매(짧게)' : t === 'star' ? '★ 신고가 강세(길게)' : '관망'}</b> ${g.map(s => (t === 'skip' ? `<span class="tip" tabindex="0" data-tip="${skipTip(s)}">${esc(s.name)}</span>` : t === 'star' ? `<span class="tip" tabindex="0" data-tip="${esc(STAR_TIP)}">${esc(s.name)}</span>` : esc(s.name)) + (t === 'bounce' && own(s).length ? ` <small>(${esc(own(s).join(' · '))})</small>` : '')).join(', ')}</span>` : '';
-  // 11/23 사용자: 바 배너 — '오늘은 매수 안 하는 날' + 오른쪽 진입 수
-  const nE = D.stocks.filter(s => entOf(s) && entOf(s) !== 'skip').length, nA = D.stocks.length;
-  const title = !nE ? '오늘은 매수 안 하는 날' : ST_.length ? '약세장 · 신고가 강세 종목만 길게' + (B.length ? ', 반등은 짧게' : '') : '약세장 · 반등 매매만 짧게';
-  const sub = esc(m.why.join(' · ')) + (sig.length ? ` · 반등 신호: ${esc(sig.join(' · '))}` : nE ? '' : ' · 반등 신호 없음');
-  return `<div class="mflt weak wbn"><div class="wb-l"><b class="wb-t">${title}</b><span class="wb-s">${sub}</span>`
-    + (D.stocks.some(s => entOf(s)) ? `<div class="mfl">${ls(ST_, 'star')}${ls(B, 'bounce')}${ls(S, 'skip')}</div>` : '')
-    + `<small>${!nE ? '고른 종목은 지켜보기만 해요. 코스닥이 5일선 위로 마감하거나 2일 연속 오르면 다시 사요.' : B.length ? '반등 매매 = 손절 5~6%, +3% 넘으면 최고가에서 4% 내려올 때 팖, 최대 10거래일.' : '신고가 강세 종목은 손절 5~6%, 고점에서 10% 빠질 때까지 길게.'}</small></div>`
-    + `<div class="wb-r"><b>${nE}<small>/${nA}</small></b><span>진입</span></div></div>`;
+  if (D.method !== 'tv2') return m.ok ? `<div class="mflt ok"><b>시장 양호</b><span>코스닥 ${m.kq.toFixed(2)} · 20일 평균 ${m.ma20.toFixed(2)}</span></div>`
+    : `<div class="mflt weak"><b>약세장</b><span>${esc(m.why.join(' · '))}</span><small>예전 방식으로 고른 날이에요. 진입 방식(정상 매수·반등 매매·관망)은 11/23 선정분부터 적용해요.</small></div>`;
+  const S = D.stocks || [], nA = S.length, ST_ = S.filter(s => s.entry && s.entry.star), B = S.filter(s => entOf(s) === 'bounce'), K = S.filter(s => entOf(s) === 'skip');
+  const nE = nA - K.length, mk = m.ok ? '시장 양호' : '약세장';
+  let st, title, sub, ic;
+  if (!nE) { st = 'none'; title = '오늘은 매수 안 하는 날'; ic = 'rain'; sub = `${mk} · ${nA}종목 모두 관망`; }
+  else if (nE < nA || !m.ok) {
+    st = ST_.length ? 'star' : 'part'; ic = ST_.length ? 'star' : 'part';
+    title = nE < nA ? '오늘은 일부만 매수하는 날' : '오늘은 짧게만 매수하는 날';
+    const q = []; if (ST_.length) q.push(`★ 신고가 강세 ${ST_.length}종목은 길게`); if (B.length) q.push(`반등 매매 ${B.length}종목은 짧게`);
+    const nl = S.filter(s => entOf(s) === 'long' && !(s.entry && s.entry.star)).length; if (nl) q.push(`정상 매수 ${nl}종목`);
+    sub = `${mk} · ${q.join(' · ')}${K.length ? ' · 나머지 관망' : ''}`;
+  } else { st = 'full'; title = '오늘은 매수하는 날'; ic = 'sun'; sub = `${mk} · ${nA}종목 정상 매수`; }
+  const tip = esc(`${m.ok ? '시장 양호' : '약세장'}: 코스닥 ${m.kq.toFixed(2)} · 20일 평균 ${m.ma20.toFixed(2)} · 당일 ${pct(m.chg)}` + (m.sig && m.sig.length ? `\n반등 신호: ${m.sig.join(' · ')}` : m.ok ? '' : '\n반등 신호 없음'));
+  return `<div class="bbn ${st}"><span class="bb-ic tip" tabindex="0" data-tip="${tip}"><img src="img/emoji/${ic}.png" alt="" width="52" height="52"><b class="bb-n">${nE}/${nA}</b></span>`
+    + `<div class="bb-tx"><b class="bb-t">${title}</b><span class="bb-s">${esc(sub)}</span></div></div>`;
 }
 function summary(D) {
   const rows = D.stocks.map((s, i) => {
