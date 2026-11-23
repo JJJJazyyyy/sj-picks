@@ -329,7 +329,13 @@ function goTo(i, scroll = true) {
 // 11/23 시장 필터 + ⑦ 진입 방식: 정상장 = 정상 매수 / 약세장이어도 반등 신호 있으면 '반등 매매(짧게)' / 아니면 미진입
 const ENTM = { long: ['정상 매수', '시장 양호 · 손절선, 익절 없이 장중 최고가 −10% 추적, 최대 20거래일'], bounce: ['반등 매매', '약세장이지만 반등 신호 · 손절 −6%, +3% 넘으면 장중 최고가 −4% 추적, 최대 10거래일 (짧게 먹고 나옴)'], skip: ['미진입', '약세장이고 반등 신호 없음 · 안 삼'] };
 const entOf = s => (s.entry && s.entry.mode) || null;
+function skipTip(s) { const m = (CURD && CURD.market) || null;   // 미진입 이유 말풍선 (11/23 사용자)
+  const L = ['미진입 — 안 삼 (통계 제외)'];
+  if (m && m.why && m.why.length) L.push('① 약세장: ' + m.why.join(' · '));
+  L.push('② 반등 신호 없음:'); (s.entry.no || ['코스닥 반등 신호 ✕', '52주 고점 근처 ✕']).forEach(x => L.push('  · ' + x));
+  return esc(L.join('\n')); }
 function entChip(s, sm) { const m = entOf(s), E = ENTM[m]; if (!E) return '';
+  if (m === 'skip') return `<span class="ent skip tip${sm ? ' sm' : ''}" tabindex="0" data-tip="${skipTip(s)}">${E[0]}</span>`;
   const why = s.entry && s.entry.why && s.entry.why.length ? ' · ' + s.entry.why.join(' · ') : '';
   const star = s.entry && s.entry.star ? `<span class="ent star${sm ? ' sm' : ''}" title="★ 특이점: 52주 고점 −5% 안 + 선정일 갭상승 +2% 이상 · 시장 상관없이 길게(고점 −10% 추적, 20일) · 백테스트 종목당 +8.2%">★ 특이점</span>` : '';
   return star + `<span class="ent ${m}${sm ? ' sm' : ''}" title="${esc(E[1] + why)}">${E[0]}</span>`; }
@@ -341,7 +347,7 @@ function mktBox(D) {
   const B = D.stocks.filter(s => entOf(s) === 'bounce'), S = D.stocks.filter(s => entOf(s) === 'skip'), ST_ = D.stocks.filter(s => s.entry && s.entry.star);
   const sig = m.sig || [];   // 코스닥 반등 신호는 한 번만, 종목 옆엔 그 종목만의 이유(52주 고점)
   const own = s => (s.entry && s.entry.why || []).filter(w => !sig.includes(w));
-  const ls = (g, t) => g.length ? `<span><b class="${t}">${t === 'bounce' ? '반등 매매' : t === 'star' ? '★ 특이점(길게)' : '미진입'}</b> ${g.map(s => esc(s.name) + (t === 'bounce' && own(s).length ? ` <small>(${esc(own(s).join(' · '))})</small>` : '')).join(', ')}</span>` : '';
+  const ls = (g, t) => g.length ? `<span><b class="${t}">${t === 'bounce' ? '반등 매매' : t === 'star' ? '★ 특이점(길게)' : '미진입'}</b> ${g.map(s => (t === 'skip' ? `<span class="tip" tabindex="0" data-tip="${skipTip(s)}">${esc(s.name)}</span>` : esc(s.name)) + (t === 'bounce' && own(s).length ? ` <small>(${esc(own(s).join(' · '))})</small>` : '')).join(', ')}</span>` : '';
   return `<div class="mflt weak"><b>${ST_.length ? '약세장 · ★ 특이점은 길게' + (B.length ? ', 반등 매매는 짧게' : '') : B.length ? '약세장 · 반등 매매만 짧게' : '약세장 · 쉬어가는 날'}</b><span>${esc(m.why.join(' · '))}${sig.length ? ` · <b class="sig">반등 신호: ${esc(sig.join(' · '))}</b>` : ''}</span>`
     + (D.stocks.some(s => entOf(s)) ? `<div class="mfl">${ls(ST_, 'star')}${ls(B, 'bounce')}${ls(S, 'skip')}</div>` : '')
     + `<small>${B.length ? '반등 매매 = 손절 −6%, +3% 넘으면 최고가에서 4% 내려올 때 팖, 최대 10거래일. 약세장 반등은 짧으니 길게 들고 가지 않아요.' : '반등 신호가 없어서 오늘 고른 종목은 사지 않아요.'}</small></div>`;

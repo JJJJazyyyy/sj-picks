@@ -787,3 +787,5 @@ tr.nent td{color:var(--sub)}.stat.nent-all{color:var(--sub)}.stat.nent-all small
 .pm-c.oh,.lay-card .pm-c.oh{border-color:transparent;--gl:0 0 5.5px rgba(232,76,76,.46),0 0 0 1px rgba(232,76,76,.15)}
 .ent.star{background:linear-gradient(90deg,#F59E0B,#FBBF24);color:#fff;text-shadow:0 1px 1px rgba(0,0,0,.25)}.dk .ent.star{background:linear-gradient(90deg,#B45309,#D97706);color:#fff}
 .mflt .mfl b.star{color:#B45309}.pm-star{color:#F59E0B;margin-right:2px}
+.ent.skip.tip{cursor:help}.mflt .mfl .tip{cursor:help;text-decoration:underline dotted;text-underline-offset:2px}
+.mtip{max-width:400px}
