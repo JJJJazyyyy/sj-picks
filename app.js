@@ -1489,12 +1489,29 @@ function cutAtPeak(P) {
 async function perfPath(p) {
   const end = Date.UTC(+p.day.slice(0, 4), +p.day.slice(4, 6) - 1, +p.day.slice(6, 8), 23) / 1000;
   const m = await minRows(p.code, '30');
-  if (m) { const b = m.filter(x => x.t > end); if (b.length) return { src: '30분봉', pts: b.map(x => ({ d: new Date(x.t * 1000).getUTCDate(), c: x.c, h: x.h, l: x.l })) }; }
-  const pts = (p.path || []).map(([d, o, h, l, c]) => ({ d: d, c, h, l }));
+  const lb30 = t => { const d = new Date(t * 1000); return `${d.getUTCMonth() + 1}/${d.getUTCDate()} ${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}`; };   // 30분봉 시각 = 한국 시각(UTC처럼 저장)
+  if (m) { const b = m.filter(x => x.t > end); if (b.length) return { src: '30분봉', pts: b.map(x => ({ d: new Date(x.t * 1000).getUTCDate(), lb: lb30(x.t), c: x.c, h: x.h, l: x.l })) }; }
+  const pts = (p.path || []).map(([d, o, h, l, c]) => ({ d: d, lb: md(d), c, h, l }));
   const lv = LIVE && LIVE.prices && LIVE.prices[p.code], last = pts.length ? pts[pts.length - 1].d : p.day;
-  if (lv && LIVE.date && LIVE.date.replace(/-/g, '') > last) pts.push({ d: LIVE.date, c: lv.p, h: lv.h, l: lv.l });
+  if (lv && LIVE.date && LIVE.date.replace(/-/g, '') > last) pts.push({ d: LIVE.date, lb: `${md(LIVE.date.replace(/-/g, ''))} 지금`, c: lv.p, h: lv.h, l: lv.l });
   return pts.length ? { src: '일봉', pts } : null;
 }
+// 11/23 사용자: 미니 차트에 마우스 올리면 그 지점 날짜(30분봉은 시각까지)와 진입가 대비 % — 세로 안내선
+const MINI = {};
+(() => { let tp = null;
+  const hide = () => { if (tp) tp.style.display = 'none'; document.querySelectorAll('.ms-hv').forEach(l => l.style.display = 'none'); };
+  document.addEventListener('mousemove', e => {
+    const sv = e.target.closest && e.target.closest('.pm-c svg'); if (!sv) { if (tp && tp.style.display === 'block') hide(); return; }
+    const c = sv.closest('.pm-c'), M = c && MINI[c.dataset.k]; if (!M) return;
+    const r = sv.getBoundingClientRect(), vx = (e.clientX - r.left) / r.width * 240;
+    let i = 0; M.xs.forEach((x, j) => { if (Math.abs(x - vx) < Math.abs(M.xs[i] - vx)) i = j; });
+    const ln = sv.querySelector('.ms-hv'); if (ln) { ln.setAttribute('x1', M.xs[i]); ln.setAttribute('x2', M.xs[i]); ln.style.display = ''; }
+    if (!tp) { tp = document.createElement('div'); tp.className = 'mtip mstip'; document.body.appendChild(tp); }
+    tp.innerHTML = `<b>${esc(M.lb[i])}</b> · 종가 <span class="${cls(M.v[i])}">${pct(M.v[i], 1)}</span>${i && M.hv[i] != null ? ` <small>고가 ${pct(M.hv[i], 1)}</small>` : ''}`;
+    tp.style.display = 'block'; tp.style.left = Math.min(e.clientX + 12, innerWidth - tp.offsetWidth - 8) + 'px'; tp.style.top = (e.clientY - 34) + 'px';
+  });
+  addEventListener('scroll', hide, { passive: true });
+})();
 function miniSVG(p, P) {
   const W = 240, H = 100, R = 44, b = p.base, r = v => (v / b - 1) * 100;
   const cs = [0, ...P.pts.map(x => r(x.c))], hs = P.pts.map(x => r(x.h)), st = p.stop ? r(effStop(p)) : null;
@@ -1511,6 +1528,8 @@ function miniSVG(p, P) {
   const mx = Math.max(...hs), k = hs.indexOf(mx);
   if (mx > 0) { const X = +x(k + 1), lab = pct(mx, 1); const an = X < 34 ? 'start' : X > W - R - 34 ? 'end' : 'middle'; g += `<circle cx="${X}" cy="${y(mx)}" r="3.5" class="ms-pk"/><text x="${an === 'start' ? X - 3 : an === 'end' ? X + 3 : X}" y="${+y(mx) - 7}" text-anchor="${an}" class="ms-pt">최고 ${lab}</text>`; }
   g += `<circle cx="${x(n)}" cy="${y(now)}" r="3" class="ms-e ${up ? 'u' : 'd'}"/><text x="${+x(n) + 6}" y="${+y(now) + 4}" class="ms-nt ${up ? 'u' : 'd'}">${pct(now, 1)}</text>`;
+  g += `<line class="ms-hv" x1="0" x2="0" y1="0" y2="${H}" style="display:none"/>`;   // 11/23 사용자: 호버 안내선
+  MINI[p.day + p.code] = { W, xs: cs.map((v, i) => +x(i)), v: cs, lb: [`${md(p.day)} 진입(종가)`, ...P.pts.map(q => q.lb || '')], hv: [0, ...hs] };
   return { svg: `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${esc(p.name)} 진입 뒤 경로">${g}</svg>`, now, mx };
 }
 // 최고 상승 사다리 칩: +5·+10·+20·+30 네 칸을 같은 폭으로, 칸 안에서도 비율대로 이어서 칠함 (11/11 사용자)
@@ -1523,6 +1542,7 @@ function ladder(mx) {
 // 11/13 사용자: 카드 테두리 단계 = 지금 수익 기준. 빨강 +5·+10·+20·+30, 파랑 0~−2·−2~−4·−4 이하, 손절 이탈은 가장 진한 파랑
 const pmTier = (p, now) => p.method !== 'tv2' ? 'oh' : noEntry(p) ? 'ne' : stopExit(p) ? 'b4' : now == null ? '' : now >= 30 ? 'r4' : now >= 20 ? 'r3' : now >= 10 ? 'r2' : now >= 5 ? 'r1' : now <= -4 ? 'b3' : now <= -2 ? 'b2' : now < 0 ? 'b1' : '';
 let PMQ = 0;
+let OLD_OPEN = false;
 async function perfMini() {
   const el = $('#perfMini'); if (!el) return; const P = INDEX.perf || [], q = ++PMQ;
   if (!P.length) { el.innerHTML = ''; return; }
@@ -1534,7 +1554,12 @@ async function perfMini() {
     const S = miniSVG(p, path), days = new Set(path.pts.map(x => x.d)).size;
     return `<a class="pm-c ${pmTier(p, S.now)}" data-k="${p.day}${p.code}" href="#${p.day}" title="${esc(p.name)} · ${path.src} 기준 · 남색 선 = 진입가, 파란 점선 = 손절 ${fmt(effStop(p))}">${head}${S.svg}<div class="pm-f">${st}${ladder(S.mx)}<span class="pm-s">${days}일</span></div></a>`;
   }));
-  if (q === PMQ) el.innerHTML = cards.join('');
+  if (q !== PMQ) return;
+  // 11/23 사용자: 새 종목만 바로 보이게, 옛 방식 종목은 접어서 아래로 (펼친 상태는 다시 그려도 유지)
+  const nw = cards.filter((c, i) => NEWM(P[i])), od = cards.filter((c, i) => !NEWM(P[i]));
+  el.innerHTML = (nw.length ? nw.join('') : '<div class="pm-empty">새 방식 종목은 11/23 선정분부터 여기에 쌓여요</div>')
+    + (od.length ? `<details class="pm-olds"${OLD_OPEN ? ' open' : ''}><summary>옛 방식 종목 ${od.length}개 보기 <small>11/20까지 점수 방식으로 고른 종목 · 통계 제외 · 진입 뒤 최고점 표시</small></summary><div class="pmini">${od.join('')}</div></details>` : '');
+  const dt = el.querySelector('.pm-olds'); if (dt) dt.addEventListener('toggle', () => { OLD_OPEN = dt.open; });
 }
 function renderArchive(day) {
   $('#archList').innerHTML = INDEX.days.map(d => `<a href="#${d.day}" class="${d.day === day ? 'cur' : ''}"><span class="d">${dname(d.day)} 마감</span>${d.stocks.map(s => { const pf = (INDEX.perf || []).find(p => p.day === d.day && p.code === s.code), x = pf ? retNow(s.code, d.day, pf.base) : null;
