@@ -331,18 +331,19 @@ const ENTM = { long: ['정상 매수', '시장 양호 · 손절선, 익절 없�
 const entOf = s => (s.entry && s.entry.mode) || null;
 function entChip(s, sm) { const m = entOf(s), E = ENTM[m]; if (!E) return '';
   const why = s.entry && s.entry.why && s.entry.why.length ? ' · ' + s.entry.why.join(' · ') : '';
-  return `<span class="ent ${m}${sm ? ' sm' : ''}" title="${esc(E[1] + why)}">${E[0]}</span>`; }
+  const star = s.entry && s.entry.star ? `<span class="ent star${sm ? ' sm' : ''}" title="★ 특이점: 52주 고점 −5% 안 + 선정일 갭상승 +2% 이상 · 시장 상관없이 길게(고점 −10% 추적, 20일) · 백테스트 종목당 +8.2%">★ 특이점</span>` : '';
+  return star + `<span class="ent ${m}${sm ? ' sm' : ''}" title="${esc(E[1] + why)}">${E[0]}</span>`; }
 function mktBox(D) {
   const m = D.market; if (!m) return '';
   const k = `코스닥 ${m.kq.toFixed(2)} · 20일 평균 ${m.ma20.toFixed(2)} · 당일 ${pct(m.chg)}`;
   if (m.ok) return `<div class="mflt ok"><b>시장 양호 · 정상 매수</b><span>${k}</span></div>`;
   if (D.method !== 'tv2') return `<div class="mflt weak"><b>약세장</b><span>${esc(m.why.join(' · '))}</span><small>예전 방식으로 고른 날이에요. 진입 방식(정상 매수·반등 매매·미진입)은 11/23 선정분부터 적용해요.</small></div>`;
-  const B = D.stocks.filter(s => entOf(s) === 'bounce'), S = D.stocks.filter(s => entOf(s) === 'skip');
+  const B = D.stocks.filter(s => entOf(s) === 'bounce'), S = D.stocks.filter(s => entOf(s) === 'skip'), ST_ = D.stocks.filter(s => s.entry && s.entry.star);
   const sig = m.sig || [];   // 코스닥 반등 신호는 한 번만, 종목 옆엔 그 종목만의 이유(52주 고점)
   const own = s => (s.entry && s.entry.why || []).filter(w => !sig.includes(w));
-  const ls = (g, t) => g.length ? `<span><b class="${t}">${t === 'bounce' ? '반등 매매' : '미진입'}</b> ${g.map(s => esc(s.name) + (t === 'bounce' && own(s).length ? ` <small>(${esc(own(s).join(' · '))})</small>` : '')).join(', ')}</span>` : '';
-  return `<div class="mflt weak"><b>${B.length ? '약세장 · 반등 매매만 짧게' : '약세장 · 쉬어가는 날'}</b><span>${esc(m.why.join(' · '))}${sig.length ? ` · <b class="sig">반등 신호: ${esc(sig.join(' · '))}</b>` : ''}</span>`
-    + (D.stocks.some(s => entOf(s)) ? `<div class="mfl">${ls(B, 'bounce')}${ls(S, 'skip')}</div>` : '')
+  const ls = (g, t) => g.length ? `<span><b class="${t}">${t === 'bounce' ? '반등 매매' : t === 'star' ? '★ 특이점(길게)' : '미진입'}</b> ${g.map(s => esc(s.name) + (t === 'bounce' && own(s).length ? ` <small>(${esc(own(s).join(' · '))})</small>` : '')).join(', ')}</span>` : '';
+  return `<div class="mflt weak"><b>${ST_.length ? '약세장 · ★ 특이점은 길게' + (B.length ? ', 반등 매매는 짧게' : '') : B.length ? '약세장 · 반등 매매만 짧게' : '약세장 · 쉬어가는 날'}</b><span>${esc(m.why.join(' · '))}${sig.length ? ` · <b class="sig">반등 신호: ${esc(sig.join(' · '))}</b>` : ''}</span>`
+    + (D.stocks.some(s => entOf(s)) ? `<div class="mfl">${ls(ST_, 'star')}${ls(B, 'bounce')}${ls(S, 'skip')}</div>` : '')
     + `<small>${B.length ? '반등 매매 = 손절 −6%, +3% 넘으면 최고가에서 4% 내려올 때 팖, 최대 10거래일. 약세장 반등은 짧으니 길게 들고 가지 않아요.' : '반등 신호가 없어서 오늘 고른 종목은 사지 않아요.'}</small></div>`;
 }
 function summary(D) {
@@ -450,7 +451,8 @@ function methodTV(D, st, mx) {
     <li><b>제외</b> — ETF·ETN·스팩·리츠·우선주, 일봉 130개 미만, 종가 1,000원 미만, 거래대금 50억 미만, 전날 고른 종목</li>
     <li><b>조건</b> — 당일 +2% 이상, 상한가 아님, 과열 아님(어제까지 5일 +20% 미만 · 20일 +40% 미만 · 당일 +16% 미만)</li>
     <li><b>최종 3종목</b> — <b>주도주 2</b>: 조건을 지킨 종목 중 그날 거래대금 큰 순 · <b>중형 주도주 1</b>: 거래대금 21위 밑에서 가장 큰 종목</li>
-    <li><b>진입 방식</b> — 선정일 종가(당일 시간외)에 삼. 시장 양호(코스닥 20일 평균 위 & 당일 −1% 초과)면 <b>정상 매수</b>(최고가 −10% 추적, 최대 20일). 약세장이어도 반등 신호(코스닥 5일선 위·당일 안 빠짐 / 코스닥 2일 연속 상승 / 종목 52주 고점 −15% 안)가 있으면 <b>반등 매매</b>(+3% 뒤 최고가 −4% 추적, 최대 10일), 없으면 <b>미진입</b></li></ol>
+    <li><b>진입 방식</b> — 선정일 종가(당일 시간외)에 삼. 시장 양호(코스닥 20일 평균 위 & 당일 −1% 초과)면 <b>정상 매수</b>(최고가 −10% 추적, 최대 20일). 약세장이어도 반등 신호(코스닥 5일선 위·당일 안 빠짐 / 코스닥 2일 연속 상승 / 종목 52주 고점 −15% 안)가 있으면 <b>반등 매매</b>(+3% 뒤 최고가 −4% 추적, 최대 10일), 없으면 <b>미진입</b></li>
+    <li><b>★ 특이점</b> — 52주 고점 −5% 안 + 선정일 갭상승 +2% 이상이면 시장 상관없이 정상 매수(길게). 백테스트 105종목 평균 +8.2%(약 6일에 한 번)</li></ol>
     <div class="mwhy">2024.6~2026.11 전 종목 백테스트에서 가장 좋았던 방식이에요(+10% 익절·-6% 손절·10일 기준 종목당 <b class="up">+1.90%</b>). 진입 방식까지 더하면 진입 74%, 안 산 종목 0%로 친 평균 <b class="up">+2.12%</b>. 예전 점수순은 <b class="dn">-0.21%</b>로 무작위로 고른 것보다 나빴어요.</div>`;
   if (!st.length) return `<h2>선정 방식</h2>${steps}`;
   const base = st[0].items;
@@ -1217,7 +1219,7 @@ function renderPerf() {
   $('#perfTbl').innerHTML = `<tr><th class="l">선정일</th><th class="l">종목</th><th>진입가</th><th>+1일</th><th>+3일</th><th>+5일</th><th>+10일</th><th>최고(10일)</th><th>최저(10일)</th><th>최근 종가</th><th>손절선</th><th class="l">상태</th></tr>` +
     (PA.length ? PA.map(p => {
       const se = p.method === 'tv2' ? stopExit(p) : null, st = p.method !== 'tv2' ? oldHiTag(p) : noEntry(p) ? weakTag(p) : se ? stopTag(p, se) : p.done ? '<span class="tag end">10일 완료</span>' : `<span class="tag run">진행 ${p.last ? p.last.n : 0}일</span>`;
-      const hot = (p.last && p.last.ret >= 10 ? ' <span class="tag hot">급등</span>' : '') + (p.entry === 'bounce' ? ' <span class="ent bounce sm">반등 매매</span>' : '') + (NEWM(p) ? '' : ' <span class="pm-old" title="11/20까지 예전 점수 방식으로 고른 종목 · 성과·전략 통계에서 뺌">옛 방식</span>');
+      const hot = (p.last && p.last.ret >= 10 ? ' <span class="tag hot">급등</span>' : '') + (p.entry === 'bounce' ? ' <span class="ent bounce sm">반등 매매</span>' : '') + (p.star ? ' <span class="ent star sm">★ 특이점</span>' : '') + (NEWM(p) ? '' : ' <span class="pm-old" title="11/20까지 예전 점수 방식으로 고른 종목 · 성과·전략 통계에서 뺌">옛 방식</span>');
       const pf = p.perf || {};
       return `<tr class="${noEntry(p) ? 'nent' : se ? 'hit' : ''}"><td class="l"><a href="#${p.day}">${dname(p.day)}</a></td><td class="l nmcell">${logo(p.code, p.name, 18)}<b>${esc(p.name)}</b></td><td>${fmt(p.base)}</td>${c(pf['1'])}${c(pf['3'])}${c(pf['5'])}${c(pf['10'])}${c(p.max_up)}${c(p.max_dn)}
         <td>${p.last ? `${fmt(p.last.c)} <small class="${cls(p.last.ret)}">${pct(p.last.ret, 1)}</small>` : '-'}</td><td title="추천 ${fmt(p.stop)}">${fmt(effStop(p))}</td><td class="l">${st}${hot}</td></tr>`;
@@ -1501,7 +1503,7 @@ async function perfMini() {
   const cards = await Promise.all(P.map(async p => {
     const path = p.method === 'tv2' ? await perfPath(p) : cutAtPeak(await perfPath(p));
     PMP[p.day + p.code] = p; const st = pmTag(p);
-    const head = `<div class="pm-h">${logo(p.code, p.name, 18)}<b>${esc(p.name)}</b>${NEWM(p) ? '' : '<span class="pm-old" title="11/20까지 예전 점수 방식으로 고른 종목 · 통계 제외">옛 방식</span>'}<span class="pm-s" title="진입가">${md(p.day)} · ${fmt(p.base)}</span></div>`;
+    const head = `<div class="pm-h">${logo(p.code, p.name, 18)}<b>${p.star ? '<span class="pm-star" title="★ 특이점">★</span>' : ''}${esc(p.name)}</b>${NEWM(p) ? '' : '<span class="pm-old" title="11/20까지 예전 점수 방식으로 고른 종목 · 통계 제외">옛 방식</span>'}<span class="pm-s" title="진입가">${md(p.day)} · ${fmt(p.base)}</span></div>`;
     if (!path) return `<a class="pm-c ${pmTier(p, null)}" data-k="${p.day}${p.code}" href="#${p.day}">${head}<div class="pm-none">아직 진입 뒤 시세 없음</div><div class="pm-f">${st}</div></a>`;
     const S = miniSVG(p, path), days = new Set(path.pts.map(x => x.d)).size;
     return `<a class="pm-c ${pmTier(p, S.now)}" data-k="${p.day}${p.code}" href="#${p.day}" title="${esc(p.name)} · ${path.src} 기준 · 남색 선 = 진입가, 파란 점선 = 손절 ${fmt(effStop(p))}">${head}${S.svg}<div class="pm-f">${st}${ladder(S.mx)}<span class="pm-s">${days}일</span></div></a>`;
