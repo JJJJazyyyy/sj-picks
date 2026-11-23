@@ -103,7 +103,7 @@ function newPickWatch() {
 async function newPickShow(N) {
   let D = null; try { D = await getJSON(`data/days/${N.latest}.json?t=${Date.now()}`); } catch (e) { }
   const d0 = N.days.find(d => d.day === N.latest) || { stocks: [] };
-  const kind = c => { const x = D && D.stocks.find(y => y.code === c); return x && x.kind === 'swing' ? '미리 담을 종목' : '급등 후보'; };
+  const kind = c => { const x = D && D.stocks.find(y => y.code === c); return ({ swing: '미리 담을 종목', lead: '주도주', mid: '중형 주도주' })[x && x.kind] || '급등 후보'; };
   let t = document.querySelector('.ntoast');
   if (!t) { t = document.createElement('div'); t.className = 'ntoast'; t.setAttribute('role', 'status'); t.setAttribute('aria-live', 'polite'); document.body.appendChild(t); }
   t.innerHTML = `<div class="nt-h"><span class="nt-dot"></span>새 종목이 나왔어요<button type="button" class="nt-x" aria-label="닫기">×</button></div>`
@@ -135,7 +135,7 @@ async function renderDay(day, top = true) {
   try { D = await getJSON(`data/days/${day}.json`); CURD = D; }
   catch (e) { $('#stocks').innerHTML = `<div class="empty">${day} 데이터가 없습니다</div>`; return; }
   const latest = day === INDEX.latest;
-  $('#dayhead').innerHTML = `<h1>${dname(day)} 마감 기준 주목 종목 BEST3</h1><span class="meta">${latest ? '최신 · ' : '지난 날짜 · '}다음 거래일 장에서 볼 종목 · 생성 ${esc(D.made || '')}</span>`;
+  $('#dayhead').innerHTML = `<h1>${dname(day)} 마감 기준 주목 종목 BEST3</h1><span class="meta">${latest ? '최신 · ' : '지난 날짜 · '}다음 거래일 장에서 볼 종목 · 생성 ${esc(D.made || '')}</span>${mktBox(D)}`;
   $('#jump').innerHTML = jumpHTML(D);
   $('#jump').querySelectorAll('a').forEach(a => a.onclick = () => goTo(+a.dataset.k));
   $('#summary').innerHTML = summary(D);
@@ -201,8 +201,8 @@ function retNow(code, day, base) {
 }
 // 종목 성격 칩 (11/9부터 days json의 kind: hot = 급등 후보, swing = 미리 담을 종목. 없으면 안 붙임)
 function kindChip(s, sm) {
-  const K = { hot: ['급등 후보', '다음 날 바로 움직일 수 있는 종목'], swing: ['미리 담을 종목', '추세가 좋아 며칠에 걸쳐 미리 모아 가기 좋은 자리: 평행채널 하단 근접·상승 추세 눌림 등'] }[s.kind];
-  const ic = s.kind === 'hot' ? '<polyline points="1.5,10 5,6.5 7.5,9 12.5,3.5"/><polyline points="9,3.5 12.5,3.5 12.5,7"/>' : '<circle cx="7" cy="7" r="5.5"/><polyline points="7,4 7,7 9.2,8.4"/>';
+  const K = { lead: ['주도주', '그날 거래대금 상위 — 시장 돈이 가장 많이 몰린 종목 (과열 제외)'], mid: ['중형 주도주', '그날 거래대금 21위 밑에서 가장 큰 종목 — 대형주 말고 돈이 몰린 종목 (과열 제외)'], hot: ['급등 후보', '다음 날 바로 움직일 수 있는 종목'], swing: ['미리 담을 종목', '추세가 좋아 며칠에 걸쳐 미리 모아 가기 좋은 자리: 평행채널 하단 근접·상승 추세 눌림 등'] }[s.kind];
+  const ic = s.kind !== 'swing' ? '<polyline points="1.5,10 5,6.5 7.5,9 12.5,3.5"/><polyline points="9,3.5 12.5,3.5 12.5,7"/>' : '<circle cx="7" cy="7" r="5.5"/><polyline points="7,4 7,7 9.2,8.4"/>';
   return K ? `<span class="kind ${s.kind}${sm ? ' sm' : ''}" title="${K[1]}"><svg viewBox="0 0 14 14" aria-hidden="true">${ic}</svg>${K[0]}</span>` : '';
 }
 function jumpHTML(D) {
@@ -325,6 +325,13 @@ function goTo(i, scroll = true) {
     if (scroll && LAY !== 'tab') { const c = document.getElementById('st' + i), h = document.querySelector('.top').offsetHeight + document.querySelector('#jump').offsetHeight; let y = 0; for (let e = c; e; e = e.offsetParent) y += e.offsetTop; window.scrollTo({ top: y - h - 2, behavior: 'auto' }); }   // offsetTop: 등장 효과의 이동값에 안 흔들림
   } else document.getElementById('st' + i).scrollIntoView({ behavior: 'smooth' });
 }
+// 11/23 시장 필터: 코스닥이 20일 평균 아래거나 당일 -1% 넘게 빠지면 '약세장 · 쉬어가는 날' (종목은 그대로 3개)
+function mktBox(D) {
+  const m = D.market; if (!m) return '';
+  const k = `코스닥 ${m.kq.toFixed(2)} · 20일 평균 ${m.ma20.toFixed(2)} · 당일 ${pct(m.chg)}`;
+  return m.ok ? `<div class="mflt ok"><b>시장 양호</b><span>${k}</span></div>`
+    : `<div class="mflt weak"><b>약세장 · 쉬어가는 날</b><span>${esc(m.why.join(' · '))}</span><small>지난 2년 백테스트에서 이런 날 고른 종목은 성적이 나빴어요. 비중을 줄이거나 지켜보기만 하세요.</small></div>`;
+}
 function summary(D) {
   const rows = D.stocks.map((s, i) => {
     const B = s.close, c = cur(s.code, D.day), ref = c ? c.p : B;
@@ -347,8 +354,9 @@ function summary(D) {
 const scMax = s => (s.items || []).reduce((a, x) => a + (x.max || 0), 0);
 function scoreChip(s) {
   if (s.score == null) return '';
-  const rk = s.rank && s.ncand ? ` · ${s.ncand}개 중 ${s.rank}위` : '';
-  return `<button class="scchip" type="button" aria-expanded="false">선정 <b>${s.score}</b>${s.items ? `<small>/${scMax(s)}</small>` : ''}점${rk} <span class="car">▾</span></button>`;
+  const tv = s.kind === 'lead' || s.kind === 'mid';
+  const rk = s.rank && s.ncand ? (tv ? ` · 거래대금 ${s.rank}위` : ` · ${s.ncand}개 중 ${s.rank}위`) : '';
+  return `<button class="scchip" type="button" aria-expanded="false">${tv ? '참고' : '선정'} <b>${s.score}</b>${s.items ? `<small>/${scMax(s)}</small>` : ''}점${rk} <span class="car">▾</span></button>`;
 }
 function scoreTable(s) {
   if (!s.items) return '<div class="hint">이날은 항목별 점수 기록이 없어요</div>';
@@ -357,9 +365,10 @@ function scoreTable(s) {
     const k = x.pts > 0 ? 'p' : x.pts < 0 ? 'n' : 'z', w = Math.max(4, Math.abs(x.pts || x.max || 0.5) / big * 100);
     return `<tr class="${k}" title="${esc(x.rule)}"><td>${esc(x.label)}</td><td class="vv">${esc(x.val)}</td><td class="bb"><i style="width:${w}%"></i></td><td class="pp">${x.pts > 0 ? '+' : ''}${x.pts}</td></tr>`;
   }).join('');
-  const sk = (s.skipped || []).slice(0, 4).map(k => `<li>${k.rank}위 ${esc(k.name)} (${k.score}점) — ${esc(k.why)}</li>`).join('');
+  const tv = s.kind === 'lead' || s.kind === 'mid';
+  const sk = (s.skipped || []).slice(0, 4).map(k => tv ? `<li>거래대금 ${k.rank}위 ${esc(k.name)} — ${esc(k.why)}</li>` : `<li>${k.rank}위 ${esc(k.name)} (${k.score}점) — ${esc(k.why)}</li>`).join('');
   const more = (s.skipped || []).length > 4 ? `<li>외 ${(s.skipped || []).length - 4}개</li>` : '';
-  return `<div class="sph"><b>선정 점수 ${s.score}</b> / ${scMax(s)}점${s.rank ? ` · 후보 ${s.ncand}개 중 ${s.rank}위` : ''}</div>
+  return `<div class="sph">${tv ? `<b>거래대금 ${s.rank}위</b>로 뽑힘 · 참고 점수 ${s.score} / ${scMax(s)}점 <small>(11/23부터 점수는 선정에 안 씀)</small>` : `<b>선정 점수 ${s.score}</b> / ${scMax(s)}점${s.rank ? ` · 후보 ${s.ncand}개 중 ${s.rank}위` : ''}`}</div>
     <table class="spt">${rows}</table>
     ${sk ? `<div class="sps"><b>위 순위인데 안 뽑힌 종목</b><ul>${sk}${more}</ul></div>` : ''}
     ${s.pickNote ? `<div class="spn">${esc(s.pickNote)}</div>` : ''}
@@ -395,6 +404,7 @@ function methodHTML(D) {      // 11/10 사용자 B: 급등 후보 · 미리 담�
   const st = D.stocks.filter(x => x.items);
   const hot = st.filter(x => x.kind !== 'swing'), sw = st.filter(x => x.kind === 'swing');
   const mx = g => g[0] ? +g[0].items.reduce((a, x) => a + x.max, 0).toFixed(1) : 0;
+  if (D.method === 'tv2') return methodTV(D, st, mx);
   const steps = `<ol class="msteps">
     <li><b>후보 모으기</b> — 코스피·코스닥 각각 등락률 상위 30 · 거래대금 상위 30 · 거래증가율 상위 30 (순위 조회가 모자라면 최근 후보 목록으로 보충)</li>
     <li><b>제외</b> — ETF·ETN·스팩·리츠·우선주, 일봉 130개 미만, 종가 1,000원 미만, 거래대금 50억 미만</li>
@@ -419,6 +429,26 @@ function methodHTML(D) {      // 11/10 사용자 B: 급등 후보 · 미리 담�
     : tbl(st, '');
   return `<h2>선정 방식 <small>${dname(D.day)} 마감 기준 세 종목 점수를 나란히</small></h2>${steps}
     ${note ? `<div class="spn">${esc(note.pickNote)}</div>` : ''}${body}`;
+}
+// 11/23부터 선정 방식: 거래대금 주도주 2 + 중형 주도주 1 + 시장 필터 (점수는 참고용 표로만)
+function methodTV(D, st, mx) {
+  const steps = `<ol class="msteps">
+    <li><b>후보 모으기</b> — 코스피·코스닥 각각 등락률 상위 30 · 거래대금 상위 30 · 거래증가율 상위 30 (순위 조회가 모자라면 최근 후보 목록으로 보충)</li>
+    <li><b>제외</b> — ETF·ETN·스팩·리츠·우선주, 일봉 130개 미만, 종가 1,000원 미만, 거래대금 50억 미만, 전날 고른 종목</li>
+    <li><b>조건</b> — 당일 +2% 이상, 상한가 아님, 과열 아님(어제까지 5일 +20% 미만 · 20일 +40% 미만 · 당일 +16% 미만)</li>
+    <li><b>최종 3종목</b> — <b>주도주 2</b>: 조건을 지킨 종목 중 그날 거래대금 큰 순 · <b>중형 주도주 1</b>: 거래대금 21위 밑에서 가장 큰 종목</li>
+    <li><b>시장 필터</b> — 코스닥이 20일 평균 아래거나 당일 -1% 넘게 빠진 날은 '약세장 · 쉬어가는 날'로 표시 (종목은 그대로 고름)</li></ol>
+    <div class="mwhy">2024.6~2026.11 전 종목 백테스트(+10% 익절·-6% 손절·최대 10일)에서 종목당 평균 <b class="up">+1.90%</b>로 가장 좋았던 방식이에요. 예전 점수순은 <b class="dn">-0.21%</b>로 무작위로 고른 것보다 나빴어요.</div>`;
+  if (!st.length) return `<h2>선정 방식</h2>${steps}`;
+  const base = st[0].items;
+  const head = st.map(x => `<th>${logo(x.code, x.name, 16)}${esc(x.name)}</th>`).join('');
+  const rows = base.map(it => `<tr><td class="l"><span class="mlb" tabindex="0" data-tip="${esc(it.rule)}">${esc(it.label)}</span></td>${st.map(x => { const v = (x.items || []).find(y => y.k === it.k);
+    if (!v) return '<td class="zz">-</td>';
+    return `<td class="${v.pts > 0 ? 'up' : v.pts < 0 ? 'dn' : 'zz'}">${v.pts > 0 ? '+' : ''}${v.pts} <small>${esc(v.val)}</small></td>`; }).join('')}</tr>`).join('');
+  const tvr = `<tr class="tot"><td class="l"><b>거래대금</b> <small>뽑힌 기준</small></td>${st.map(x => `<td><b>${x.rank}위</b> <small>${x.ncand}개 중</small></td>`).join('')}</tr>`;
+  const tot = `<tr><td class="l">참고 점수 합계 <small>최고 ${mx(st)}점</small></td>${st.map(x => `<td>${x.score}</td>`).join('')}</tr>`;
+  return `<h2>선정 방식 <small>${dname(D.day)} 마감 기준 · 거래대금 주도주 + 시장 필터</small></h2>${steps}
+    <h3 class="msec">참고: 예전 조건 점수 <small>선정에는 안 씀</small></h3><div class="tblwrap"><table class="perf mtab"><tr><th class="l">항목 <small>(마우스 → 조건)</small></th>${head}</tr>${tvr}${rows}${tot}</table></div>`;
 }
 // 점수표 항목 조건 말풍선 (표가 가로 스크롤 박스 안이라 화면 기준으로 띄움)
 (() => { let tp = null;
@@ -1194,6 +1224,7 @@ function pmTag(p) {
   const base = () => se ? stopTag(p, se, 1) : p.done ? '<span class="tag end">✓ 10일 완료</span>' : '<span class="tag run"><i></i>진행 중</span>';
   if (!y || /^(보유 중|진행 중|9:30 전)$/.test(w)) return base();
   if (se && se.gap) return stopTag(p, se, 1);   // 11/17 사용자: 성과 카드는 % 빼고 짧게
+  if (w === '약세장 쉼') return `<span class="tag end" title="선정일이 약세장(코스닥 20일 평균 아래 또는 당일 −1% 이하)이라 이 전략에선 안 삼">약세장 쉼</span>`;
   if (/^손절 /.test(w)) return `<span class="tag stop" title="${esc(w)}">${pct(y.r, 1)} 손절</span>`;
   if (/^반 익절 [^·]+ · 보유 중$/.test(w)) return `<span class="tag tp" title="${esc(w)} · 나머지 절반은 들고 있음">${pct(y.r, 1)} 반 익절</span>`;
   if (/종가 매도$/.test(w)) return `<span class="tag ${y.r >= 0 ? 'tp' : 'tl'}" title="${esc(w)}">${pct(y.r, 1)} 매도</span>`;   // 11/17: 기한 끝나 종가에 판 건 익절·손절 말고 '매도'
@@ -1221,7 +1252,7 @@ async function perfStrat() {
   const first = (p, d, up, dn, o) => { if (up && o >= up) return 'up'; if (dn && o <= dn) return 'dn';
     for (const b of MB.get(p)) { if (ymd(b.t) !== d) continue; if (dn && b.l <= dn) return 'dn'; if (up && b.h >= up) return 'up'; }
     return 'dn'; };
-  const rowsOf = p => { const rows = (p.path || []).map(([d, o, h, l, c]) => ({ d, o, h, l, c, live: false }));
+  const rowsOf = p => { const rows = (p.path20 || p.path || []).map(([d, o, h, l, c]) => ({ d, o, h, l, c, live: false }));   // 11/23: 최대 20거래일 전략용 path20
     const lv = LIVE && LIVE.prices && LIVE.prices[p.code];
     if (lv && LD && LD > (rows.length ? rows[rows.length - 1].d : p.day)) rows.push({ d: LD, o: lv.o || lv.p, h: lv.h || lv.p, l: lv.l || lv.p, c: lv.p, live: !LIVE.closed });
     return rows.filter(r => r.d > p.day); };
@@ -1270,17 +1301,30 @@ async function perfStrat() {
     }
     return fin(rows[rows.length - 1].c, '보유 중');
   };
-  // 11/12 사용자: 전략 수는 6개 유지, 최고 종목(NHN) 빼고 봐도 잘 나온 것들로 고름 (화면 통계는 전 종목) (그냥 보유·손절만은 기준선)
+  // 11/23 사용자: '대표 전략 좋은 것들로' → 2024.6~2026.11 새 선정 방식 백테스트(앞 기간으로 고르고 뒤 기간으로 검증)에서 좋았던 규칙으로 교체. 6개 유지
+  //   추적 손절: 장중 최고가에서 t만큼 내려온 가격에 닿으면 팖(시가가 이미 아래면 시가). 최고가는 전날까지 + 오늘 고가 (닿았는지는 먼저 판단)
+  const runT = (p, t, on, days) => {
+    const rows = rowsOf(p), s0 = p.stop || 0;
+    if (!rows.length) return { r: 0, w: '보유 중' };
+    let s = s0, hi = p.base, n = 0;
+    for (const r of rows) {
+      n++;
+      if (s && r.l <= s) return { r: (Math.min(r.o, s) / p.base - 1) * 100, w: `${s > s0 ? `고점 대비 −${t * 100}%` : '손절'} ${md(r.d)}` };
+      hi = Math.max(hi, r.h);
+      if (hi >= p.base * (1 + on)) s = Math.max(s, hi * (1 - t));
+      if (days && n >= days) return { r: (r.c / p.base - 1) * 100, w: r.live ? '진행 중' : `${md(r.d)} 종가 매도` };
+    }
+    return { r: (rows[rows.length - 1].c / p.base - 1) * 100, w: '보유 중' };
+  };
+  const isWeak = p => { const D = DAYC[p.day]; return !!(D && D.market && D.market.ok === false); };
+  const SKIP = { r: 0, w: '약세장 쉼' };
   const ST = [
-    // 11/17 사용자: 저조했던 '그냥 보유'·'손절만 지킴'·'손절 + 고점 −5%' 대신 → 최고 종목 빼도, 앞·뒤 기간 나눠도 플러스였던 3개
-    ['다음날 +10% · 아니면 종가', '다음날 +10% 닿으면 팖, 손절선 닿으면 손절, 둘 다 아니면 다음날 종가에 팖', p => run(p, p.base * 1.1, true, 0, 0, 1)],
-    ['반 +5% · 반 +10%', '+5% 닿으면 절반 팖, 나머지 절반은 +10%에 팖 · 손절선 닿으면 손절', p => run(p, p.base * 1.1, true, p.base * 1.05)],
-    ['+10% 익절 · 이틀까지', '+10% 닿으면 팖, 손절선 닿으면 손절, 둘 다 아니면 이틀째 종가에 팖', p => run(p, p.base * 1.1, true, 0, 0, 2)],
-    // 11/12 사용자: 급등주라 +25%·+30% 익절은 닿는 일이 드물어 뺌 → 상승 종목이 충분히 쌓이면 다시 검토
-    // 11/16 사용자: '다음날 +5% 익절'(장중 손절 규칙에서 꼴찌) 대신 → 최고 종목 빼도 가장 탄탄했던 '+10% 익절 + 손절'
-    ['+10% 익절 + 손절', '+10% 닿으면 팖, 손절선 닿으면 손절, 둘 다 아니면 계속 들고 감', p => run(p, p.base * 1.1, true)],
-    ['반 +10% · 반 고점 −5%', '+10% 닿으면 절반 팖, 나머지는 종가가 최고점보다 5% 내려오면 팖', p => run(p, 0, true, p.base * 1.1, .05)],
-    ['다음날 9:30 매도', '다음날 첫 30분봉(9:00~9:30)이 끝날 때 가격에 팖 · 그 사이 손절선 닿으면 손절', (p, i) => at930(p, i)],
+    ['추천: 약세장 쉼 · 고점 −10%', '약세장(코스닥 20일 평균 아래 또는 당일 −1% 이하) 날 고른 종목은 안 삼(0원) · 시장 양호한 날만 사서 손절선 닿으면 손절, 익절 목표 없이 장중 최고가에서 10% 내려오면 팖, 최대 20거래일 · 백테스트 1등', p => isWeak(p) ? SKIP : runT(p, .10, 0, 20)],
+    ['고점 −10% 추적 · 매일', '시장 상관없이 매일 삼 · 손절선 닿으면 손절, 익절 목표 없이 장중 최고가에서 10% 내려오면 팖, 최대 20거래일', p => runT(p, .10, 0, 20)],
+    ['약세장 쉼 · 손절만 20일', '약세장 날 고른 종목은 안 삼 · 손절선 닿으면 손절, 아니면 20거래일째 종가에 팖', p => isWeak(p) ? SKIP : run(p, 0, true, 0, 0, 20)],
+    ['짧게: +3% 뒤 고점 −4%', '약세장에서 가장 덜 잃은 규칙 · 손절선 닿으면 손절, +3% 넘으면 그때부터 장중 최고가에서 4% 내려오면 팖, 최대 10거래일', p => runT(p, .04, .03, 10)],
+    ['약세장 쉼 · +10% 익절', '약세장 날 고른 종목은 안 삼 · +10% 닿으면 팖, 손절선 닿으면 손절, 최대 10거래일', p => isWeak(p) ? SKIP : run(p, p.base * 1.1, true, 0, 0, 10)],
+    ['+10% 익절 + 손절 (예전 기본)', '+10% 닿으면 팖, 손절선 닿으면 손절, 최대 10거래일 · 11/23까지 사이트 기본 전략 (비교용)', p => run(p, p.base * 1.1, true, 0, 0, 10)],
   ];
   const man = v => `${v >= 0 ? '+' : '−'}${Math.abs(v / 1e4).toFixed(1)}만원`;
   // 11/12 사용자: 누적 합계는 날이 쌓일수록 커지기만 해서 → 선정일 하루(3종목 × 100만원) 평균 수익으로. 전략은 수익 높은 순
@@ -1299,7 +1343,7 @@ async function perfStrat() {
       .sort((a, b) => b.g - a.g);   // 항상 화면 숫자(하루 평균) 큰 순 (11/12 사용자)
     mx = Math.max(...R.map(x => Math.abs(x.da)), 1); };
   calc();
-  let sel = '+10% 익절 + 손절'; try { const s0 = localStorage.getItem('sjStrat'); if (s0 && ST.some(x => x[0] === s0)) sel = s0; } catch (e) { }
+  let sel = '추천: 약세장 쉼 · 고점 −10%'; try { const s0 = localStorage.getItem('sjStrat'); if (s0 && ST.some(x => x[0] === s0)) sel = s0; } catch (e) { }
   const m1 = v => `${v >= 0 ? '+' : '−'}${Math.abs(v / 1e4).toFixed(1)}`;
   const A = () => { const x = R.find(y => y.nm === sel) || R[0], dd = x.days.slice(-8);
     return `<div class="sh">매일 3종목 × 100만원씩 샀다면 <small>선정일 ${nd}일 · ${n}종목 · 지금까지</small></div>`
@@ -1312,7 +1356,7 @@ async function perfStrat() {
     return `<div class="sh">전략별 하루 평균 <small>선정일 하루(3종목)당 · 수익 높은 순 · 누르면 왼쪽에 자세히</small></div>`
     + R.map(x => `<div class="sr${x.nm === cur ? ' on' : ''}" data-j="${esc(x.nm)}" tabindex="0""><span class="sn">${x.nm}</span><span class="sb"><i class="${x.g >= 0 ? 'u' : 'd'}" style="width:${(Math.abs(x.da) / mx * 100).toFixed(1)}%"></i></span>`
       + `<span class="sv ${cls(x.g)}"><b>${man(x.da)}</b> <small>(${pct(x.g / tot * 100, 1)})</small></span></div>`).join('')
-    + `<div class="sc">하루 평균 = 고른 날마다 3종목 손익을 더한 뒤 날 수로 나눔 · % = 100만원당 평균 · 손절 = 장중에 추천 손절선 닿으면 그 가격(시가가 이미 아래면 시가, 모든 전략) · 익절 = 장중에 닿은 가격(시가가 이미 넘었으면 시가) · 같은 날 둘 다 닿으면 30분봉으로 먼저 닿은 쪽</div>`; };
+    + `<div class="sc">하루 평균 = 고른 날마다 3종목 손익을 더한 뒤 날 수로 나눔 · % = 100만원당 평균 · 손절 = 장중에 추천 손절선 닿으면 그 가격(시가가 이미 아래면 시가, 모든 전략) · 익절 = 장중에 닿은 가격(시가가 이미 넘었으면 시가) · 같은 날 둘 다 닿으면 30분봉으로 먼저 닿은 쪽 · 약세장 쉼 = 그날 고른 종목을 안 산 걸로 0원 · 고점 −N% = 장중 최고가에서 N% 내려온 가격에 팖</div>`; };
   const draw = () => { el.innerHTML = `<div class="pa">${A()}</div><div class="pb">${B()}</div>`;
     const x = R.find(y => y.nm === sel) || R[0]; STRAT_SEL = {}; x.rs.forEach(y => { STRAT_SEL[y.p.day + y.p.code] = y; }); pmTags(); };
   // 막대 말풍선 (11/12 사용자 A안 라이트): 기다림 없이 바로 · 숫자 3칸 + 종목별 0 기준 미니 막대

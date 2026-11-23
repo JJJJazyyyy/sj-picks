@@ -762,3 +762,12 @@ body.resizing .hspl,body.resizing:has(.hspl.on) *{cursor:row-resize !important}
 .sumt .tag.stop,#jump .tag.stop{display:inline-block;background:linear-gradient(90deg,#2962FF,#4FA3FF);color:#fff;font-size:11px;line-height:17px;padding:0 5px;border-radius:3px;font-weight:400;vertical-align:1px;white-space:nowrap}
 .sumt td.g2{white-space:nowrap}
 #jump .tag.stop{margin-right:4px}
+/* 11/23 새 선정 방식: 주도주·중형 주도주 칩, 시장 필터 상자 */
+.kind.lead{background:#FFEDD5;color:#C2410C}.kind.mid{background:#EDE9FE;color:#6D28D9}
+.dk .kind.lead{background:#4A2A12;color:#FDBA74}.dk .kind.mid{background:#2E1F55;color:#C4B5FD}
+.mflt{flex-basis:100%;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;margin:8px 0 0;padding:8px 12px;border-radius:6px;font-size:13px}
+.mflt b{font-size:15px}.mflt small{flex-basis:100%;color:var(--sub);font-size:12px}
+.mflt.weak{background:color-mix(in srgb,#2563EB 10%,var(--panel));border:1px solid color-mix(in srgb,#2563EB 45%,transparent)}.mflt.weak b{color:#1D4ED8}
+.dk .mflt.weak b{color:#93C5FD}
+.mflt.ok{padding:4px 10px;font-size:12px;background:color-mix(in srgb,#16A34A 8%,var(--panel))}.mflt.ok b{font-size:12.5px;color:#15803D}.dk .mflt.ok b{color:#86EFAC}
+.mwhy{margin:6px 0 12px;font-size:12.5px;color:var(--sub)}
