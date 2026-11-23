@@ -336,6 +336,7 @@ function mktBox(D) {
   const m = D.market; if (!m) return '';
   const k = `코스닥 ${m.kq.toFixed(2)} · 20일 평균 ${m.ma20.toFixed(2)} · 당일 ${pct(m.chg)}`;
   if (m.ok) return `<div class="mflt ok"><b>시장 양호 · 정상 매수</b><span>${k}</span></div>`;
+  if (D.method !== 'tv2') return `<div class="mflt weak"><b>약세장</b><span>${esc(m.why.join(' · '))}</span><small>예전 방식으로 고른 날이에요. 진입 방식(정상 매수·반등 매매·미진입)은 11/23 선정분부터 적용해요.</small></div>`;
   const B = D.stocks.filter(s => entOf(s) === 'bounce'), S = D.stocks.filter(s => entOf(s) === 'skip');
   const sig = m.sig || [];   // 코스닥 반등 신호는 한 번만, 종목 옆엔 그 종목만의 이유(52주 고점)
   const own = s => (s.entry && s.entry.why || []).filter(w => !sig.includes(w));
@@ -464,12 +465,12 @@ function methodTV(D, st, mx) {
 }
 // 점수표 항목 조건 말풍선 (표가 가로 스크롤 박스 안이라 화면 기준으로 띄움)
 (() => { let tp = null;
-  const show = e => { const el = e.target.closest && e.target.closest('.mlb'); if (!el) return;
+  const show = e => { const el = e.target.closest && e.target.closest('.mlb, .tip'); if (!el) return;
     if (!tp) { tp = document.createElement('div'); tp.className = 'mtip'; tp.setAttribute('role', 'tooltip'); document.body.appendChild(tp); }
     tp.textContent = el.dataset.tip; tp.style.display = 'block';
     const r = el.getBoundingClientRect(), w = tp.offsetWidth;
     tp.style.left = Math.max(8, Math.min(r.left, innerWidth - w - 8)) + 'px'; tp.style.top = (r.bottom + 6) + 'px'; };
-  const hide = e => { if (tp && e.target.closest && e.target.closest('.mlb')) tp.style.display = 'none'; };
+  const hide = e => { if (tp && e.target.closest && e.target.closest('.mlb, .tip')) tp.style.display = 'none'; };
   document.addEventListener('mouseover', show); document.addEventListener('focusin', show);
   document.addEventListener('mouseout', hide); document.addEventListener('focusout', hide);
   addEventListener('scroll', () => { if (tp) tp.style.display = 'none'; }, { passive: true });
@@ -1236,17 +1237,21 @@ function stopExit(p) {
   return r ? { r: (Math.min(r.o, s) / p.base - 1) * 100, d: r.d, s, gap: false, og: r.o <= s, o: (r.o / p.base - 1) * 100 }   /* 11/23 사용자: 당일(선정일 종가) 진입이라 '갭하락 미진입' 없앰 → 시가가 손절선 아래면 시가에 손절 */ : null;
 }
 // 11/23 사용자: 미진입 규칙을 지난 종목에도 적용해 구분 — ① 약세장 미진입(선정일 16:00 시장 판정이 약세장이면 안 삼) ② 갭하락 미진입(다음날 시가가 손절선 아래)
-const noEntry = p => (p.entry ? p.entry === 'skip' : p.mkt_ok === false) ? { k: 'weak' } : null;   // ⑦: 약세장이어도 반등 매매는 진입   // 11/23: 미진입은 약세장 하나만 (갭하락 미진입 없앰)
+const noEntry = p => p.method === 'tv2' && (p.entry ? p.entry === 'skip' : p.mkt_ok === false) ? { k: 'weak' } : null;   // 11/23: 옛 방식 종목엔 진입 규칙 안 씀(가장 좋았던 전략으로 표시)   // ⑦: 약세장이어도 반등 매매는 진입   // 11/23: 미진입은 약세장 하나만 (갭하락 미진입 없앰)
 const weakTag = (p, sh) => { const se = stopExit(p), r = p.last ? p.last.ret : null;
-  const would = se ? `샀다면 ${se.gap ? '갭하락으로 안 샀음' : pct(se.r, 1) + ' 손절'}` : r != null ? `샀다면 지금 ${pct(r, 1)}` : '';
-  return `<span class="tag nent" title="${md(p.day)} 선정일이 약세장(코스닥 20일 평균 아래 또는 당일 −1% 이하)이고 반등 신호도 없어서 안 삼 · 통계 제외${would ? ' · ' + would : ''}">${sh ? '' : ''}약세장 미진입</span>`; };
+  // 11/23 사용자: 호버하면 이유를 말풍선으로 (약세장 근거 · 없던 반등 신호 · 52주 고점 거리 · 샀다면)
+  const L = [`${md(p.day)} 선정일 → 미진입 (안 삼 · 통계 제외)`];
+  L.push('① 약세장: ' + ((p.mwhy && p.mwhy.length) ? p.mwhy.join(' · ') : '코스닥 20일 평균 아래 또는 당일 −1% 이하'));
+  L.push('② 반등 신호 없음: 코스닥 5일선 위·당일 안 빠짐 ✕ · 코스닥 2일 연속 상승 ✕' + (p.dhi != null ? ` · 52주 고점 ${pct(p.dhi, 1)} (−15% 밖)` : ''));
+  if (se) L.push(`샀다면: ${pct(se.r, 1)} 손절 (${md(se.d)})`); else if (r != null) L.push(`샀다면: 지금 ${pct(r, 1)}`);
+  return `<span class="tag nent tip" tabindex="0" data-tip="${esc(L.join('\n'))}">약세장 미진입</span>`; };
 const stopTag = (p, se, sh) => se.gap ? `<span class="tag stop gap" title="${md(se.d)} 시가 ${pct(se.o, 1)} — 손절선 ${fmt(se.s)} 아래로 출발해서 안 샀다고 봄 · 전략 통계엔 0%">${sh ? '' : pct(se.o, 1) + ' '}갭하락 미진입</span>` : `<span class="tag stop" title="손절 ${md(se.d)}${se.og ? ` · 시가 ${pct(se.o, 1)}부터 손절선 아래라 시가에 팖` : ''} · 손절선 ${fmt(se.s)}${se.s !== p.stop ? ` (추천 ${fmt(p.stop)} → 진입가 −${STOP_CAP * 100}%로 짧게)` : ''}">${pct(se.r, 1)} 손절</span>`;
 // 전략별 비교 (11/11 사용자 통계 B): 종목마다 100만원, 선정일 종가 매수 → 규칙대로 팔았으면 지금 얼마
 const DAYC = {};
 // 11/13 사용자: 성과 카드 꼬리표를 고른 전략 결과대로 → 판 종목은 '+n.n% 익절'(이익) / '−n.n% 매도'(손해), 손절은 '손절 M/D', 아직 들고 있으면 진행 중
-let STRAT_SEL = null; const PMP = {};
+let STRAT_SEL = null, OLD_SEL = null; const PMP = {};
 function pmTag(p) {
-  const y = STRAT_SEL && STRAT_SEL[p.day + p.code], w = y ? y.w : '';
+  const y = (STRAT_SEL && STRAT_SEL[p.day + p.code]) || (OLD_SEL && OLD_SEL[p.day + p.code]), w = y ? y.w : '';
   // 11/16 사용자: 손절 칩은 날짜 말고 퍼센트로 통일 (날짜는 마우스 올리면) · 서버 손절 기록은 그날 종가 기준
   const se = stopExit(p);
   if (noEntry(p) && (!y || /^(약세장 쉼|보유 중|진행 중|9:30 전)$/.test(w))) return weakTag(p, 1);
@@ -1264,10 +1269,9 @@ async function perfStrat() {
   const el = $('#perfStrat'); if (!el) return;
   // 11/13 사용자: 어제 고른 종목은 일봉 기록(path)이 아직 없어도 오늘 현재가(live.json)로 전략 계산에 넣음 (전엔 빠져서 '진행 중'으로만 보였음)
   const LD = LIVE && LIVE.date ? LIVE.date.replace(/-/g, '') : '';
-  const P = (INDEX.perf || []).filter(p => NEWM(p) && ((p.path && p.path.length) || (LD > p.day && LIVE.prices && LIVE.prices[p.code])));
-  if (!P.length) { el.innerHTML = `<div class="pa"><div class="sh">전략별 비교 <small>새 선정 방식(11/23 선정분)부터 집계</small></div><div class="scd">새 방식 종목의 진입 뒤 시세가 아직 없어요. 다음 거래일 장이 열리면 여기부터 쌓여요. 옛 방식 ${OLDN()}종목은 전략 통계에서 뺐어요(아래 카드·기록엔 그대로).</div></div>`; STRAT_SEL = null; pmTags(); return; }
-  P.forEach((p, i) => { P[i] = { ...p, stop: effStop(p) }; });   // 11/17: 전략도 짧은 손절선
-  const lvs = await Promise.all(P.map(async p => {
+  const PALL = (INDEX.perf || []).filter(p => (p.path && p.path.length) || (LD > p.day && LIVE.prices && LIVE.prices[p.code])).map(p => ({ ...p, stop: effStop(p) }));
+  const P = PALL.filter(NEWM), PO = PALL.filter(p => !NEWM(p));
+  const lvs = await Promise.all(PALL.map(async p => {   // 11/17: 전략도 짧은 손절선(PALL 에서 effStop)
     try { const D = DAYC[p.day] || (DAYC[p.day] = await getJSON(`data/days/${p.day}.json`)); const st = D.stocks.find(x => x.code === p.code) || {};
       const o = {}; (st.levels || []).filter(l => l.price > p.base).sort((a, b) => a.price - b.price).forEach(l => { if (!o[l.kind]) o[l.kind] = l.price; }); return o; } catch (e) { return {}; }
   }));
@@ -1275,9 +1279,9 @@ async function perfStrat() {
   // 11/16 사용자: 손절 = 장중에 추천 손절선 닿으면 손절선 가격에 팖(시가가 이미 아래면 시가) · 오늘 장중도 바로 반영 · '그냥 보유' 빼고 모든 전략에
   //   같은 날 익절가·손절선 둘 다 닿았으면 30분봉으로 먼저 닿은 쪽 (같은 봉이거나 분봉이 없으면 손절 먼저)
   // 다음날 9:30 매도 (11/12 사용자). 30분봉 시각은 한국 시각을 UTC처럼 저장 → 선정일 다음 날 9:00 봉의 종가
-  const M30 = await Promise.all(P.map(p => minRows(p.code, '30').catch(() => null)));
+  const M30 = await Promise.all(PALL.map(p => minRows(p.code, '30').catch(() => null)));
   const ymd = t => { const d = new Date(t * 1000); return `${d.getUTCFullYear()}${pad2(d.getUTCMonth() + 1)}${pad2(d.getUTCDate())}`; };
-  const MB = new Map(P.map((p, i) => [p, M30[i] || []]));
+  const MB = new Map(PALL.map((p, i) => [p, M30[i] || []]));
   const first = (p, d, up, dn, o) => { if (up && o >= up) return 'up'; if (dn && o <= dn) return 'dn';
     for (const b of MB.get(p)) { if (ymd(b.t) !== d) continue; if (dn && b.l <= dn) return 'dn'; if (up && b.h >= up) return 'up'; }
     return 'dn'; };
@@ -1360,6 +1364,19 @@ async function perfStrat() {
     ['+10% 익절 + 손절 (예전 기본)', '+10% 닿으면 팖, 손절선 닿으면 손절, 최대 10거래일 · 11/23까지 사이트 기본 전략 (비교용)', p => run(p, p.base * 1.1, true, 0, 0, 10)],
   ];
   const man = v => `${v >= 0 ? '+' : '−'}${Math.abs(v / 1e4).toFixed(1)}만원`;
+  // 11/23 사용자: 옛 방식 종목은 '성적 가장 좋았던 전략' 기준으로 카드에 표시 (진입 규칙 없이 모두 산 걸로) — 지금 전략 + 예전에 쓰던 전략 중 합계 1등
+  OLD_SEL = null; let oldLine = '';
+  if (PO.length) {
+    const OST = [...ST,
+      ['다음날 +10% · 아니면 종가', '', p => run(p, p.base * 1.1, true, 0, 0, 1)], ['반 +5% · 반 +10%', '', p => run(p, p.base * 1.1, true, p.base * 1.05, 0, 10)],
+      ['+10% 익절 · 이틀까지', '', p => run(p, p.base * 1.1, true, 0, 0, 2)], ['반 +10% · 반 고점 −5%', '', p => run(p, 0, true, p.base * 1.1, .05, 10)],
+      ['다음날 9:30 매도', '', (p, i) => at930(p, i)]];
+    const best = OST.map(([nm, , f]) => { const rs = PO.map(p => ({ p, ...f(p) })); return { nm, rs, g: rs.reduce((a, x) => a + 1e6 * x.r / 100, 0) }; }).sort((a, b) => b.g - a.g)[0];
+    OLD_SEL = {}; best.rs.forEach(y => { OLD_SEL[y.p.day + y.p.code] = y; });
+    const ndo = new Set(PO.map(p => p.day)).size || 1;
+    oldLine = `<div class="sc">옛 방식 ${PO.length}종목(11/20까지)은 진입 규칙 없이, 성적이 가장 좋았던 '${esc(best.nm.replace(/^추천: /, ''))}' 기준으로 카드에 표시 · 하루 평균 <b class="${cls(best.g)}">${man(best.g / ndo)}</b> · 이긴 종목 ${best.rs.filter(x => x.r > 0).length}/${PO.length} (통계엔 안 넣음)</div>`;
+  }
+  if (!P.length) { el.innerHTML = `<div class="pa"><div class="sh">전략별 비교 <small>새 선정 방식(11/23 선정분)부터 집계</small></div><div class="scd">새 방식 종목의 진입 뒤 시세가 아직 없어요. 다음 거래일 장이 열리면 여기부터 쌓여요.</div>${oldLine}</div>`; STRAT_SEL = null; pmTags(); return; }
   // 11/12 사용자: 누적 합계는 날이 쌓일수록 커지기만 해서 → 선정일 하루(3종목 × 100만원) 평균 수익으로. 전략은 수익 높은 순
   let n, R, mx, tot, nd;
   // 통계는 항상 전 종목 (NHN 빼기는 전략 고를 때만 썼음, 11/12 사용자)
@@ -1389,7 +1406,7 @@ async function perfStrat() {
     return `<div class="sh">전략별 하루 평균 <small>선정일 하루(3종목)당 · 수익 높은 순 · 누르면 왼쪽에 자세히</small></div>`
     + R.map(x => `<div class="sr${x.nm === cur ? ' on' : ''}" data-j="${esc(x.nm)}" tabindex="0""><span class="sn">${x.nm}</span><span class="sb"><i class="${x.g >= 0 ? 'u' : 'd'}" style="width:${(Math.abs(x.da) / mx * 100).toFixed(1)}%"></i></span>`
       + `<span class="sv ${cls(x.g)}"><b>${man(x.da)}</b> <small>(${pct(x.g / tot * 100, 1)})</small></span></div>`).join('')
-    + `<div class="sc">하루 평균 = 고른 날마다 3종목 손익을 더한 뒤 날 수로 나눔 · % = 100만원당 평균 · 손절 = 장중에 추천 손절선 닿으면 그 가격(시가가 이미 아래면 시가, 모든 전략) · 익절 = 장중에 닿은 가격(시가가 이미 넘었으면 시가) · 같은 날 둘 다 닿으면 30분봉으로 먼저 닿은 쪽 · 모든 전략 공통: 선정일 종가(당일)에 삼, 미진입(약세장이고 반등 신호 없음)은 안 삼(0원·목록 제외), 반등 매매는 진입 · 시가가 손절선 아래로 시작하면 시가에 손절 · 고점 −N% = 장중 최고가에서 N% 내려온 가격에 팖</div>`; };
+    + `<div class="sc">하루 평균 = 고른 날마다 3종목 손익을 더한 뒤 날 수로 나눔 · % = 100만원당 평균 · 손절 = 장중에 추천 손절선 닿으면 그 가격(시가가 이미 아래면 시가, 모든 전략) · 익절 = 장중에 닿은 가격(시가가 이미 넘었으면 시가) · 같은 날 둘 다 닿으면 30분봉으로 먼저 닿은 쪽 · 모든 전략 공통: 선정일 종가(당일)에 삼, 미진입(약세장이고 반등 신호 없음)은 안 삼(0원·목록 제외), 반등 매매는 진입 · 시가가 손절선 아래로 시작하면 시가에 손절 · 고점 −N% = 장중 최고가에서 N% 내려온 가격에 팖</div>` + oldLine; };
   const draw = () => { el.innerHTML = `<div class="pa">${A()}</div><div class="pb">${B()}</div>`;
     const x = R.find(y => y.nm === sel) || R[0]; STRAT_SEL = {}; x.rs.forEach(y => { STRAT_SEL[y.p.day + y.p.code] = y; }); pmTags(); };
   // 막대 말풍선 (11/12 사용자 A안 라이트): 기다림 없이 바로 · 숫자 3칸 + 종목별 0 기준 미니 막대

@@ -782,3 +782,4 @@ tr.nent td{color:var(--sub)}.stat.nent-all{color:var(--sub)}.stat.nent-all small
 .mflt b.sig{font-size:13px;color:#B45309}.dk .mflt b.sig{color:#FCD34D}
 .pm-old{font-size:10.5px;font-weight:700;color:#64748B;background:#F1F5F9;border-radius:3px;padding:0 5px;margin-left:4px;flex:none}.dk .pm-old{background:#1E293B;color:#CBD5E1}
 .stat.old{color:var(--sub);background:color-mix(in srgb,#64748B 8%,var(--panel))}
+.mtip{white-space:pre-line}.tag.tip{cursor:help}
