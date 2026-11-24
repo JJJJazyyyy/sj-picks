@@ -89,7 +89,8 @@
 .pfc .pf-steps li.now .c{border-color:#f3d488;border-top-color:transparent;animation:pfspin .9s linear infinite}
 .pfc .pf-steps li small{font-size:12.5px;font-weight:400;color:#6b7686;margin-left:6px}
 @keyframes pfspin{to{transform:rotate(360deg)}}
-.pfc .pf-log{margin-top:18px;font:13px/1.75 ui-monospace,Consolas,monospace;color:#7dd3a7;background:#070b11;border:1px solid #1f2a38;border-radius:10px;padding:11px 14px;height:132px;box-sizing:border-box;overflow:hidden;white-space:pre-wrap}
+.pfc .pf-log{margin-top:18px;font:13px/1.75 ui-monospace,Consolas,monospace;color:#7dd3a7;background:#070b11;border:1px solid #1f2a38;border-radius:10px;padding:11px 14px;height:132px;box-sizing:border-box;overflow-y:auto;overscroll-behavior:contain;white-space:pre-wrap;scrollbar-width:thin;scrollbar-color:#2f3d50 transparent}
+.pfc .pf-log::-webkit-scrollbar{width:6px}.pfc .pf-log::-webkit-scrollbar-thumb{background:#2f3d50;border-radius:6px}
 .pfc .pf-log b{color:#f3d488;font-weight:400}
 .pfc .pf-log .cur{display:inline-block;width:8px;height:14px;background:#7dd3a7;vertical-align:-2px;animation:pfblink 1s steps(1) infinite}
 @keyframes pfblink{50%{opacity:0}}
@@ -162,9 +163,12 @@
     });
     const searches = (j.logs || []).filter(l => /^웹 검색/.test(l[1])).length;
     const sm = out.querySelectorAll('.pf-steps li small')[2]; if (sm) sm.textContent = searches ? `검색 ${searches}회` : '';
+    // 전체 기록을 다 넣고 맨 아래(최신 줄)를 보여 줌. 사용자가 위로 올려 보는 중이면 그 위치 유지
     const lg = out.querySelector('.pf-log');
-    const L = (j.logs || []).slice(-5);
-    lg.innerHTML = (L.length ? L.map(l => `<b>[${esc(l[0])}]</b> ${esc(l[1])}`).join('\n') : (j.state === 'queued' ? `대기 중${j.pos > 1 ? ` · 앞에 ${j.pos - 1}건` : ''}` : '')) + ' <span class="cur"></span>';
+    const L = j.logs || [];
+    const atBottom = lg.scrollHeight - lg.scrollTop - lg.clientHeight < 24;
+    const html = (L.length ? L.map(l => `<b>[${esc(l[0])}]</b> ${esc(l[1])}`).join('\n') : (j.state === 'queued' ? `대기 중${j.pos > 1 ? ` · 앞에 ${j.pos - 1}건` : ''}` : '')) + ' <span class="cur"></span>';
+    if (lg.dataset.h !== html) { lg.innerHTML = html; lg.dataset.h = html; if (atBottom) lg.scrollTop = lg.scrollHeight; }
   }
 
   async function base() {
