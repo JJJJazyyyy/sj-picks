@@ -136,8 +136,8 @@
   <div class="pf-l">
     <h3><img src="${SYM}" alt="">내 포트폴리오 생성</h3>
     <p class="pf-sub">보유 종목과 평단·수량을 편하게 적어 주세요. 아는 것만 적어도 됩니다.<br><b>회원명</b>을 함께 적으면 이미지 제목에 들어갑니다 (권장).</p>
-    <div class="pf-form"><textarea maxlength="200" placeholder="예시1) 홍길동 삼성전자 24만원 30주&#10;예시2) 에이프로젠 2400원 비중 4억&#10;예시3) 강민 대한광통신, 평단은 없어&#10;예시4) 삼전 30주, 하닉 평단 모름"></textarea>
-      <div class="pf-row"><span class="pf-cnt">0 / 200</span><button class="pf-go" type="button">✦ 브리핑 만들기</button></div>
+    <div class="pf-form"><textarea placeholder="예시1) 홍길동 삼성전자 24만원 30주&#10;예시2) 에이프로젠 2400원 비중 4억&#10;예시3) 강민 대한광통신, 평단은 없어&#10;예시4) 삼전 30주, 하닉 평단 모름"></textarea>
+      <div class="pf-row"><span class="pf-cnt">0자</span><button class="pf-go" type="button">✦ 브리핑 만들기</button></div>
       <div class="pf-ft">실시간 시세 · 오늘 시황 반영 · 보통 1~3분</div></div>
     <div class="pf-out"></div>
   </div>
@@ -216,7 +216,7 @@
     stopAI();
     if (j.state === 'ask') {
       sampleView();
-      show(`<span class="pf-q">❓ ${esc(j.question)}</span><div class="pf-row" style="margin-top:10px"><input maxlength="200" placeholder="답을 적어 주세요"><button class="pf-go pf-ans" type="button">보내기</button></div>`);
+      show(`<span class="pf-q">❓ ${esc(j.question)}</span><div class="pf-row" style="margin-top:10px"><input placeholder="답을 적어 주세요"><button class="pf-go pf-ans" type="button">보내기</button></div>`);
       const inp = out.querySelector('input'), b = out.querySelector('.pf-ans'); inp.focus();
       const send = async () => { if (!inp.value.trim()) return; b.disabled = true; t0 = Date.now(); try { render(await call('/api/answer', { id: j.id, text: inp.value })); } catch (e) { fail(e.message, ta.value); } };
       b.onclick = send; inp.onkeydown = e => { if (e.key === 'Enter') send(); };
@@ -264,7 +264,7 @@
     try { render(await call('/api/brief', { text })); }
     catch (e) { fail(e.soft ? e.message : '연결이 끊겼습니다. 잠시 뒤 다시 시도해 주세요.', text); }
   }
-  ta.oninput = () => { $('.pf-cnt').textContent = `${ta.value.length} / 200`; };
+  ta.oninput = () => { $('.pf-cnt').textContent = `${ta.value.length}자`; };
   go.onclick = start;
   ta.onkeydown = e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) start(); };
   const close = () => { m.hidden = true; };
