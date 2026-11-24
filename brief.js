@@ -136,7 +136,7 @@
   <div class="pf-l">
     <h3><img src="${SYM}" alt="">내 포트폴리오 생성</h3>
     <p class="pf-sub">보유 종목과 평단·수량을 편하게 적어 주세요. 아는 것만 적어도 됩니다.<br><b>회원명</b>을 함께 적으면 이미지 제목에 들어갑니다 (권장).</p>
-    <div class="pf-form"><textarea maxlength="200" placeholder="예시1) 홍길동 삼성전자 24만원 30주&#10;예시2) 에이프로젠 2400원 비중 4억&#10;예시3) 강민 대한광통신, 평단은 없어&#10;예시4) 삼전 30주, 하닉 평단 모름"></textarea>
+    <div class="pf-form"><textarea maxlength="200" placeholder="예시1) 홍길동 삼전 24만원 30주&#10;예시2) 삼전 하닉 현차 각 10주&#10;예시3) 하이닉스 3월쯤 10주 샀어&#10;예시4) 삼전 30주, 하닉 평단 모름&#10;예시5) 강민 대한광통신 평단 없음"></textarea>
       <div class="pf-row"><span class="pf-cnt">0 / 200</span><button class="pf-go" type="button">✦ 브리핑 만들기</button></div>
       <div class="pf-ft">실시간 시세 · 오늘 시황 반영 · 보통 1~3분</div></div>
     <div class="pf-out"></div>
