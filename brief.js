@@ -52,6 +52,7 @@
 .pfc .pf-ft{margin-top:12px;font-size:12.5px;color:#6b7280}
 .pfc .pf-ghost{background:none;border:1px solid #475569;color:#e5e7eb;border-radius:11px;padding:12px 16px;font:700 14px/1 sans-serif;font-family:inherit;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
 .pfc .pf-ed{background:#229ED9;border-color:#229ED9;color:#fff}
+.pfc .pf-tg{width:18px;height:18px;flex:none}
 .pfc .pf-st{margin-top:6px;padding:14px 16px;border-radius:12px;background:#0b111a;border:1px solid #243041;line-height:1.65}
 .pfc .pf-err{border-color:#7f1d1d;background:#1f1214}
 .pfc .pf-q{color:#f1cf7a;font-weight:700}
@@ -130,7 +131,8 @@
   let api = null, job = null, timer = null, tick = null, t0 = 0;
 
   const esc = s => String(s || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  const editorBtn = req => `<a class="pf-ghost pf-ed" href="${EDITOR}" target="_blank" rel="noopener">💬 편집자에게 톡 보내기</a>` +
+  const TG = '<svg class="pf-tg" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M21.4 3.6 2.9 10.7c-1.3.5-1.2 1.2-.2 1.5l4.7 1.5 1.8 5.6c.2.6.4.8.9.8.4 0 .6-.2.9-.4l2.3-2.2 4.7 3.5c.9.5 1.5.2 1.7-.8l3.1-14.6c.3-1.3-.5-1.9-1.4-1.5ZM8.6 13.4l9.2-5.8c.4-.3.8-.1.5.2l-7.6 6.9-.3 3.2-1.8-4.5Z"/></svg>';
+  const editorBtn = req => `<a class="pf-ghost pf-ed" href="${EDITOR}" target="_blank" rel="noopener">${TG}편집자에게 텔레 보내기</a>` +
     (req ? `<button class="pf-ghost pf-cp" type="button">요청 문장 복사</button>` : '');
   function wireCopy(req) { const b = out.querySelector('.pf-cp'); if (b) b.onclick = () => { navigator.clipboard && navigator.clipboard.writeText(req); b.textContent = '복사됨'; }; }
   function show(html, cls) { out.innerHTML = `<div class="pf-st ${cls || ''}">${html}</div>`; }
