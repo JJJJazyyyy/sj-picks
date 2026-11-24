@@ -42,7 +42,7 @@
 .pfc .pf-x{position:absolute;right:14px;top:12px;background:rgba(0,0,0,.25);border:0;color:#cbd5e1;font-size:22px;width:34px;height:34px;border-radius:50%;cursor:pointer;line-height:1;z-index:2}
 .pfc .pf-sub{color:#9ca3af;font-size:14px;margin:0 0 16px;line-height:1.65}.pfc .pf-sub b{color:#e5c77e;font-weight:700}
 .pfc textarea,.pfc input{width:100%;box-sizing:border-box;background:#0b111a;color:#f3f4f6;border:1px solid #334155;border-radius:12px;padding:15px 17px;font:16px/1.8 sans-serif;font-family:inherit;resize:vertical}
-.pfc textarea{min-height:220px}
+.pfc textarea{min-height:220px;word-break:keep-all}
 .pfc textarea::placeholder,.pfc input::placeholder{color:#64707f}
 .pfc textarea:focus,.pfc input:focus{outline:0;border-color:#d8b25e;box-shadow:0 0 0 3px rgba(216,178,94,.16)}
 .pfc .pf-row{display:flex;gap:10px;align-items:center;margin-top:14px;flex-wrap:wrap}
