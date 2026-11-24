@@ -53,6 +53,24 @@
 .pfc .pf-ghost{background:none;border:1px solid #475569;color:#e5e7eb;border-radius:11px;padding:12px 16px;font:700 14px/1 sans-serif;font-family:inherit;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
 .pfc .pf-ed{background:#229ED9;border-color:#229ED9;color:#fff}
 .pfc .pf-tg{width:18px;height:18px;flex:none}
+/* 완성: 저장 카드 2개(PNG·A4) + 아래 다시 만들기 */
+.pfc .pf-cards{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+.pfc .pf-cards.one{grid-template-columns:1fr}
+.pfc .pf-card{display:flex;gap:13px;align-items:center;text-align:left;padding:15px 16px;border-radius:14px;cursor:pointer;font-family:inherit;border:1.5px solid #3b4a60;background:#0b111a;color:#e5e7eb;transition:filter .2s,border-color .2s}
+.pfc .pf-card:hover{filter:brightness(1.08);border-color:#d8b25e}
+.pfc .pf-card.main{background:linear-gradient(180deg,#f3d385,#c99a3e);border-color:transparent;color:#1a1405;box-shadow:0 6px 18px rgba(201,154,62,.25)}
+.pfc .pf-card:disabled{opacity:.6;cursor:default}
+.pfc .pf-card .ic{flex:none;width:44px;height:44px;border-radius:11px;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.14)}
+.pfc .pf-card:not(.main) .ic{background:#162131;color:#f3d488;border:1px solid #2b3647}
+.pfc .pf-card .ic svg{width:24px;height:24px}
+.pfc .pf-card b{display:block;font-size:16px;font-weight:800;margin-bottom:3px}
+.pfc .pf-card:not(.main) b{color:#f3d488}
+.pfc .pf-card span.t{display:block;font-size:12.5px;opacity:.8;line-height:1.45}
+.pfc .pf-card i{display:inline-block;font:800 10.5px/1 sans-serif;font-family:inherit;font-style:normal;background:#d8b25e;color:#1a1405;padding:3px 6px;border-radius:5px;margin-left:4px;vertical-align:2px}
+.pfc .pf-again{width:100%;justify-content:center;margin-top:12px;padding:14px 16px;font-size:15px;border-color:#334155;color:#cbd5e1;background:rgba(255,255,255,.02)}
+.pfc .pf-again:hover{border-color:#64748b;color:#fff}
+.pfc .pf-again svg{width:17px;height:17px}
+@media (max-width:520px){.pfc .pf-cards{grid-template-columns:1fr}}
 .pfc .pf-st{margin-top:6px;padding:14px 16px;border-radius:12px;background:#0b111a;border:1px solid #243041;line-height:1.65}
 .pfc .pf-err{border-color:#7f1d1d;background:#1f1214}
 .pfc .pf-q{color:#f1cf7a;font-weight:700}
@@ -132,6 +150,9 @@
 
   const esc = s => String(s || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const TG = '<svg class="pf-tg" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M21.4 3.6 2.9 10.7c-1.3.5-1.2 1.2-.2 1.5l4.7 1.5 1.8 5.6c.2.6.4.8.9.8.4 0 .6-.2.9-.4l2.3-2.2 4.7 3.5c.9.5 1.5.2 1.7-.8l3.1-14.6c.3-1.3-.5-1.9-1.4-1.5ZM8.6 13.4l9.2-5.8c.4-.3.8-.1.5.2l-7.6 6.9-.3 3.2-1.8-4.5Z"/></svg>';
+  const PHONE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M10.5 18.5h3"/></svg>';
+  const PAGE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 2.5h8.5L19 7v14.5H6z"/><path d="M14.5 2.5V7H19"/><path d="M9 12h7M9 15.5h7M9 19h4"/></svg>';
+  const AGAIN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>';
   const editorBtn = req => `<a class="pf-ghost pf-ed" href="${EDITOR}" target="_blank" rel="noopener">${TG}편집자에게 텔레 보내기</a>` +
     (req ? `<button class="pf-ghost pf-cp" type="button">요청 문장 복사</button>` : '');
   function wireCopy(req) { const b = out.querySelector('.pf-cp'); if (b) b.onclick = () => { navigator.clipboard && navigator.clipboard.writeText(req); b.textContent = '복사됨'; }; }
@@ -202,15 +223,28 @@
       return;
     }
     if (j.state === 'ok') {
+      const pdf = j.pdf || [], many = j.img.length > 1;
+      const cards = j.img.map((p, i) => {
+        const nm = many ? `${esc(j.names[i].replace(/\.png$/, ''))} ` : '';
+        return `<div class="pf-cards${pdf[i] ? '' : ' one'}">
+          <button class="pf-card main pf-dl" data-i="${i}" data-k="png" type="button"><span class="ic">${PHONE}</span><span><b>${nm}PNG 저장</b><span class="t">휴대폰·카톡 전송용<br>화면에 꽉 차게 보기 좋음</span></span></button>
+          ${pdf[i] ? `<button class="pf-card pf-dl" data-i="${i}" data-k="pdf" type="button"><span class="ic">${PAGE}</span><span><b>${nm}A4 저장<i>PDF</i></b><span class="t">인쇄·문서 첨부용<br>A4 용지 한 장에 맞춤</span></span></button>` : ''}
+        </div>`;
+      }).join('');
       out.innerHTML = `<div class="pf-st">✅ <b>완성!</b> ${esc(j.msg)}${j.note ? `<br><small style="color:#9ca3af">📝 ${esc(j.note)}</small>` : ''}
-        <div class="pf-row">${j.img.map((p, i) => `<button class="pf-go pf-dl" data-i="${i}" type="button">⬇ ${esc(j.names[i].replace(/\.png$/, ''))} PNG 저장</button>`).join('')}
-        <button class="pf-ghost pf-again" type="button">다시 만들기</button></div></div>`;
+        ${cards}<button class="pf-ghost pf-again" type="button">${AGAIN}다른 종목으로 다시 만들기</button></div>`;
       rt.innerHTML = '✦ <b>완성된 브리핑</b> · 누르면 원본 크기로';
       shot.className = 'pf-shot res'; shot.innerHTML = j.img.map((p, i) => `<img src="${api}/${p}" alt="${esc(j.names[i])}">`).join('');
       shot.onclick = () => window.open(`${api}/${j.img[0]}`, '_blank');
       out.querySelectorAll('.pf-dl').forEach(b => b.onclick = async () => {
-        const i = +b.dataset.i; const r = await fetch(`${api}/${j.img[i]}`); const blob = await r.blob();
-        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = j.names[i]; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+        const i = +b.dataset.i, isPdf = b.dataset.k === 'pdf';
+        b.disabled = true;
+        try {
+          const r = await fetch(`${api}/${isPdf ? pdf[i] : j.img[i]}`); if (!r.ok) throw 0; const blob = await r.blob();
+          const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+          a.download = isPdf ? j.names[i].replace(/\.png$/, '') + ' (A4).pdf' : j.names[i]; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+        } catch (e) { alert('저장하지 못했습니다. 브리핑 컴퓨터가 다시 켜졌다면 새로 만들어 주세요.'); }
+        finally { b.disabled = false; }
       });
       out.querySelector('.pf-again').onclick = () => { out.innerHTML = ''; sampleView(); form.hidden = false; go.disabled = false; ta.focus(); };
       return;
